@@ -413,7 +413,7 @@ export function SuperrSidebar({
               if (isMobileDrawer) onCloseMobileDrawer?.();
             }}
             title={t("tip.open_agenda")}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--ink)] text-[var(--app-bg)] border border-[var(--ink)] hover:bg-[var(--accent)] transition-colors shadow-sm"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--ink)] text-[var(--app-bg)] border border-[var(--ink)] hover:[background-color:var(--accent)] transition-colors shadow-sm"
           >
             <Plus size={14} strokeWidth={2.5} />
           </motion.button>
