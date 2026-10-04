@@ -1171,5 +1171,7 @@ const ruExtra = {
   "onb.lang_it": "Итальянский",
   "onb.lang_fr": "Французский",
   "sys.error_retry": "попробуйте обновить страницу.",
+  "hero.notebook_of": "Тетрадь {name}",
+  "hero.notebook_mine": "Моя тетрадь",
 };
 export default ruExtra;

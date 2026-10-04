@@ -781,6 +781,7 @@ function AppContent() {
               className="relative w-full min-h-full overflow-x-hidden lg:absolute lg:inset-0 lg:h-full lg:w-full lg:overflow-y-auto"
             >
               <SuperrHero
+                ownerName={currentUser?.displayName}
                 engagement={engagement}
                 totalCards={counters.totalCards}
                 dueCards={counters.dueCards}

@@ -41,6 +41,8 @@ interface SuperrHeroProps {
   dueCardsCount?: number;
   spaces?: HeroSpace[];
   onOpenCustomize?: (tab?: 'paper' | 'handwriting' | 'sound' | 'stamp' | 'volumes' | 'ritual') => void;
+  /** Giriş yapmış kullanıcının görünen adı (defter etiketi ve hediye bağlantısı için). */
+  ownerName?: string;
 }
 
 interface HeroSpace {
@@ -65,6 +67,7 @@ export function SuperrHero({
   goalXp,
   spaces = [],
   onOpenCustomize,
+  ownerName,
 }: SuperrHeroProps) {
   const hookEngagement = useEngagement();
   const engagement = propEngagement ?? hookEngagement;
@@ -331,7 +334,7 @@ export function SuperrHero({
 
             {/* Gerçek Okul Defteri Etiketi (Name Label Sticker) */}
             <NameLabelSticker
-                name={t("hero.notebook_name")}
+                name={ownerName ? t("hero.notebook_of", { name: ownerName }) : t("hero.notebook_mine")}
                 volume={currentVolume}
                 onClick={() => handleOpenCustomize("volumes")}
                 className="w-full mb-3"
@@ -596,6 +599,7 @@ export function SuperrHero({
         isOpen={isGiftModalOpen}
         onClose={() => setIsGiftModalOpen(false)}
         onGiftSent={handleConfigChange}
+        senderName={ownerName}
       />
 
       <NotebookCustomizeModal

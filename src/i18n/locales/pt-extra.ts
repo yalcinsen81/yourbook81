@@ -1171,5 +1171,7 @@ const ptExtra = {
   "onb.lang_it": "Italiano",
   "onb.lang_fr": "Francês",
   "sys.error_retry": "tente recarregar a página.",
+  "hero.notebook_of": "O Caderno de {name}",
+  "hero.notebook_mine": "Meu Caderno",
 };
 export default ptExtra;

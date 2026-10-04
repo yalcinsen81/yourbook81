@@ -1171,5 +1171,7 @@ const esExtra = {
   "onb.lang_it": "Italiano",
   "onb.lang_fr": "Francés",
   "sys.error_retry": "prueba a recargar la página.",
+  "hero.notebook_of": "El Cuaderno de {name}",
+  "hero.notebook_mine": "Mi Cuaderno",
 };
 export default esExtra;

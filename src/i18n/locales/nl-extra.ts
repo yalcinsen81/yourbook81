@@ -1170,5 +1170,7 @@ const nlExtra: Record<string, string> = {
   "onb.lang_it": "Italiaans",
   "onb.lang_fr": "Frans",
   "sys.error_retry": "probeer de pagina te herladen.",
+  "hero.notebook_of": "Schrift van {name}",
+  "hero.notebook_mine": "Mijn schrift",
 };
 export default nlExtra;

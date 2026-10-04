@@ -9,13 +9,15 @@ interface GiftNotebookModalProps {
   isOpen: boolean;
   onClose: () => void;
   onGiftSent?: () => void;
+  /** Gönderenin adı; yoksa bağlantı adsız oluşturulur. */
+  senderName?: string;
 }
 
-export function GiftNotebookModal({ isOpen, onClose, onGiftSent }: GiftNotebookModalProps) {
+export function GiftNotebookModal({ isOpen, onClose, onGiftSent, senderName: senderNameProp }: GiftNotebookModalProps) {
   const [copied, setCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
   const { t } = useT();
-  const senderName = "Yalçın";
+  const senderName = senderNameProp?.trim() || "yourbook";
 
   if (!isOpen) return null;
 

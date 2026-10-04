@@ -1171,5 +1171,7 @@ const arExtra = {
   "onb.lang_it": "الإيطالية",
   "onb.lang_fr": "الفرنسية",
   "sys.error_retry": "حاول إعادة تحميل الصفحة.",
+  "hero.notebook_of": "دفتر {name}",
+  "hero.notebook_mine": "دفتري",
 };
 export default arExtra;

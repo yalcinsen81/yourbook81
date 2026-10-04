@@ -1172,5 +1172,7 @@ const deExtra = {
   "onb.lang_it": "Italienisch",
   "onb.lang_fr": "Französisch",
   "sys.error_retry": "versuche, die Seite neu zu laden.",
+  "hero.notebook_of": "Notizheft von {name}",
+  "hero.notebook_mine": "Mein Notizheft",
 };
 export default deExtra;

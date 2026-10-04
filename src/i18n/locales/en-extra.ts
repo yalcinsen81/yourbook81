@@ -1219,6 +1219,8 @@ const enExtra: Record<string, string> = {
   "onb.lang_it": "Italian",
   "onb.lang_fr": "French",
   "sys.error_retry": "try reloading the page.",
+  "hero.notebook_of": "{name}'s Notebook",
+  "hero.notebook_mine": "My Notebook",
 };
 
 export default enExtra;

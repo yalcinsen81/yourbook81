@@ -139,7 +139,7 @@ export function HandDrawnArrow({
 
 // 6. Okul Defteri Etiketi (Hover'da Yaylanma)
 export function NameLabelSticker({
-  name = "Yalçın'ın Not Defteri",
+  name = "",
   volume = 1,
   deskSub,
   deskNames,

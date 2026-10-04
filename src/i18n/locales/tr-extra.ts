@@ -1219,6 +1219,8 @@ const trExtra = {
   "onb.lang_it": "İtalyanca",
   "onb.lang_fr": "Fransızca",
   "sys.error_retry": "sayfayı yenilemeyi dene.",
+  "hero.notebook_of": "{name} · Not Defteri",
+  "hero.notebook_mine": "Not Defterim",
 };
 
 export default trExtra;

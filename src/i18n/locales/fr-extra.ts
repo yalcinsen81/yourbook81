@@ -1171,5 +1171,7 @@ const frExtra = {
   "onb.lang_it": "Italien",
   "onb.lang_fr": "Français",
   "sys.error_retry": "essaie de recharger la page.",
+  "hero.notebook_of": "Le Cahier de {name}",
+  "hero.notebook_mine": "Mon Cahier",
 };
 export default frExtra;
