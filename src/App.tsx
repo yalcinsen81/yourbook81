@@ -25,6 +25,7 @@ import { MobileHeader } from "./components/MobileHeader";
 import { MobileBottomNav } from "./components/MobileBottomNav";
 import { getSavedLocalUser, saveLocalUser, getCurrentSessionUser, onAuthStateChange, type AppUser } from "./lib/supabase";
 import { performCloudSync, isSyncKey } from "./lib/syncEngine";
+import { viewFromSearch } from "./lib/deepLink";
 import { usePwaInstall } from "./lib/usePwaInstall";
 import { InstallPwaModal } from "./components/InstallPwaModal";
 import {
@@ -124,7 +125,19 @@ function AppContent() {
 
   // Superr Defter Bölümleri:
   // hero | collections (Tüm Notlar) | daily (Günlük Notlar) | work (İş ve Projeler) | calendar (Takvim ve Ajanda) | cards (Masalar: DE / EN)
-  const [currentView, setCurrentView] = useState<NavView>("hero");
+  // Bildirim bağlantıları (/?view=notes, /?view=calendar) doğrudan ilgili görünümü açar.
+  const [currentView, setCurrentView] = useState<NavView>(() =>
+    (typeof window !== "undefined" ? viewFromSearch(window.location.search) : null) ?? "hero"
+  );
+  useEffect(() => {
+    try {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has("view")) {
+        url.searchParams.delete("view");
+        window.history.replaceState({}, "", url.pathname + url.search + url.hash);
+      }
+    } catch { /* yok say */ }
+  }, []);
   // Görünümler arası tarih bağlantısı (agenda ↔ günlük). Bir görünüm, diğerinde
   // belirli bir güne atlamak istediğinde buraya tarih yazar; hedef görünüm okur.
   const [crossLinkDateKey, setCrossLinkDateKey] = useState<string | null>(null);
