@@ -3,9 +3,12 @@ dist
 .vercel
 *.log
 
-.vercel
-
 .env
 .env.local
 .env.*.local
 !.env.example
+
+# QA ciktilari
+/qa-out.txt
+/is-out.txt
+/*.png
