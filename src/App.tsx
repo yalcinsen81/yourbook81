@@ -24,7 +24,7 @@ import { AuthModal } from "./components/AuthModal";
 import { MobileHeader } from "./components/MobileHeader";
 import { MobileBottomNav } from "./components/MobileBottomNav";
 import { getSavedLocalUser, saveLocalUser, getCurrentSessionUser, onAuthStateChange, type AppUser } from "./lib/supabase";
-import { performCloudSync } from "./lib/syncEngine";
+import { performCloudSync, isSyncKey } from "./lib/syncEngine";
 import { usePwaInstall } from "./lib/usePwaInstall";
 import { InstallPwaModal } from "./components/InstallPwaModal";
 import {
@@ -264,8 +264,10 @@ function AppContent() {
       if (document.visibilityState === "visible") performCloudSync(currentUser);
     };
     const onStorage = (e: StorageEvent) => {
-      // Başka bir sekmede senkronlanan anahtarlar değiştiyse bu sekmeyi de tazele
-      if (e.key && e.key.startsWith("yourbook_")) performCloudSync(currentUser);
+      // Başka bir sekmede senkronlanan anahtarlar değiştiyse bu sekmeyi de tazele.
+      // Yalnızca SYNC_KEYS: son-eşitleme damgası gibi sync'in kendi yazdıkları iki sekme
+      // arasında sonsuz eşitleme döngüsü yaratırdı.
+      if (isSyncKey(e.key)) performCloudSync(currentUser);
     };
 
     window.addEventListener("online", onOnline);

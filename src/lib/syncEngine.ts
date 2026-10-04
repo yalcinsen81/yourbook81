@@ -204,7 +204,7 @@ function saveBase(data: Record<string, any>) {
  * Bulut senkronizasyonunu yürütür.
  * Supabase bağlıysa buluttaki son paketle birleştirir, bağlı değilse yerel yedeklemeyi tazeler.
  */
-export async function performCloudSync(user: AppUser | null): Promise<SyncResult> {
+async function runCloudSync(user: AppUser | null): Promise<SyncResult> {
   const now = Date.now();
 
   // v-migrate: ilk aktarim raporu (varsa donuse eklenir)
@@ -296,6 +296,38 @@ export async function performCloudSync(user: AppUser | null): Promise<SyncResult
   // 2. Çevrimdışı / Yerel Çalışma Modu
   localStorage.setItem("yourbook_last_synced_at", String(now));
   return { success: true, lastSyncedAt: now, message: "Yerel depolamada güncellendi" };
+}
+
+let inflight: Promise<SyncResult> | null = null;
+let rerunUser: AppUser | null | undefined;
+
+/**
+ * Bulut senkronizasyonu (aynı anda tek çalışır).
+ * Bir eşitleme sürerken gelen çağrılar birleştirilir: mevcut eşitleme bitince
+ * yalnızca BİR kez daha çalıştırılır. Böylece çakışan yarış ve istek fırtınası olmaz.
+ */
+export function performCloudSync(user: AppUser | null): Promise<SyncResult> {
+  if (inflight) {
+    rerunUser = user;
+    return inflight;
+  }
+  const p = runCloudSync(user);
+  inflight = p;
+  const done = () => {
+    inflight = null;
+    if (rerunUser !== undefined) {
+      const next = rerunUser;
+      rerunUser = undefined;
+      void performCloudSync(next);
+    }
+  };
+  p.then(done, done);
+  return p;
+}
+
+/** Bu depolama anahtarı bulutla eşitlenen verilerden biri mi? (diğer sekme olaylarını süzmek için) */
+export function isSyncKey(key: string | null | undefined): boolean {
+  return !!key && (SYNC_KEYS as readonly string[]).includes(key);
 }
 
 /** Son senkronizasyon zamanını döndürür */

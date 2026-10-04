@@ -143,3 +143,22 @@ describe("syncEngine.ts - üç yönlü birleştirme (veri kaybı önleme)", () =
     expect(mergeSyncData({}, { only: 1 }, { other: 2 })).toEqual({ only: 1, other: 2 });
   });
 });
+
+import { performCloudSync, isSyncKey } from "./syncEngine";
+
+describe("syncEngine.ts - eşzamanlılık ve sekme olayları", () => {
+  it("eşzamanlı çağrılar aynı eşitlemeyi paylaşır", async () => {
+    const p1 = performCloudSync(null);
+    const p2 = performCloudSync(null);
+    expect(p2).toBe(p1);
+    await p1;
+  });
+
+  it("sync'in kendi yazdığı anahtarlar sekme olaylarında yok sayılır", () => {
+    expect(isSyncKey("yourbook_last_synced_at")).toBe(false);
+    expect(isSyncKey("yourbook_sync_base_v1")).toBe(false);
+    expect(isSyncKey(null)).toBe(false);
+    expect(isSyncKey("yourbook_notes_v1")).toBe(true);
+    expect(isSyncKey("superr_agenda_events_v4")).toBe(true);
+  });
+});
