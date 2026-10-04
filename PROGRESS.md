@@ -4,6 +4,12 @@
 
 ---
 
+## 🆕 Son değişiklikler (chore/repo-cleanup PR'ı)
+- **Sync:** `syncEngine.ts` artık üç yönlü birleştirme (base/local/cloud) yapar; base `yourbook_sync_base_v1` anahtarında (cihaza özel, SYNC_KEYS'te DEĞİL). `id`'li diziler öğe bazında birleşir.
+- **Alarm:** "ertele" artık SW zamanlayıcısı değil; SW sayfaya `SNOOZE_ALARM` mesajı yollar (pencere yoksa `/?snooze=kind:id:dk`). `snoozeAgendaEvent()` alarm.ts'te.
+- **Perf:** ağır görünümler `React.lazy`; tr dışındaki sözlükler `loadDictionary()` ile lazy. Testler sözlükleri `src/i18n/allLocales.ts` ile yükler.
+- **Repo:** ekran görüntüleri `docs/screenshots/`, QA betikleri `qa/`, `vite.config.mts`.
+
 ## 🔴 0. YENİ CHAT İÇİN ÖNCE OKU (Handoff)
 
 ### Proje Konumu
@@ -14,7 +20,7 @@
 ### Zorunlu Doğrulama Döngüsü (her değişiklikten sonra)
 1. `$env:PATH = "C:\Program Files\nodejs;" + $env:PATH` (npm/npx PATH'te değil!)
 2. `npx tsc --noEmit`  → **0 hata olmalı**
-3. `npm test` → **210/210 geçmeli** (23 test dosyası)
+3. `npm test` → **280/280 geçmeli** (30 test dosyası)
 4. `npm run build`
 5. `npx vercel --prod --yes` → çıktıdan `yourbook-<hash>.vercel.app` URL'ini al
 6. Alias'ları bağla (3 komut): `npx vercel alias set yourbook-<hash>-yalcin4.vercel.app yourbook-app.vercel.app` (ve `yourbook-defter`, `yourbook3`)
@@ -46,7 +52,7 @@
 - **Canlı Dağıtım:** Vercel → `yourbook-app.vercel.app`, `yourbook-defter.vercel.app`, `yourbook3.vercel.app`
 - **Karakter Kodlaması:** %100 UTF-8 (BOM'suz), sıfır mojibake.
 - **İkonografi:** %100 SVG monokrom el çizimi (sketch) seti (`sketchIcons.tsx`, `sketchBadges.tsx`, `doodle.tsx`). Sıfır emoji.
-- **Test/Tip:** `npx tsc --noEmit` (0 hata) & `npm test` (**210/210**, 23 test dosyası).
+- **Test/Tip:** `npx tsc --noEmit` (0 hata) & `npm test` (**280/280**, 30 test dosyası).
 - **Diller (v39.1):** arayüz dili **tr / en / de / es / fr / it / ar** = **7 dil**. Kaynak = `tr` (**1095 anahtar**). (`pt`/`ru`/`nl` çevirileri hazır ama listede değil.) `ar` tek RTL dil. **10 dilin** her biri tr ile **birebir aynı anahtar setine** sahip (testli).
 - **Kenarlık Dili (v25):** Tüm ana paneller ve günlük panelleri **siyah** kenarlıklı (`var(--ink)` = `#1c1917`). Hover'da siyah kalır (turuncuya dönmez).
 
@@ -228,7 +234,7 @@ Bunlar gelecekte mikrofon şikâyetlerinde ilk başvurulacak araçlar.
 - **× ile bir öğe çıkarma** → liste kapandı, modal açık kaldı, başlık kalan öğeye döndü: `Buton: "tüm notlar"` (kalan öğe **silinmedi**, doğrulandı).
 - **0 konsol hatası / 0 başarısız istek.**
 
-**Test & derleme:** `npx tsc --noEmit` **0 hata** · `npm test` **210/210** · `npm run build` başarılı.
+**Test & derleme:** `npx tsc --noEmit` **0 hata** · `npm test` **280/280** · `npm run build` başarılı.
 
 **Canlı URL'ler (bu sürümü servis ediyor):**
 - https://yourbook-app.vercel.app
@@ -262,7 +268,7 @@ Bunlar gelecekte mikrofon şikâyetlerinde ilk başvurulacak araçlar.
 - Backlog'daki "ölü bileşenler" (`OpennoteSidebar`, `OffBrandHero`, `OffBrandSidebar`, `PanelSwitcher`, `CraftSidebar` vb.) **`src/` içinde zaten yoktu** — yalnızca `_lexi-cards_dead_backup_*` / `_lexi-cards_v66_deadcode_*` yedeklerinde duruyorlar. İstenirse o yedek klasörleri de silinebilir.
 - `LovableInspector` **silinmedi, devreye alındı** (yukarıdaki madde 1).
 
-**Doğrulama:** `npx tsc --noEmit` **0 hata** · `npm test` **210/210** · `npm run build` başarılı (1.63 MB).
+**Doğrulama:** `npx tsc --noEmit` **0 hata** · `npm test` **280/280** · `npm run build` başarılı (1.63 MB).
 
 ### v39.0 — Fransızca + İtalyanca Arayüz Dili (bu oturum)
 **Durum:** fr ve it çevirileri zaten mevcuttu (56557 / 54538 bayt) ama **arayüz dil listesinde (UI_LANGUAGES) değillerdi** — DICTS'te kayıtlı ama seçilemez durumdaydılar.
@@ -617,7 +623,7 @@ Tüm kullanıcı verileri tarayıcıda `localStorage`'da izole saklanır (isteğ
 ## 🧪 7. Son Doğrulanan Durum (v41.1)
 
 - `npx tsc --noEmit` → **0 hata**
-- `npm test` → **210/210** (23 dosya)
+- `npm test` → **280/280** (23 dosya)
 - `npm run build` → başarılı
 - Canlı: 3 alias da son derlemede; **0 konsol hatası / 0 başarısız istek**
 - **4.1 grubu canlıda doğrulandı:** günlük sekmeleri siyah (`rgb(28,25,23)`), StudyDesk butonu kesilmiyor, DE/EN/ES üst çerçeveleri doğru
