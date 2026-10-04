@@ -1,4 +1,4 @@
-import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 // Vite ortam değişkenleri
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
@@ -45,14 +45,28 @@ export const isCloudConfigured = Boolean(
   supabaseAnonKey.length > 20
 );
 
-export const supabase: SupabaseClient | null = isCloudConfigured
-  ? createClient(supabaseUrl!, supabaseAnonKey!, {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-    },
-  })
-  : null;
+let clientPromise: Promise<SupabaseClient | null> | null = null;
+
+/**
+ * Supabase istemcisini ilk ihtiyaçta yükler (kütüphane ana pakette değil, ayrı parçadadır).
+ * Bulut yapılandırılmamışsa kütüphane hiç indirilmez ve null döner.
+ */
+export function getSupabase(): Promise<SupabaseClient | null> {
+  if (!isCloudConfigured) return Promise.resolve(null);
+  if (!clientPromise) {
+    clientPromise = import("@supabase/supabase-js")
+      .then(({ createClient }) =>
+        createClient(supabaseUrl!, supabaseAnonKey!, {
+          auth: { persistSession: true, autoRefreshToken: true },
+        })
+      )
+      .catch(() => {
+        clientPromise = null; // ağ hatası: sonraki çağrıda yeniden dene
+        return null;
+      });
+  }
+  return clientPromise;
+}
 
 export interface AppUser {
   id: string;
@@ -90,9 +104,11 @@ export async function loginUser(email: string, pass: string): Promise<{ user: Ap
   const cleanEmail = email.trim().toLowerCase();
 
   // 1. Supabase Yapılandırılmışsa gerçek buluta bağlan
-  if (isCloudConfigured && supabase) {
+  const sb = await getSupabase();
+  if (isCloudConfigured && !sb) return { user: null, error: "Bulut servisine ulaşılamadı. Bağlantınızı kontrol edin." };
+  if (sb) {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await sb.auth.signInWithPassword({
         email: cleanEmail,
         password: pass,
       });
@@ -137,9 +153,11 @@ export async function registerUser(email: string, pass: string, name?: string): 
   const cleanEmail = email.trim().toLowerCase();
   const displayName = name?.trim() || cleanEmail.split("@")[0];
 
-  if (isCloudConfigured && supabase) {
+  const sb = await getSupabase();
+  if (isCloudConfigured && !sb) return { user: null, error: "Bulut servisine ulaşılamadı. Bağlantınızı kontrol edin." };
+  if (sb) {
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const { data, error } = await sb.auth.signUp({
         email: cleanEmail,
         password: pass,
         options: {
@@ -184,9 +202,10 @@ export async function registerUser(email: string, pass: string, name?: string): 
 
 /** Çıkış Yap */
 export async function logoutUser(): Promise<void> {
-  if (isCloudConfigured && supabase) {
+  const sb = await getSupabase();
+  if (sb) {
     try {
-      await supabase.auth.signOut();
+      await sb.auth.signOut();
     } catch { }
   }
   saveLocalUser(null);
@@ -226,10 +245,11 @@ function sessionUserToAppUser(u: { id: string; email?: string | null; user_metad
  * Bulut yapilandirilmamissa sessizce hata doner (yerel mod bozulmaz).
  */
 export async function requestPasswordReset(email: string): Promise<{ ok: boolean; error: string | null }> {
-  if (!isCloudConfigured || !supabase) return { ok: false, error: "cloud_not_configured" };
+  const sb = await getSupabase();
+  if (!sb) return { ok: false, error: "cloud_not_configured" };
   try {
     const redirectTo = typeof window !== "undefined" ? window.location.origin : undefined;
-    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo });
     if (error) return { ok: false, error: error.message };
     return { ok: true, error: null };
   } catch (e) {
@@ -243,9 +263,10 @@ export async function requestPasswordReset(email: string): Promise<{ ok: boolean
  * Boylece oturum sayfa yenilemesinde DUSMEZ.
  */
 export async function getCurrentSessionUser(): Promise<AppUser | null> {
-  if (!isCloudConfigured || !supabase) return null;
+  const sb = await getSupabase();
+  if (!sb) return null;
   try {
-    const { data, error } = await supabase.auth.getSession();
+    const { data, error } = await sb.auth.getSession();
     if (error) return null;
     return sessionUserToAppUser(data.session?.user);
   } catch {
@@ -258,28 +279,32 @@ export async function getCurrentSessionUser(): Promise<AppUser | null> {
  * Donen fonksiyon abonelikten cikar.
  */
 export function onAuthStateChange(cb: (user: AppUser | null) => void): () => void {
-  if (!isCloudConfigured || !supabase) return () => {};
-  try {
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      cb(sessionUserToAppUser(session?.user));
-    });
-    return () => {
-      try {
-        data.subscription.unsubscribe();
-      } catch {
-        /* yok say */
-      }
-    };
-  } catch {
-    return () => {};
-  }
+  if (!isCloudConfigured) return () => {};
+  let cancelled = false;
+  let unsubscribe: () => void = () => {};
+  getSupabase().then((sb) => {
+    if (!sb || cancelled) return;
+    try {
+      const { data } = sb.auth.onAuthStateChange((_event, session) => {
+        cb(sessionUserToAppUser(session?.user));
+      });
+      unsubscribe = () => {
+        try { data.subscription.unsubscribe(); } catch { /* yok say */ }
+      };
+    } catch { /* yok say */ }
+  });
+  return () => {
+    cancelled = true;
+    unsubscribe();
+  };
 }
 
 /** Sifirlama baglantisindan sonra yeni sifre belirler. */
 export async function updatePassword(newPass: string): Promise<{ ok: boolean; error: string | null }> {
-  if (!isCloudConfigured || !supabase) return { ok: false, error: "cloud_not_configured" };
+  const sb = await getSupabase();
+  if (!sb) return { ok: false, error: "cloud_not_configured" };
   try {
-    const { error } = await supabase.auth.updateUser({ password: newPass });
+    const { error } = await sb.auth.updateUser({ password: newPass });
     if (error) return { ok: false, error: error.message };
     return { ok: true, error: null };
   } catch (e) {

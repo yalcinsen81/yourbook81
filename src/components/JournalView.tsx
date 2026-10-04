@@ -17,7 +17,7 @@ import {
   SketchMic,
 } from "./icons/sketchIcons";
 import { useT } from "../i18n/I18nProvider";
-import { supabase, isCloudConfigured } from "../lib/supabase";
+import { getSupabase, isCloudConfigured } from "../lib/supabase";
 import { JournalExportModal } from "./JournalExportModal";
 import { JournalMoodRadar } from "./JournalMoodRadar";
 import JournalSpread from "./JournalSpread";
@@ -489,7 +489,8 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
     setRecoverError(null);
 
     // Hesap sistemi yoksa (yerel mod) kullaniciyi bilgilendir.
-    if (!isCloudConfigured || !supabase) {
+    const supabase = isCloudConfigured ? await getSupabase() : null;
+    if (!supabase) {
       setRecoverError(t("journal.need_account"));
       return;
     }

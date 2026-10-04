@@ -1,4 +1,4 @@
-import { supabase, isCloudConfigured, type AppUser } from "./supabase";
+import { getSupabase, isCloudConfigured, type AppUser } from "./supabase";
 
 export type SyncStatus = "synced" | "syncing" | "offline" | "ready";
 
@@ -223,7 +223,8 @@ export async function performCloudSync(user: AppUser | null): Promise<SyncResult
   // Postgres "user_id uuid" kolonu gecersiz degeri 400 ile reddeder; bu durum
   // yerel/misafir profillerinde gereksiz istek firtinasi ve konsol hatasi uretir.
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(user.id || ""));
-  if (isCloudConfigured && supabase && isUuid) {
+  const supabase = isCloudConfigured && isUuid ? await getSupabase() : null;
+  if (supabase) {
     try {
       const localData = exportCurrentData();
 
