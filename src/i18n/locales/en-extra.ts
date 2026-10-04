@@ -1173,6 +1173,7 @@ const enExtra: Record<string, string> = {
   "hero.btn_daily": "Daily",
   "archive.deleted": "deleted",
   "archive.undo": "undo",
+  "auth.local_notice": "No cloud account is connected: this is a local profile. Your data stays on this device only, is not synced to other devices, and the password is not verified.",
 };
 
 export default enExtra;

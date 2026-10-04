@@ -1125,5 +1125,6 @@ const frExtra = {
   "hero.btn_daily": "Quotidien",
   "archive.deleted": "supprimé",
   "archive.undo": "annuler",
+  "auth.local_notice": "Aucun compte cloud n'est connecté : il s'agit d'un profil local. Tes données restent sur cet appareil, ne sont pas synchronisées avec d'autres appareils et le mot de passe n'est pas vérifié.",
 };
 export default frExtra;

@@ -1126,5 +1126,6 @@ const deExtra = {
   "hero.btn_daily": "Täglich",
   "archive.deleted": "gelöscht",
   "archive.undo": "rückgängig",
+  "auth.local_notice": "Kein Cloud-Konto verbunden: Dies ist ein lokales Profil. Deine Daten bleiben nur auf diesem Gerät, werden nicht mit anderen Geräten synchronisiert und das Passwort wird nicht überprüft.",
 };
 export default deExtra;

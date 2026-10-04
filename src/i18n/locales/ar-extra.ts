@@ -1125,5 +1125,6 @@ const arExtra = {
   "hero.btn_daily": "يوميات",
   "archive.deleted": "تم الحذف",
   "archive.undo": "تراجع",
+  "auth.local_notice": "لا يوجد حساب سحابي متصل: هذا ملف محلي. تبقى بياناتك على هذا الجهاز فقط ولا تتم مزامنتها مع أجهزة أخرى ولا يتم التحقق من كلمة المرور.",
 };
 export default arExtra;

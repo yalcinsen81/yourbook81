@@ -302,6 +302,15 @@ export function AuthModal({
                   </button>
                 </div>
 
+                {!isCloudConfigured && (
+                  <p
+                    role="note"
+                    data-testid="auth-local-notice"
+                    className="mb-3 rounded-[8px] border-[1.5px] border-dashed border-[var(--ink)] bg-[var(--app-bg)] p-2.5 font-geist text-[11px] leading-snug text-[var(--ink-soft)]"
+                  >
+                    {t("auth.local_notice")}
+                  </p>
+                )}
                 <form
                   onSubmit={forgotMode ? handleForgotPassword : tab === "login" ? handleLogin : handleRegister}
                   className="space-y-3"

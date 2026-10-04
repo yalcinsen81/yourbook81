@@ -1124,5 +1124,6 @@ const itExtra: Record<string, string> = {
   "hero.btn_daily": "Quotidiano",
   "archive.deleted": "eliminato",
   "archive.undo": "annulla",
+  "auth.local_notice": "Nessun account cloud collegato: questo è un profilo locale. I tuoi dati restano solo su questo dispositivo, non vengono sincronizzati con altri e la password non viene verificata.",
 };
 export default itExtra;

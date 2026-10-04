@@ -1125,5 +1125,6 @@ const esExtra = {
   "hero.btn_daily": "Diario",
   "archive.deleted": "eliminado",
   "archive.undo": "deshacer",
+  "auth.local_notice": "No hay cuenta en la nube conectada: este es un perfil local. Tus datos solo se quedan en este dispositivo, no se sincronizan con otros y la contraseña no se verifica.",
 };
 export default esExtra;

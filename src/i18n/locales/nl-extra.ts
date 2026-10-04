@@ -1124,5 +1124,6 @@ const nlExtra: Record<string, string> = {
   "hero.btn_daily": "Dagelijks",
   "archive.deleted": "verwijderd",
   "archive.undo": "ongedaan maken",
+  "auth.local_notice": "Er is geen cloudaccount verbonden: dit is een lokaal profiel. Je gegevens blijven alleen op dit apparaat, worden niet met andere apparaten gesynchroniseerd en het wachtwoord wordt niet gecontroleerd.",
 };
 export default nlExtra;

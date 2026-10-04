@@ -1125,5 +1125,6 @@ const ptExtra = {
   "hero.btn_daily": "Diário",
   "archive.deleted": "eliminado",
   "archive.undo": "desfazer",
+  "auth.local_notice": "Nenhuma conta na nuvem conectada: este é um perfil local. Seus dados ficam apenas neste dispositivo, não são sincronizados com outros e a senha não é verificada.",
 };
 export default ptExtra;

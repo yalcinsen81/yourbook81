@@ -1173,6 +1173,7 @@ const trExtra = {
   "hero.btn_daily": "Günlük",
   "archive.deleted": "silindi",
   "archive.undo": "geri al",
+  "auth.local_notice": "bulut hesabı bağlı değil: bu bir yerel profildir. verilerin yalnızca bu cihazda kalır, başka cihazlarla eşitlenmez ve şifre doğrulanmaz.",
 };
 
 export default trExtra;
