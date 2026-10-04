@@ -97,7 +97,7 @@ export function GiftNotebookModal({ isOpen, onClose, onGiftSent, senderName: sen
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.94, opacity: 0, y: 12 }}
           transition={{ duration: 0.22, ease: [0.34, 1.56, 0.64, 1] }}
-          className="relative w-full max-w-md rounded-[20px] border-2 border-[var(--ink)] bg-[var(--paper)] p-5 sm:p-6 shadow-2xl"
+          className="relative w-full max-w-md rounded-[20px] border border-[var(--line-strong)] bg-[var(--paper)] p-5 sm:p-6 shadow-2xl"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}

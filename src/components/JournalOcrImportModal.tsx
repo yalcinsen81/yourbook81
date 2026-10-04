@@ -109,7 +109,7 @@ export function JournalOcrImportModal({
           initial={{ scale: 0.94, opacity: 0, y: 10 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.94, opacity: 0, y: 10 }}
-          className="w-full max-w-xl rounded-[20px] border-2 border-[var(--ink)] bg-[var(--paper)] p-6 sm:p-7 shadow-2xl my-6"
+          className="w-full max-w-xl rounded-[20px] border border-[var(--line-strong)] bg-[var(--paper)] p-6 sm:p-7 shadow-2xl my-6"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Üst Başlık */}
@@ -227,7 +227,7 @@ export function JournalOcrImportModal({
                     value={extractedText}
                     onChange={(e) => setExtractedText(e.target.value)}
                     rows={5}
-                    className="w-full rounded-[12px] border border-[var(--ink)] bg-[var(--app-bg)] p-3 font-gelica text-sm text-[var(--ink)] outline-none focus:border-[var(--accent)] resize-none"
+                    className="w-full rounded-[12px] border border-[var(--line)] bg-[var(--app-bg)] p-3 font-gelica text-sm text-[var(--ink)] outline-none focus:border-[var(--accent)] resize-none"
                   />
                 </div>
               )}
@@ -238,7 +238,7 @@ export function JournalOcrImportModal({
           <div className="mt-5 pt-3 border-t border-black/10 flex items-center justify-end gap-2">
             <button
               onClick={onClose}
-              className="rounded-[20px] border border-[var(--ink)] px-4 py-1.5 font-gelica text-xs font-semibold"
+              className="rounded-[20px] border border-[var(--line)] px-4 py-1.5 font-gelica text-xs font-semibold"
             >
               {t("ocr.cancel")}
             </button>

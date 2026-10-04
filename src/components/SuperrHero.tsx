@@ -170,7 +170,7 @@ export function SuperrHero({
               playPopSound();
               setIsGiftModalOpen(true);
             }}
-            className="flex items-center gap-1.5 rounded-full border-2 border-[var(--ink)] bg-[var(--accent)] px-3 py-1 font-gelica text-[14px] font-bold text-white hover:scale-105 transition-transform shadow-2xs"
+            className="flex items-center gap-1.5 rounded-full border border-[var(--line-strong)] bg-[var(--accent)] px-3 py-1 font-gelica text-[14px] font-bold text-white hover:scale-105 transition-transform shadow-2xs"
             title={t("cover.gift.tip")}
           >
             <SketchGift size={15} className="shrink-0 text-white" strokeWidth={1.8} />
@@ -192,8 +192,8 @@ export function SuperrHero({
           {/* Handwritten Annotation — görece konteyner: kıvrık ok "defter" kelimesini işaret eder */}
           <div className="relative flex items-center gap-3.5 mb-2">
             <span
-              style={{ fontSize: "clamp(30px, 3.4vw, 53px)" }}
-              className="font-handwritten text-[var(--accent)] rotate-[-2deg] flex items-center gap-5 leading-none"
+              style={{ fontSize: "clamp(26px, 2.4vw, 36px)" }}
+              className="font-handwritten text-[var(--accent)] flex items-center gap-4 leading-none whitespace-nowrap"
             >
               <span>{t("cover.greeting")}</span>
               {/* Gülen yüz + ok = TEK PARÇA: dikey grup, font ne olursa olsun birlikte hareket eder */}
@@ -210,7 +210,7 @@ export function SuperrHero({
                 strokeWidth="1.75"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="inline-block w-[46px] h-[46px] sm:w-[65px] sm:h-[65px] flex-shrink-0 drop-shadow-[0_2px_3px_rgba(0,0,0,0.18)] [filter:saturate(1.15)]"
+                className="inline-block w-[34px] h-[34px] sm:w-[44px] sm:h-[44px] flex-shrink-0 drop-shadow-[0_2px_3px_rgba(0,0,0,0.18)] [filter:saturate(1.15)]"
                 style={{ transformOrigin: "50% 60%" }}
               >
                 {/* Organik hafif asimetrik kafa dairesi — çift çizgi kalem baskısı */}
@@ -323,7 +323,7 @@ export function SuperrHero({
 
         {/* Sağ Sütun: Tilted Product Notebook + Name Label Sticker + 2D Sticker Cluster */}
         <div className="lg:col-span-6 xl:col-span-5 relative flex items-center justify-center p-4">
-          <div className="relative w-full max-w-[380px] p-6 bg-[var(--paper)] border border-[var(--ink)] rounded-[16px] shadow-superrCard rotate-[2deg] transition-transform hover:rotate-0">
+          <div className="relative w-full max-w-[380px] p-6 bg-[var(--paper)] border border-[var(--line)] rounded-[16px] shadow-superrCard">
             {/* Üstte Dağılmış Fiziksel Stickerlar */}
             <div className="absolute -top-2 -start-2 z-20">
               <LightningSticker />
@@ -560,7 +560,7 @@ export function SuperrHero({
               playPopSound();
               onGoToCards("space-all");
             }}
-            className="rounded-[20px] border-2 border-[var(--ink)] bg-[var(--app-bg)] text-[var(--ink)] px-5 py-2 font-gelica text-xs font-semibold shadow-sm hover:bg-[var(--paper)] transition-all"
+            className="rounded-[20px] border border-[var(--line-strong)] bg-[var(--app-bg)] text-[var(--ink)] px-5 py-2 font-gelica text-xs font-semibold shadow-sm hover:bg-[var(--paper)] transition-all"
           >
             <span>{t("hero.btn_desks").replace("{n}", String(deskCount))}</span>
           </button>
@@ -569,7 +569,7 @@ export function SuperrHero({
               playPopSound();
               onGoToCards("space-work");
             }}
-            className="rounded-[20px] border-2 border-[var(--ink)] bg-[var(--app-bg)] text-[var(--ink)] px-5 py-2 font-gelica text-xs font-semibold shadow-sm hover:bg-[var(--paper)] transition-all"
+            className="rounded-[20px] border border-[var(--line-strong)] bg-[var(--app-bg)] text-[var(--ink)] px-5 py-2 font-gelica text-xs font-semibold shadow-sm hover:bg-[var(--paper)] transition-all"
           >
             <span>{t("hero.btn_work")}</span>
           </button>
@@ -578,7 +578,7 @@ export function SuperrHero({
               playPopSound();
               onGoToDaily();
             }}
-            className="rounded-[20px] border-2 border-[var(--ink)] bg-[var(--app-bg)] text-[var(--ink)] px-5 py-2 font-gelica text-xs font-semibold shadow-sm hover:bg-[var(--paper)] transition-all"
+            className="rounded-[20px] border border-[var(--line-strong)] bg-[var(--app-bg)] text-[var(--ink)] px-5 py-2 font-gelica text-xs font-semibold shadow-sm hover:bg-[var(--paper)] transition-all"
           >
             <span>{t("hero.btn_calendar")}</span>
           </button>
@@ -587,7 +587,7 @@ export function SuperrHero({
               playPopSound();
               onGoToNotes();
             }}
-            className="rounded-[20px] border-2 border-[var(--ink)] bg-[var(--app-bg)] text-[var(--ink)] px-5 py-2 font-gelica text-xs font-semibold shadow-sm hover:bg-[var(--paper)] transition-all"
+            className="rounded-[20px] border border-[var(--line-strong)] bg-[var(--app-bg)] text-[var(--ink)] px-5 py-2 font-gelica text-xs font-semibold shadow-sm hover:bg-[var(--paper)] transition-all"
           >
             <span>{t("hero.btn_daily")}</span>
           </button>

@@ -368,7 +368,7 @@ export function HandwritingStudioModal({
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.94, opacity: 0, y: 14 }}
           transition={{ duration: 0.22, ease: [0.34, 1.56, 0.64, 1] }}
-          className="relative w-full max-w-xl max-h-[92vh] overflow-y-auto rounded-[20px] border-2 border-[var(--ink)] bg-[var(--paper)] p-5 shadow-2xl scrollbar-thin"
+          className="relative w-full max-w-xl max-h-[92vh] overflow-y-auto rounded-[20px] border border-[var(--line-strong)] bg-[var(--paper)] p-5 shadow-2xl scrollbar-thin"
           onClick={(e) => e.stopPropagation()}
         >
           {/* ÜST BAŞLIK */}
@@ -399,7 +399,7 @@ export function HandwritingStudioModal({
           </div>
 
           {/* GİRİŞ YÖNTEMİ SEÇİCİ (Çizim vs Fotoğraf) */}
-          <div className="grid grid-cols-2 gap-2 p-1 rounded-[16px] border border-[var(--ink)] bg-[var(--app-bg)] mb-4">
+          <div className="grid grid-cols-2 gap-2 p-1 rounded-[16px] border border-[var(--line)] bg-[var(--app-bg)] mb-4">
             <button
               onClick={() => {
                 playPopSound();
@@ -509,7 +509,7 @@ export function HandwritingStudioModal({
                 </div>
               ) : (
                 <div className="space-y-2.5">
-                  <div className="relative rounded-[14px] border border-[var(--ink)] bg-[#faf6ee] p-2 overflow-hidden max-h-48 flex items-center justify-center">
+                  <div className="relative rounded-[14px] border border-[var(--line)] bg-[#faf6ee] p-2 overflow-hidden max-h-48 flex items-center justify-center">
                     <canvas ref={photoCanvasRef} className="max-w-full max-h-40 rounded shadow-xs" />
                   </div>
 
@@ -675,7 +675,7 @@ export function HandwritingStudioModal({
               )}
             </div>
 
-            <div className="relative rounded-[14px] border-2 border-[var(--ink)] bg-[#fcf9f2] p-4 shadow-sm overflow-hidden">
+            <div className="relative rounded-[14px] border border-[var(--line-strong)] bg-[#fcf9f2] p-4 shadow-sm overflow-hidden">
               {/* Orijinal Mürekkep İmzası Damgası */}
               {previewImage && (
                 <div className="absolute top-2 end-2 border border-dashed border-amber-800/40 rounded p-1 bg-white/70 max-w-[80px] opacity-75">
@@ -714,7 +714,7 @@ export function HandwritingStudioModal({
           <div className="flex items-center gap-2">
             <button
               onClick={onClose}
-              className="flex-1 py-2.5 rounded-[16px] border border-[var(--ink)] font-gelica text-xs font-bold text-[var(--ink)] hover:bg-[var(--app-bg)] transition-colors"
+              className="flex-1 py-2.5 rounded-[16px] border border-[var(--line)] font-gelica text-xs font-bold text-[var(--ink)] hover:bg-[var(--app-bg)] transition-colors"
             >
               {t("act.cancel")}
             </button>

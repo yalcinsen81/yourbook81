@@ -578,13 +578,13 @@ export function CalendarAgendaView({ onOpenJournal }: CalendarAgendaViewProps) {
             <div className="flex items-center gap-1">
               <button
                 onClick={handlePrevMonth}
-                className="flex h-8 w-8 items-center justify-center rounded-[20px] border-[1.5px] border-[var(--ink)] bg-[var(--app-bg)] hover:bg-[var(--paper)] transition-colors"
+                className="flex h-8 w-8 items-center justify-center rounded-[20px] border border-[var(--line-strong)] bg-[var(--app-bg)] hover:bg-[var(--paper)] transition-colors"
               >
                 <ChevronLeft size={14} />
               </button>
               <button
                 onClick={handleNextMonth}
-                className="flex h-8 w-8 items-center justify-center rounded-[20px] border-[1.5px] border-[var(--ink)] bg-[var(--app-bg)] hover:bg-[var(--paper)] transition-colors"
+                className="flex h-8 w-8 items-center justify-center rounded-[20px] border border-[var(--line-strong)] bg-[var(--app-bg)] hover:bg-[var(--paper)] transition-colors"
               >
                 <ChevronRight size={14} />
               </button>
@@ -694,7 +694,7 @@ export function CalendarAgendaView({ onOpenJournal }: CalendarAgendaViewProps) {
             (el yazısı, 19px/28px) -> aynı formda iki ayrı dünya, "font bütünlüğü yok".
             Sonra: tüm giriş alanları `font-geist` (Inter, sayfa fontu); not alanı 13px/24px
             ve defter çizgisi ritmi buna göre (24px) yeniden ayarlandı. */}
-        <form role="dialog" aria-modal="true" onSubmit={handleAddEvent} className="mt-6 flex flex-col gap-3 rounded-[12px] border-[1.5px] border-[color-mix(in_srgb,var(--ink)_55%,transparent)] bg-[var(--paper)] p-4 shadow-[2px_2px_0_0_color-mix(in_srgb,var(--ink)_14%,transparent)]">
+        <form role="dialog" aria-modal="true" onSubmit={handleAddEvent} className="mt-6 flex flex-col gap-3 rounded-[12px] border-[1.5px] border-[color-mix(in_srgb,var(--ink)_55%,transparent)] bg-[var(--paper)] p-4 shadow-[var(--shadow-soft)]">
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-1.5">
               <Clock size={17} className="text-[var(--accent)] flex-shrink-0" />
@@ -715,7 +715,7 @@ export function CalendarAgendaView({ onOpenJournal }: CalendarAgendaViewProps) {
                   });
                 }}
                 title={enableAlarm ? t("agenda.alarm_on") : t("agenda.alarm_off")}
-                className={`p-1.5 rounded-full border-[1.5px] border-[var(--ink)] transition-all ${
+                className={`p-1.5 rounded-full border border-[var(--line-strong)] transition-all ${
                   enableAlarm
                     ? "bg-[var(--accent)] text-[var(--app-bg)] shadow-xs"
                     : "bg-[var(--app-bg)] text-[var(--ink-soft)] hover:border-[var(--accent)]"
@@ -777,7 +777,7 @@ export function CalendarAgendaView({ onOpenJournal }: CalendarAgendaViewProps) {
                   <span className="font-handwritten text-[16px]">{t("act.cancel")}</span>
                 </button>
               )}
-              <button type="submit" className="btn-pill-orange text-xs !py-1.5 !px-5 shadow-[2px_2px_0_0_var(--ink)]">
+              <button type="submit" className="btn-pill-orange text-xs !py-1.5 !px-5 shadow-[var(--shadow-soft)]">
                 <Plus size={16} />
                 <span className="font-handwritten text-[18px] font-bold">
                   {editingEventId ? t("agenda.update") : t("agenda.add")}
@@ -805,7 +805,7 @@ export function CalendarAgendaView({ onOpenJournal }: CalendarAgendaViewProps) {
           //   line-height ile savasmak yerine fazla DIKEY ALANI negatif marjla kirptik.
           const cls = hasJournal
             ? "mt-3 flex w-full items-center justify-between gap-3 rounded-[12px] border-[1.5px] px-3.5 py-2 text-start shadow-[2px_2px_0_0_color-mix(in_srgb,var(--accent)_28%,transparent)] transition border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,var(--paper))] hover:brightness-[0.98]"
-            : "mt-3 flex w-full items-center justify-between gap-3 rounded-[12px] border-[1.5px] border-[color-mix(in_srgb,var(--ink)_55%,transparent)] bg-[var(--paper)] px-3.5 py-2 text-start shadow-[2px_2px_0_0_color-mix(in_srgb,var(--ink)_14%,transparent)] transition-colors hover:bg-[color-mix(in_srgb,var(--ink)_6%,transparent)]";
+            : "mt-3 flex w-full items-center justify-between gap-3 rounded-[12px] border-[1.5px] border-[color-mix(in_srgb,var(--ink)_55%,transparent)] bg-[var(--paper)] px-3.5 py-2 text-start shadow-[var(--shadow-soft)] transition-colors hover:bg-[color-mix(in_srgb,var(--ink)_6%,transparent)]";
           return (
             <button
               type="button"
@@ -866,7 +866,7 @@ export function CalendarAgendaView({ onOpenJournal }: CalendarAgendaViewProps) {
                 className={`group flex items-center gap-3 rounded-[12px] border-[1.5px] p-3.5 transition-all ${
                   ev.isDone
                     ? "border-[color-mix(in_srgb,var(--ink)_35%,transparent)] bg-[var(--paper)] opacity-70"
-                    : "border-[color-mix(in_srgb,var(--ink)_55%,transparent)] bg-[var(--paper)] shadow-[2px_2px_0_0_color-mix(in_srgb,var(--ink)_14%,transparent)] hover:border-[var(--accent)] hover:shadow-[2px_2px_0_0_color-mix(in_srgb,var(--accent)_28%,transparent)]"
+                    : "border-[color-mix(in_srgb,var(--ink)_55%,transparent)] bg-[var(--paper)] shadow-[var(--shadow-soft)] hover:border-[var(--accent)] hover:shadow-[2px_2px_0_0_color-mix(in_srgb,var(--accent)_28%,transparent)]"
                 }`}
               >
                 <div
@@ -900,7 +900,7 @@ export function CalendarAgendaView({ onOpenJournal }: CalendarAgendaViewProps) {
                   </button>
 
                   {/* Saat rozeti: sabit genislik + ortalanmis → basliklar HER KARTTA ayni X'te baslar */}
-                  <span className="flex w-[62px] shrink-0 items-center justify-center rounded-[20px] border border-[var(--ink)] bg-[var(--paper)] px-2 py-[3px] font-mono text-[11px] font-bold leading-none tabular-nums text-[var(--ink)]">
+                  <span className="flex w-[62px] shrink-0 items-center justify-center rounded-[20px] border border-[var(--line)] bg-[var(--paper)] px-2 py-[3px] font-mono text-[11px] font-bold leading-none tabular-nums text-[var(--ink)]">
                     {ev.timeStr}
                   </span>
 
@@ -978,7 +978,7 @@ export function CalendarAgendaView({ onOpenJournal }: CalendarAgendaViewProps) {
             </span>
           </div>
 
-          <div className="overflow-hidden rounded-[12px] border-[1.5px] border-[color-mix(in_srgb,var(--ink)_55%,transparent)] bg-[var(--paper)] shadow-[2px_2px_0_0_color-mix(in_srgb,var(--ink)_14%,transparent)]">
+          <div className="overflow-hidden rounded-[12px] border-[1.5px] border-[color-mix(in_srgb,var(--ink)_55%,transparent)] bg-[var(--paper)] shadow-[var(--shadow-soft)]">
             {HOUR_SLOTS.map((hour, idx) => {
               const dayKey = toDateKey(selectedDate);
               const val = hours[dayKey]?.[hour] ?? "";
@@ -1028,7 +1028,7 @@ export function CalendarAgendaView({ onOpenJournal }: CalendarAgendaViewProps) {
                     title={t("agenda.go")}
                     className="flex items-center gap-3 flex-1 min-w-0 text-start cursor-pointer"
                   >
-                    <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded-[20px] border border-[var(--ink)] bg-[var(--app-bg)] text-[var(--ink)] flex-shrink-0">
+                    <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded-[20px] border border-[var(--line)] bg-[var(--app-bg)] text-[var(--ink)] flex-shrink-0">
                       {ev.dateKey.slice(5)} · {ev.timeStr}
                     </span>
                     <span

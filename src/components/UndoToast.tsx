@@ -30,7 +30,7 @@ export function UndoToast({ toast, onDone }: UndoToastProps) {
           transition={{ type: "spring", stiffness: 400, damping: 26 }}
           className="fixed bottom-[calc(76px+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-[999] lg:bottom-6"
         >
-          <div className="flex items-center gap-3 px-5 py-3 bg-[var(--paper)] border-2 border-[var(--ink)] rounded-[16px] shadow-superrCard">
+          <div className="flex items-center gap-3 px-5 py-3 bg-[var(--paper)] border border-[var(--line-strong)] rounded-[16px] shadow-superrCard">
             <span className="font-gelica text-sm text-[var(--ink)]">
               {toast.message}
             </span>

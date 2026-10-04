@@ -160,7 +160,7 @@ export function VolumeArchiveModal({
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.94, opacity: 0, y: 14 }}
           transition={{ duration: 0.22, ease: [0.34, 1.56, 0.64, 1] }}
-          className="relative w-full max-w-2xl max-h-[90vh] flex flex-col rounded-[22px] border-2 border-[var(--ink)] bg-[var(--paper)] shadow-2xl overflow-hidden"
+          className="relative w-full max-w-2xl max-h-[90vh] flex flex-col rounded-[22px] border border-[var(--line-strong)] bg-[var(--paper)] shadow-2xl overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Üst Başlık & Cilt Damgası */}
@@ -204,7 +204,7 @@ export function VolumeArchiveModal({
 
           {/* Sekmeler ve Arama Çubuğu */}
           <div className="p-3.5 border-b border-[color-mix(in_srgb,var(--border-ink)_15%,transparent)] bg-[var(--paper)] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
-            <div className="flex rounded-[14px] border border-[var(--ink)] bg-[var(--app-bg)] p-1">
+            <div className="flex rounded-[14px] border border-[var(--line)] bg-[var(--app-bg)] p-1">
               <button
                 onClick={() => {
                   playPopSound();

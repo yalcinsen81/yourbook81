@@ -240,7 +240,7 @@ export default function JournalSpread({
                       type="button"
                       data-spread-cancel="1"
                       onClick={cancelEdit}
-                      className="rounded-full border border-[var(--ink)] px-3 py-1 font-gelica text-[11px] font-semibold text-[var(--ink)] transition hover:bg-[color-mix(in_srgb,var(--ink)_8%,transparent)]"
+                      className="rounded-full border border-[var(--line)] px-3 py-1 font-gelica text-[11px] font-semibold text-[var(--ink)] transition hover:bg-[color-mix(in_srgb,var(--ink)_8%,transparent)]"
                     >
                       {t("act.cancel")}
                     </button>
@@ -248,7 +248,7 @@ export default function JournalSpread({
                       type="button"
                       data-spread-save="1"
                       onClick={saveEdit}
-                      className="rounded-full border border-[var(--ink)] bg-[var(--accent)] px-3 py-1 font-gelica text-[11px] font-bold text-white transition hover:brightness-95"
+                      className="rounded-full border border-[var(--line)] bg-[var(--accent)] px-3 py-1 font-gelica text-[11px] font-bold text-white transition hover:brightness-95"
                     >
                       {t("act.save")}
                     </button>
@@ -348,7 +348,7 @@ export default function JournalSpread({
                   type="button"
                   data-spread-new-cancel="1"
                   onClick={cancelNewPage}
-                  className="rounded-full border border-[var(--ink)] px-3 py-1 font-gelica text-[11px] font-semibold text-[var(--ink)] transition hover:bg-[color-mix(in_srgb,var(--ink)_8%,transparent)]"
+                  className="rounded-full border border-[var(--line)] px-3 py-1 font-gelica text-[11px] font-semibold text-[var(--ink)] transition hover:bg-[color-mix(in_srgb,var(--ink)_8%,transparent)]"
                 >
                   {t("act.cancel")}
                 </button>
@@ -357,7 +357,7 @@ export default function JournalSpread({
                   data-spread-new-save="1"
                   onClick={saveNewPage}
                   disabled={!draft.trim()}
-                  className="rounded-full border border-[var(--ink)] bg-[var(--accent)] px-3 py-1 font-gelica text-[11px] font-bold text-white transition hover:brightness-95 disabled:opacity-40"
+                  className="rounded-full border border-[var(--line)] bg-[var(--accent)] px-3 py-1 font-gelica text-[11px] font-bold text-white transition hover:brightness-95 disabled:opacity-40"
                 >
                   {t("act.save")}
                 </button>
@@ -432,7 +432,7 @@ export default function JournalSpread({
 
           {/* Açık defter */}
           <div
-            className="relative flex w-full overflow-hidden rounded-[8px] border-2 border-[var(--ink)] bg-[var(--paper)] shadow-2xl"
+            className="relative flex w-full overflow-hidden rounded-[8px] border border-[var(--line-strong)] bg-[var(--paper)] shadow-2xl"
             style={{ minHeight: 380 }}
           >
             {page(left, "left", spreadIndex)}

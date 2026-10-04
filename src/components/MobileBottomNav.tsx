@@ -29,7 +29,7 @@ export function MobileBottomNav({
   ];
 
   return (
-    <nav className="lg:hidden fixed bottom-0 start-0 end-0 z-40 bg-[var(--paper)] border-t-2 border-[var(--ink)] px-2 py-1 flex items-center justify-around shadow-lg">
+    <nav className="lg:hidden fixed bottom-0 start-0 end-0 z-40 bg-[var(--paper)] border-t border-[var(--line)] px-2 py-1 flex items-center justify-around shadow-lg">
       {tabs.map((tab) => {
         const Icon = tab.icon;
         const isActive = currentView === tab.id;

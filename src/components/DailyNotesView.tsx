@@ -139,7 +139,7 @@ export function DailyNotesView({ onOpenJournal }: DailyNotesViewProps = {}) {
           <span className="font-handwritten text-[var(--accent)] text-sm font-bold">
             {t("daily.sub")}
           </span>
-          <span className="rounded-[20px] border border-[var(--ink)] bg-[var(--paper)] px-3 py-1 font-gelica text-xs text-[var(--ink)] font-semibold">
+          <span className="rounded-[20px] border border-[var(--line)] bg-[var(--paper)] px-3 py-1 font-gelica text-xs text-[var(--ink)] font-semibold">
             {t("daily.done_of", { done: completedCount, total: tasks.length })}
           </span>
         </div>
@@ -187,7 +187,7 @@ export function DailyNotesView({ onOpenJournal }: DailyNotesViewProps = {}) {
             value={newTaskInput}
             onChange={(e) => setNewTaskInput(e.target.value)}
             placeholder={t("daily.task_ph")}
-            className="w-full rounded-[20px] border-[1.5px] border-[var(--ink)] bg-[var(--app-bg)] px-4 py-2.5 pe-12 font-geist text-xs text-[var(--ink)] placeholder:text-[var(--ink-soft)] outline-none focus:border-[var(--accent)] shadow-superrButton"
+            className="w-full rounded-[20px] border border-[var(--line-strong)] bg-[var(--app-bg)] px-4 py-2.5 pe-12 font-geist text-xs text-[var(--ink)] placeholder:text-[var(--ink-soft)] outline-none focus:border-[var(--accent)] shadow-superrButton"
           />
           <button
             type="submit"
@@ -205,7 +205,7 @@ export function DailyNotesView({ onOpenJournal }: DailyNotesViewProps = {}) {
               .map((task) => (
               <div
                 key={task.id}
-                className={`group flex items-center justify-between rounded-[20px] border-[1.5px] border-[var(--ink)] p-3.5 transition-colors ${
+                className={`group flex items-center justify-between rounded-[20px] border border-[var(--line-strong)] p-3.5 transition-colors ${
                   task.isDone
                     ? "bg-[var(--paper)] opacity-70"
                     : "bg-[var(--app-bg)] hover:border-[var(--accent)]"

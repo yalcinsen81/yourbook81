@@ -225,7 +225,7 @@ export function NotebookCustomizeModal({
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.94, opacity: 0, y: 12 }}
           transition={{ duration: 0.22, ease: [0.34, 1.56, 0.64, 1] }}
-          className="relative w-full max-w-lg rounded-[18px] border-2 border-[var(--ink)] bg-[var(--paper)] p-6 shadow-2xl"
+          className="relative w-full max-w-lg rounded-[18px] border border-[var(--line-strong)] bg-[var(--paper)] p-6 shadow-2xl"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Üst Bar: Başlık & Kapat */}
@@ -265,7 +265,7 @@ export function NotebookCustomizeModal({
           )}
 
           {/* Sekmeler (Kağıt | El Yazısı | Ses | Damga | Ciltler | Işık & Ritüel) */}
-          <div className="flex flex-wrap sm:flex-nowrap gap-1 rounded-[20px] border border-[var(--ink)] bg-[var(--app-bg)] p-1 mb-5">
+          <div className="flex flex-wrap sm:flex-nowrap gap-1 rounded-[20px] border border-[var(--line)] bg-[var(--app-bg)] p-1 mb-5">
             {[
               { id: "paper", label: t("cust.tab.paper"), icon: <SketchPaper size={13} strokeWidth={1.8} /> },
               { id: "handwriting", label: t("cust.tab.handwriting"), icon: <SketchQuill size={13} strokeWidth={1.8} /> },
@@ -514,7 +514,7 @@ export function NotebookCustomizeModal({
           {activeTab === "volumes" && (
             <div className="space-y-4">
               {/* Aktif Cilt Durumu */}
-              <div className="rounded-[14px] border-2 border-[var(--ink)] bg-[var(--app-bg)] p-4">
+              <div className="rounded-[14px] border border-[var(--line-strong)] bg-[var(--app-bg)] p-4">
                 <div className="flex items-center justify-between pb-2 border-b border-black/5">
                   <span className="font-handwritten text-xs font-bold text-[var(--accent)]">
                     {t("cust.tab.book")} · {t("common.open_state")}
@@ -556,7 +556,7 @@ export function NotebookCustomizeModal({
                       setVolumeAutoswitchEnabled(next);
                       onConfigChange();
                     }}
-                    className={"shrink-0 ms-2 rounded-full px-3 py-1 font-gelica text-xs font-bold transition-colors " + (autoSwitch ? "bg-[var(--ink)] text-[var(--app-bg)]" : "border border-[var(--ink)] text-[var(--ink)]")}
+                    className={"shrink-0 ms-2 rounded-full px-3 py-1 font-gelica text-xs font-bold transition-colors " + (autoSwitch ? "bg-[var(--ink)] text-[var(--app-bg)]" : "border border-[var(--line)] text-[var(--ink)]")}
                   >
                     {autoSwitch ? t("common.on") : t("common.off")}
                   </button>

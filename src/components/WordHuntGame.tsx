@@ -233,7 +233,7 @@ export function WordHuntGame({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.94, y: 12 }}
           transition={{ duration: 0.22, ease: [0.34, 1.56, 0.64, 1] }}
-          className="relative w-full max-w-md rounded-[16px] border-2 border-[var(--ink)] bg-[var(--paper)] p-6 shadow-2xl"
+          className="relative w-full max-w-md rounded-[16px] border border-[var(--line-strong)] bg-[var(--paper)] p-6 shadow-2xl"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Üst Bar: Başlık & Kapat */}
@@ -346,7 +346,7 @@ export function WordHuntGame({
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.22, ease: [0.34, 1.56, 0.64, 1] }}
-                className="rounded-[14px] border-2 border-[var(--ink)] bg-[var(--app-bg)] p-5 text-center shadow-sm"
+                className="rounded-[14px] border border-[var(--line-strong)] bg-[var(--app-bg)] p-5 text-center shadow-sm"
               >
                 <p className="font-geist text-[11px] uppercase tracking-wide text-[var(--ink-soft)] mb-1">
                   {currentQ.promptSub}
@@ -479,7 +479,7 @@ export function WordHuntGame({
               <div className="flex gap-2 pt-2">
                 <button
                   onClick={onClose}
-                  className="flex-1 rounded-[20px] border border-[var(--ink)] py-2.5 font-gelica text-xs font-semibold text-[var(--ink)] hover:bg-[var(--app-bg)] transition-colors"
+                  className="flex-1 rounded-[20px] border border-[var(--line)] py-2.5 font-gelica text-xs font-semibold text-[var(--ink)] hover:bg-[var(--app-bg)] transition-colors"
                 >
                   {t("hunt.back")}
                 </button>

@@ -181,7 +181,7 @@ export function JournalMoodRadar({
         </div>
 
         {/* Zaman Aralığı Butonları */}
-        <div className="flex items-center rounded-[20px] border border-[var(--ink)] bg-[var(--app-bg)] p-0.5 shadow-2xs">
+        <div className="flex items-center rounded-[20px] border border-[var(--line)] bg-[var(--app-bg)] p-0.5 shadow-2xs">
           {(
             [
               { id: "7d", label: t("time.last_7") },
@@ -437,7 +437,7 @@ export function JournalMoodRadar({
                 </span>
                 <button
                   onClick={handleTodayMonth}
-                  className="rounded-full border border-[var(--ink)] px-2 py-0.5 font-handwritten text-[10px] font-bold text-[var(--ink)] hover:bg-[var(--ink)] hover:text-[var(--app-bg)] transition-colors"
+                  className="rounded-full border border-[var(--line)] px-2 py-0.5 font-handwritten text-[10px] font-bold text-[var(--ink)] hover:bg-[var(--ink)] hover:text-[var(--app-bg)] transition-colors"
                 >
                   bu ay
                 </button>
@@ -447,14 +447,14 @@ export function JournalMoodRadar({
                 <button
                   onClick={handlePrevMonth}
                   title={t("time.prev_month")}
-                  className="h-7 w-7 rounded-full border border-[var(--ink)] flex items-center justify-center text-xs hover:bg-[var(--ink)] hover:text-[var(--app-bg)] transition-colors font-mono"
+                  className="h-7 w-7 rounded-full border border-[var(--line)] flex items-center justify-center text-xs hover:bg-[var(--ink)] hover:text-[var(--app-bg)] transition-colors font-mono"
                 >
                   ‹
                 </button>
                 <button
                   onClick={handleNextMonth}
                   title="Sonraki ay"
-                  className="h-7 w-7 rounded-full border border-[var(--ink)] flex items-center justify-center text-xs hover:bg-[var(--ink)] hover:text-[var(--app-bg)] transition-colors font-mono"
+                  className="h-7 w-7 rounded-full border border-[var(--line)] flex items-center justify-center text-xs hover:bg-[var(--ink)] hover:text-[var(--app-bg)] transition-colors font-mono"
                 >
                   ›
                 </button>

@@ -462,7 +462,7 @@ Kopyala-yapıştır talimatı: ${what}`;
           className={`flex items-center gap-2 rounded-[10px] px-3.5 py-1.5 font-sans text-xs font-semibold shadow-lg transition-all ${
             isActive
               ? "bg-[var(--ink)] text-[var(--paper)] ring-2 ring-[var(--accent)]"
-              : "border border-[var(--ink)] bg-[var(--paper)] text-[var(--ink)] hover:bg-[var(--ink)] hover:text-[var(--paper)]"
+              : "border border-[var(--line)] bg-[var(--paper)] text-[var(--ink)] hover:bg-[var(--ink)] hover:text-[var(--paper)]"
           }`}
         >
           <Crosshair

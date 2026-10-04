@@ -106,7 +106,7 @@ export default function JournalHeatmap({ entries, onSelectDay, year: yearProp, o
                 className={`rounded-full px-2 py-0.5 font-mono text-[10px] transition ${
                   y === year
                     ? "bg-[var(--ink)] text-white"
-                    : "border border-[var(--ink)] text-[var(--ink)] hover:bg-[color-mix(in_srgb,var(--ink)_8%,transparent)]"
+                    : "border border-[var(--line)] text-[var(--ink)] hover:bg-[color-mix(in_srgb,var(--ink)_8%,transparent)]"
                 }`}
               >
                 {y}
@@ -263,7 +263,7 @@ export default function JournalHeatmap({ entries, onSelectDay, year: yearProp, o
 
         {/* Tooltip */}
         {hover && (
-          <div className="pointer-events-none absolute start-0 -top-1 rounded-md border border-[var(--ink)] bg-[var(--paper)] px-2 py-1 font-mono text-[10px] text-[var(--ink)] shadow-md whitespace-nowrap">
+          <div className="pointer-events-none absolute start-0 -top-1 rounded-md border border-[var(--line)] bg-[var(--paper)] px-2 py-1 font-mono text-[10px] text-[var(--ink)] shadow-md whitespace-nowrap">
             {tooltipText(hover)}
           </div>
         )}

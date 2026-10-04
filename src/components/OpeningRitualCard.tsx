@@ -79,7 +79,7 @@ export function OpeningRitualCard({ onOpenSettings }: OpeningRitualCardProps) {
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: -8, scale: 0.98 }}
         transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-        className="w-full mb-4 relative overflow-hidden rounded-[18px] border-[2.5px] border-dashed border-[color-mix(in_srgb,var(--ink)_55%,transparent)] bg-[color-mix(in_srgb,var(--paper)_80%,transparent)] p-3.5 sm:p-4 shadow-superrCard backdrop-blur-xs"
+        className="w-full mb-4 relative overflow-hidden rounded-[18px] border border-[var(--line)] bg-[color-mix(in_srgb,var(--paper)_80%,transparent)] p-3.5 sm:p-4 shadow-superrCard backdrop-blur-xs"
       >
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3">

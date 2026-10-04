@@ -156,7 +156,7 @@ export function AuthModal({
             exit={{ opacity: 0, scale: 0.96, y: 10 }}
             transition={{ type: "spring", stiffness: 400, damping: 28 }}
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md bg-[var(--paper)] border-2 border-[var(--ink)] rounded-[16px] shadow-superrCard overflow-hidden relative"
+            className="w-full max-w-md bg-[var(--paper)] border border-[var(--line-strong)] rounded-[16px] shadow-superrCard overflow-hidden relative"
           >
             {/* Üst Kütüphane / Defter Kimlik Kartı Bandı */}
             {/* v-migrate: veriler buluta tasindi onayi (profil gorunumunde) */}
@@ -192,7 +192,7 @@ export function AuthModal({
               <div className="p-6 space-y-4">
                 <div className="flex items-center gap-4 pb-4 border-b-2 border-dashed border-[color-mix(in_srgb,var(--border-ink)_25%,transparent)]">
                   {/* Fotoğraf / Baş Harf Damgası */}
-                  <div className="w-14 h-14 rounded-xl border-2 border-[var(--ink)] bg-[var(--accent)] text-white flex items-center justify-center font-gelica text-2xl font-bold shadow-sm">
+                  <div className="w-14 h-14 rounded-xl border border-[var(--line-strong)] bg-[var(--accent)] text-white flex items-center justify-center font-gelica text-2xl font-bold shadow-sm">
                     {currentUser.avatarLetter}
                   </div>
                   <div className="flex flex-col min-w-0">
@@ -209,7 +209,7 @@ export function AuthModal({
                 </div>
 
                 {/* Bulut ve Senkronizasyon Durumu */}
-                <div className="bg-[var(--app-bg)] p-3.5 rounded-[12px] border border-[var(--ink)] space-y-2">
+                <div className="bg-[var(--app-bg)] p-3.5 rounded-[12px] border border-[var(--line)] space-y-2">
                   <div className="flex items-center justify-between text-xs font-gelica">
                     <span className="font-semibold text-[var(--ink)]">{t("auth.sync_title")}</span>
                     <span className="font-mono text-[11px] text-[var(--accent)] font-bold">
@@ -240,7 +240,7 @@ export function AuthModal({
                       onClose();
                       onOpenInstall();
                     }}
-                    className="w-full btn-pill-superr text-xs !py-2 justify-center gap-2 border-[1.5px] border-[var(--ink)] shadow-xs"
+                    className="w-full btn-pill-superr text-xs !py-2 justify-center gap-2 border border-[var(--line-strong)] shadow-xs"
                   >
                     <Download size={13} />
                     <span>{t("auth.install_pwa")}</span>
@@ -325,7 +325,7 @@ export function AuthModal({
                         value={displayName}
                         onChange={(e) => setDisplayName(e.target.value)}
                         placeholder={t("auth.name_ph")}
-                        className="w-full rounded-[8px] border-[1.5px] border-[var(--ink)] bg-[var(--app-bg)] px-3 py-2 font-geist text-xs text-[var(--ink)] outline-none focus:border-[var(--accent)]"
+                        className="w-full rounded-[8px] border border-[var(--line-strong)] bg-[var(--app-bg)] px-3 py-2 font-geist text-xs text-[var(--ink)] outline-none focus:border-[var(--accent)]"
                       />
                     </div>
                   )}
@@ -340,7 +340,7 @@ export function AuthModal({
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder={t("auth.email_ph")}
-                      className="w-full rounded-[8px] border-[1.5px] border-[var(--ink)] bg-[var(--app-bg)] px-3 py-2 font-geist text-xs text-[var(--ink)] outline-none focus:border-[var(--accent)]"
+                      className="w-full rounded-[8px] border border-[var(--line-strong)] bg-[var(--app-bg)] px-3 py-2 font-geist text-xs text-[var(--ink)] outline-none focus:border-[var(--accent)]"
                     />
                   </div>
 
@@ -354,7 +354,7 @@ export function AuthModal({
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
-                      className="w-full rounded-[8px] border-[1.5px] border-[var(--ink)] bg-[var(--app-bg)] px-3 py-2 font-geist text-xs text-[var(--ink)] outline-none focus:border-[var(--accent)]"
+                      className="w-full rounded-[8px] border border-[var(--line-strong)] bg-[var(--app-bg)] px-3 py-2 font-geist text-xs text-[var(--ink)] outline-none focus:border-[var(--accent)]"
                     />
                   </div>}
 

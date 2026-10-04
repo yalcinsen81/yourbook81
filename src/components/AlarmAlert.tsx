@@ -32,7 +32,7 @@ export function AlarmAlert({ note, onDismiss, onSnooze, onOpenJournal }: AlarmAl
             animate={{ opacity: 1, scale: [0.9, 1.04, 1], y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ type: "spring", stiffness: 320, damping: 22 }}
-            className="w-full max-w-sm bg-[var(--paper)] border-2 border-[var(--ink)] rounded-[16px] shadow-superrCard p-6"
+            className="w-full max-w-sm bg-[var(--paper)] border border-[var(--line-strong)] rounded-[16px] shadow-superrCard p-6"
           >
             <div className="flex items-center gap-2 pb-3 border-b border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)]">
               <motion.span

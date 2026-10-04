@@ -154,7 +154,7 @@ export function QuickAdd({ isOpen, onClose, onAdd, existingCards, onDuplicate, d
             role="dialog"
             aria-modal="true"
             tabIndex={-1}
-            className="w-full max-w-md bg-[var(--paper)] border-2 border-[var(--ink)] rounded-[16px] shadow-superrCard p-6"
+            className="w-full max-w-md bg-[var(--paper)] border border-[var(--line-strong)] rounded-[16px] shadow-superrCard p-6"
           >
             <div className="flex items-center justify-between pb-3 border-b border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)]">
               <h3 className="font-gelica text-xl font-semibold lowercase text-[var(--ink)]">
@@ -212,7 +212,7 @@ export function QuickAdd({ isOpen, onClose, onAdd, existingCards, onDuplicate, d
                     // Isim degilse artikel secimini SIFIRLA (artikel alani bos kalir).
                     if (next !== "noun") setArticle("");
                   }}
-                  className="ms-auto rounded-[20px] border border-[var(--ink)] bg-[var(--app-bg)] px-2.5 py-1 text-xs font-gelica text-[var(--ink)] outline-none"
+                  className="ms-auto rounded-[20px] border border-[var(--line)] bg-[var(--app-bg)] px-2.5 py-1 text-xs font-gelica text-[var(--ink)] outline-none"
                 >
                   <option value="noun">{t("pos.noun")}</option>
                   <option value="verb">{t("pos.verb")}</option>
@@ -238,19 +238,19 @@ export function QuickAdd({ isOpen, onClose, onAdd, existingCards, onDuplicate, d
                   if (dupMsg) setDupMsg("");
                 }}
                 placeholder={t("cards.word")}
-                className="w-full rounded-[10px] border border-[var(--ink)] bg-[var(--app-bg)] px-3 py-2 font-gelica text-sm text-[var(--ink)] outline-none focus:border-[var(--accent)]"
+                className="w-full rounded-[10px] border border-[var(--line)] bg-[var(--app-bg)] px-3 py-2 font-gelica text-sm text-[var(--ink)] outline-none focus:border-[var(--accent)]"
               />
               <input
                 value={translation}
                 onChange={(e) => setTranslation(e.target.value)}
                 placeholder={t("cards.meaning")}
-                className="w-full rounded-[10px] border border-[var(--ink)] bg-[var(--app-bg)] px-3 py-2 font-gelica text-sm text-[var(--ink)] outline-none focus:border-[var(--accent)]"
+                className="w-full rounded-[10px] border border-[var(--line)] bg-[var(--app-bg)] px-3 py-2 font-gelica text-sm text-[var(--ink)] outline-none focus:border-[var(--accent)]"
               />
               <input
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder={t("notes.body_ph")}
-                className="w-full rounded-[10px] border border-[var(--ink)] bg-[var(--app-bg)] px-3 py-2 font-geist text-xs text-[var(--ink)] outline-none focus:border-[var(--accent)]"
+                className="w-full rounded-[10px] border border-[var(--line)] bg-[var(--app-bg)] px-3 py-2 font-geist text-xs text-[var(--ink)] outline-none focus:border-[var(--accent)]"
               />
             </div>
 

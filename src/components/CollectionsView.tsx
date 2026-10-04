@@ -91,7 +91,7 @@ export function CollectionsView() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t("col.search_ph")}
-            className="w-full rounded-[20px] border-[1.5px] border-[var(--ink)] bg-[var(--app-bg)] py-2 ps-9 pe-12 font-geist text-xs text-[var(--ink)] placeholder:text-[var(--ink-soft)] outline-none focus:border-[var(--accent)] shadow-superrButton"
+            className="w-full rounded-[20px] border border-[var(--line-strong)] bg-[var(--app-bg)] py-2 ps-9 pe-12 font-geist text-xs text-[var(--ink)] placeholder:text-[var(--ink-soft)] outline-none focus:border-[var(--accent)] shadow-superrButton"
           />
         </div>
       </div>
@@ -121,7 +121,7 @@ export function CollectionsView() {
               className="card-superr p-6"
             >
               <div className="flex items-center justify-between pb-3 border-b border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)]">
-                <span className="rounded-[20px] border border-[var(--ink)] bg-[var(--paper)] px-2.5 py-0.5 font-gelica text-[11px] font-semibold text-[var(--ink)]">
+                <span className="rounded-[20px] border border-[var(--line)] bg-[var(--paper)] px-2.5 py-0.5 font-gelica text-[11px] font-semibold text-[var(--ink)]">
                   {card.article
                     ? `${card.article} · ${t("lang.de.short")}`
                     : card.lang === "DE"
@@ -136,14 +136,14 @@ export function CollectionsView() {
                     playPopSound();
                     speak(card.word, card.lang);
                   }}
-                  className="rounded-[20px] border border-[var(--ink)] p-1.5 text-[var(--ink)] hover:bg-[var(--paper)] transition-colors"
+                  className="rounded-[20px] border border-[var(--line)] p-1.5 text-[var(--ink)] hover:bg-[var(--paper)] transition-colors"
                 >
                   <Volume2 size={13} />
                 </button>
               </div>
 
               {card.imageUrl && (
-                <div className="mt-3.5 overflow-hidden rounded-[8px] border border-[var(--ink)] max-h-40">
+                <div className="mt-3.5 overflow-hidden rounded-[8px] border border-[var(--line)] max-h-40">
                   <img src={card.imageUrl} alt={card.word} className="w-full h-36 object-cover" />
                 </div>
               )}
@@ -206,7 +206,7 @@ export function CollectionsView() {
               className="card-superr p-6"
             >
               <div className="flex items-center justify-between pb-3 border-b border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] text-xs">
-                <span className="rounded-[20px] border border-[var(--ink)] bg-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] px-2.5 py-0.5 font-gelica text-[11px] font-semibold text-[var(--accent)]">
+                <span className="rounded-[20px] border border-[var(--line)] bg-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] px-2.5 py-0.5 font-gelica text-[11px] font-semibold text-[var(--accent)]">
                   {note.category}
                 </span>
                 <span className="font-handwritten text-sm text-[var(--ink-soft)] font-bold">
@@ -215,7 +215,7 @@ export function CollectionsView() {
               </div>
 
               {note.imageUrl && (
-                <div className="mt-3.5 overflow-hidden rounded-[8px] border border-[var(--ink)] max-h-40">
+                <div className="mt-3.5 overflow-hidden rounded-[8px] border border-[var(--line)] max-h-40">
                   <img src={note.imageUrl} alt={note.title} className="w-full h-36 object-cover" />
                 </div>
               )}

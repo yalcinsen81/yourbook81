@@ -132,7 +132,7 @@ export function StudyDesk({
                 </button>
                 <button
                   onClick={onReset}
-                  className="rounded-[12px] border border-[var(--ink)] px-4 py-2 font-gelica text-[12px] font-bold text-[var(--ink)] transition hover:bg-[color-mix(in_srgb,var(--ink)_6%,transparent)]"
+                  className="rounded-[12px] border border-[var(--line)] px-4 py-2 font-gelica text-[12px] font-bold text-[var(--ink)] transition hover:bg-[color-mix(in_srgb,var(--ink)_6%,transparent)]"
                 >
                   {t("desk.reset")}
                 </button>
@@ -152,7 +152,7 @@ export function StudyDesk({
             </button>
             <button
               onClick={onReset}
-              className="rounded-[12px] border border-[var(--ink)] px-4 py-2 font-gelica text-[12px] font-bold text-[var(--ink)] transition hover:bg-[color-mix(in_srgb,var(--ink)_6%,transparent)]"
+              className="rounded-[12px] border border-[var(--line)] px-4 py-2 font-gelica text-[12px] font-bold text-[var(--ink)] transition hover:bg-[color-mix(in_srgb,var(--ink)_6%,transparent)]"
             >
               {t("desk.reset")}
             </button>
