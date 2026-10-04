@@ -92,3 +92,54 @@ describe("syncEngine.ts - v26 keys & merge safety", () => {
     expect(getLastSyncedTime()).toBeNull();
   });
 });
+
+import { mergeSyncData, mergeValue } from "./syncEngine";
+
+describe("syncEngine.ts - üç yönlü birleştirme (veri kaybı önleme)", () => {
+  const n = (id: string, text: string, updatedAt = 0) => ({ id, text, updatedAt });
+
+  it("yalnız yerel değiştiyse yerel korunur (çevrimdışı düzenleme kaybolmaz)", () => {
+    const base = { notes: [n("a", "eski")] };
+    const local = { notes: [n("a", "yerel düzenleme")] };
+    expect(mergeSyncData(base, local, base).notes).toEqual([n("a", "yerel düzenleme")]);
+  });
+
+  it("yalnız bulut değiştiyse bulut uygulanır", () => {
+    const base = { theme: "cream" };
+    expect(mergeSyncData(base, base, { theme: "dark" }).theme).toBe("dark");
+  });
+
+  it("iki taraf farklı öğe eklediyse ikisi de korunur", () => {
+    const base = { notes: [n("a", "x")] };
+    const local = { notes: [n("a", "x"), n("b", "yerel")] };
+    const cloud = { notes: [n("a", "x"), n("c", "bulut")] };
+    const ids = (mergeSyncData(base, local, cloud).notes as any[]).map((x) => x.id).sort();
+    expect(ids).toEqual(["a", "b", "c"]);
+  });
+
+  it("bir tarafın silmesi, diğer taraf dokunmadıysa uygulanır", () => {
+    const base = { notes: [n("a", "x"), n("b", "y")] };
+    const local = { notes: [n("a", "x")] }; // b yerelde silindi
+    const merged = mergeSyncData(base, local, base).notes as any[];
+    expect(merged.map((x) => x.id)).toEqual(["a"]);
+  });
+
+  it("silinen öğe diğer tarafta düzenlendiyse geri gelir", () => {
+    const base = { notes: [n("a", "x")] };
+    const local = { notes: [] as any[] };
+    const cloud = { notes: [n("a", "bulutta düzenlendi")] };
+    expect((mergeSyncData(base, local, cloud).notes as any[])[0].text).toBe("bulutta düzenlendi");
+  });
+
+  it("aynı öğeyi iki taraf düzenlediyse daha yeni updatedAt kazanır", () => {
+    const base = { notes: [n("a", "x", 1)] };
+    const local = { notes: [n("a", "yerel", 5)] };
+    const cloud = { notes: [n("a", "bulut", 9)] };
+    expect((mergeSyncData(base, local, cloud).notes as any[])[0].text).toBe("bulut");
+  });
+
+  it("id'siz değerlerde çakışmada yerel kazanır; bulutta olmayan yerel anahtar korunur", () => {
+    expect(mergeValue("a", "yerel", "bulut")).toBe("yerel");
+    expect(mergeSyncData({}, { only: 1 }, { other: 2 })).toEqual({ only: 1, other: 2 });
+  });
+});
