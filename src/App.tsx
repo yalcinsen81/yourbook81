@@ -51,14 +51,29 @@ import {
   useSidebarWidth,
 } from "./lib/useSidebarVisibility";
 // Agir görünümler ilk açılışta yüklenmez; ilk ziyarette parça olarak getirilir.
-const StudyDesk = lazy(() => import("./components/StudyDesk").then((m) => ({ default: m.StudyDesk })));
-const NotesView = lazy(() => import("./components/NotesView").then((m) => ({ default: m.NotesView })));
-const DailyNotesView = lazy(() => import("./components/DailyNotesView").then((m) => ({ default: m.DailyNotesView })));
-const JournalView = lazy(() => import("./components/JournalView").then((m) => ({ default: m.JournalView })));
-const CollectionsView = lazy(() => import("./components/CollectionsView").then((m) => ({ default: m.CollectionsView })));
-const WorkProjectsView = lazy(() => import("./components/WorkProjectsView").then((m) => ({ default: m.WorkProjectsView })));
-const YouTubeLinksView = lazy(() => import("./components/YouTubeLinksView").then((m) => ({ default: m.YouTubeLinksView })));
-const CalendarAgendaView = lazy(() => import("./components/CalendarAgendaView").then((m) => ({ default: m.CalendarAgendaView })));
+const VIEW_LOADERS = {
+  StudyDesk: () => import("./components/StudyDesk").then((m) => ({ default: m.StudyDesk })),
+  NotesView: () => import("./components/NotesView").then((m) => ({ default: m.NotesView })),
+  DailyNotesView: () => import("./components/DailyNotesView").then((m) => ({ default: m.DailyNotesView })),
+  JournalView: () => import("./components/JournalView").then((m) => ({ default: m.JournalView })),
+  CollectionsView: () => import("./components/CollectionsView").then((m) => ({ default: m.CollectionsView })),
+  WorkProjectsView: () => import("./components/WorkProjectsView").then((m) => ({ default: m.WorkProjectsView })),
+  YouTubeLinksView: () => import("./components/YouTubeLinksView").then((m) => ({ default: m.YouTubeLinksView })),
+  CalendarAgendaView: () => import("./components/CalendarAgendaView").then((m) => ({ default: m.CalendarAgendaView })),
+};
+const StudyDesk = lazy(VIEW_LOADERS.StudyDesk);
+const NotesView = lazy(VIEW_LOADERS.NotesView);
+const DailyNotesView = lazy(VIEW_LOADERS.DailyNotesView);
+const JournalView = lazy(VIEW_LOADERS.JournalView);
+const CollectionsView = lazy(VIEW_LOADERS.CollectionsView);
+const WorkProjectsView = lazy(VIEW_LOADERS.WorkProjectsView);
+const YouTubeLinksView = lazy(VIEW_LOADERS.YouTubeLinksView);
+const CalendarAgendaView = lazy(VIEW_LOADERS.CalendarAgendaView);
+
+/** Tüm görünüm parçalarını önceden indirir (import() önbelleğe alındığı için tekrar çağırmak ücretsizdir). */
+function preloadViews() {
+  for (const load of Object.values(VIEW_LOADERS)) void load().catch(() => {});
+}
 
 export default function App() {
   return (
@@ -395,6 +410,17 @@ function AppContent() {
     }
   }, [ringingAlarmNote]);
 
+  // Görünüm parçalarını ilk boyamadan sonra arka planda indir: ilk tıklamada bekleme olmasın.
+  useEffect(() => {
+    const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number; cancelIdleCallback?: (id: number) => void };
+    if (w.requestIdleCallback) {
+      const id = w.requestIdleCallback(preloadViews, { timeout: 1500 });
+      return () => w.cancelIdleCallback?.(id);
+    }
+    const id = window.setTimeout(preloadViews, 600);
+    return () => window.clearTimeout(id);
+  }, []);
+
   // Bildirimdeki "ertele" aksiyonu: SW mesajı veya /?snooze=kind:id:dk parametresi
   useEffect(() => {
     const apply = (snooze: { kind: string; id: string } | undefined, minutes: number) => {
@@ -547,8 +573,8 @@ function AppContent() {
         initial: { opacity: 0, x: 6 },
         animate: { opacity: 1, x: 0 },
         // exit cok kisa + popLayout: gecis boyunca EKRAN BOS KALMAZ.
-        exit: { opacity: 0, x: -6, transition: { duration: 0.07 } },
-        transition: { duration: 0.09, ease: [0.25, 0.1, 0.25, 1] as [number, number, number, number] },
+        exit: { opacity: 0, x: -4, transition: { duration: 0.04 } },
+        transition: { duration: 0.07, ease: [0.25, 0.1, 0.25, 1] as [number, number, number, number] },
       };
   return (
     <div

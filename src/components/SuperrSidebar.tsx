@@ -214,8 +214,8 @@ interface SuperrSidebarProps {
 
 const SPRING_PILL = {
   type: "spring",
-  stiffness: 500,
-  damping: 34,
+  stiffness: 800,
+  damping: 44,
 } as const;
 
 export function SuperrSidebar({
