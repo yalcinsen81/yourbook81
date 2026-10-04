@@ -53,7 +53,7 @@ export function InstallPwaModal({
               <div className="flex items-center gap-2">
                 <Download size={16} />
                 <span className="font-gelica text-sm font-semibold lowercase">
-                  uygulamayı yükle (pwa)
+                  {t("pwa.install_title")}
                 </span>
               </div>
               <button
@@ -77,7 +77,7 @@ export function InstallPwaModal({
                     <span dir="ltr" className="inline-block">yourbook</span>
                   </h3>
                   <span className="font-handwritten text-sm text-[var(--accent)] font-bold block">
-                    çalışma defteri & ajanda
+                    {t("agenda.title")}
                   </span>
                   <span className="font-geist text-[11px] text-[var(--ink-soft)]">
                     {t("cust.pwa.sub")}
@@ -104,7 +104,7 @@ export function InstallPwaModal({
                 /* 2. iOS Safari Özel Yönergesi */
                 <div className="space-y-3 bg-[var(--app-bg)] p-4 rounded-[12px] border border-[var(--ink)] text-xs font-geist">
                   <span className="font-gelica text-xs font-bold text-[var(--ink)] block">
-                    iPhone veya iPad'e Yükleme Adımları:
+                    {t("pwa.ios_steps_title")}
                   </span>
                   <div className="space-y-2 text-[var(--ink-soft)]">
                     <div className="flex items-start gap-2.5">

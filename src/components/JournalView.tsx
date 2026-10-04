@@ -627,10 +627,10 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
             <SketchLock size={24} strokeWidth={1.8} />
           </div>
           <h3 className="font-gelica text-xl font-bold text-[var(--ink)]">
-            günlük kilitli
+            {t("journal.locked")}
           </h3>
           <p className="font-geist text-xs text-[var(--ink-soft)] mt-1 mb-5">
-            Bu kişisel sayfayı açmak için PIN kodunu gir.
+            {t("journal.unlock_hint")}
           </p>
 
           <form onSubmit={handleUnlock} className="space-y-3">
@@ -664,7 +664,7 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
               type="submit"
               className="w-full rounded-[20px] bg-[var(--accent)] py-2.5 font-gelica text-xs font-bold text-white shadow-sm hover:opacity-95"
             >
-              kilidi aç
+              {t("journal.unlock")}
             </button>
           </form>
 
@@ -826,7 +826,7 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
           {/* PIN Kilit Ayarı */}
           <button
             onClick={() => setIsPinModalOpen(true)}
-            aria-label="günlük PIN ayarları"
+            aria-label={t("journal.aria_pin_settings")}
             title={pin ? t("journal.pin_edit") : t("journal.pin_add")}
             className={`flex h-8 items-center gap-1.5 rounded-full border px-2.5 font-gelica text-xs font-semibold transition-colors ${
               pin
@@ -850,7 +850,7 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
           <span className="p-1 rounded-full bg-[color-mix(in_srgb,var(--accent)_15%,transparent)] text-[var(--accent)] shrink-0"><SketchHistoryClock size={16} strokeWidth={1.8} /></span>
           <div className="min-w-0 flex-1">
             <span className="font-handwritten text-xs font-bold text-[var(--accent)] block">
-              geçmişten bir anı ({pastMemory.dateKey})
+              {t("journal.past_memory", { date: pastMemory.dateKey })}
             </span>
             <p className="font-gelica text-xs italic text-[var(--ink)] truncate mt-0.5">
               "{pastMemory.content.slice(0, 120)}..."
@@ -863,7 +863,7 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
             }}
             className="shrink-0 rounded-full border-[var(--ink)] px-2.5 py-1 font-gelica text-[10px] font-bold text-[var(--ink)] hover:bg-[var(--ink)] hover:text-white transition-colors"
           >
-            o güne git
+            {t("journal.go_today")}
           </button>
         </div>
       )}
@@ -1163,7 +1163,7 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
             <div className="mt-4 flex items-center justify-between pt-3 border-t border-black/5">
               <button
                 onClick={handleAddNewSession}
-                aria-label="yeni günlük notu ekle"
+                aria-label={t("journal.aria_new_entry")}
                 className="font-handwritten text-xs text-[var(--accent)] font-bold hover:underline"
               >
                 {t("journal.add_note")}
@@ -1171,7 +1171,7 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
 
               <button
                 onClick={() => saveCurrentEntry(currentText, selectedMood, penLayer)}
-                aria-label="günlüğü kaydet"
+                aria-label={t("journal.aria_save")}
                 className="rounded-[20px] bg-[var(--ink)] text-[var(--app-bg)] px-4 py-1.5 font-gelica text-xs font-semibold shadow-xs hover:bg-[var(--accent)] transition-colors"
               >
                 {t("act.save_now")}
@@ -1214,14 +1214,14 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
                 {searchQuery ? t("journal.empty_search") : t("journal.empty")}
               </h4>
               <p className="font-geist text-xs text-[var(--ink-soft)] max-w-sm mx-auto mt-1 mb-4 leading-relaxed">
-                bugün aklından ne geçiyor? istersen küçük bir şey yaz, kimse okumayacak, bu senin sayfan.
+                {t("journal.placeholder")}
               </p>
               <button
                 onClick={() => setActiveTab("write")}
-                aria-label="yazmaya geç"
+                aria-label={t("journal.aria_go_write")}
                 className="rounded-[20px] bg-[var(--accent)] px-4 py-2 font-gelica text-xs font-bold text-white shadow-sm hover:opacity-95"
               >
-                ilk sayfanı yaz
+                {t("journal.first_page")}
               </button>
             </div>
           ) : (
@@ -1255,7 +1255,7 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
                         }}
                         className="font-gelica text-xs font-semibold text-[var(--accent)] hover:underline"
                       >
-                        düzenle
+                        {t("act.edit")}
                       </button>
                     </div>
 
@@ -1319,7 +1319,7 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
             >
               <div className="mb-3 flex items-center justify-between">
                 <h4 className="font-gelica text-base font-bold text-[var(--ink)]">
-                  günlük mahremiyet kilidi
+                  {t("journal.privacy")}
                 </h4>
                 <button
                   onClick={() => setIsPinModalOpen(false)}
@@ -1330,7 +1330,7 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
               </div>
 
               <p className="font-geist text-xs text-[var(--ink-soft)] mb-4 leading-relaxed">
-                4 haneli bir PIN belirleyerek günlüğünü meraklı gözlerden koru. Boş bırakıp kaydedersen kilit kaldırılır.
+                {t("journal.privacy_desc")}
               </p>
 
               <input

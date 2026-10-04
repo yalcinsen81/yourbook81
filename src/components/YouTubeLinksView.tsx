@@ -292,7 +292,7 @@ export function YouTubeLinksView() {
       className="flex h-full w-full flex-col overflow-y-auto px-4 sm:px-10 py-4 sm:py-10 bg-[var(--app-bg)] text-[var(--ink)] select-none scrollbar-thin"
     >
       {/* Silme geri alma bildirimi */}
-      {confirmDeleteId && <div role="dialog" aria-modal="true" aria-labelledby="youtube-delete-title" className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"><div className="rounded-xl bg-[var(--paper)] p-5"><h2 id="youtube-delete-title">silinsin mi?</h2><div className="mt-3 flex gap-2"><button type="button" onClick={() => setConfirmDeleteId(null)}>vazgeç</button><button type="button" onClick={() => { handleDeleteVideo(confirmDeleteId); setConfirmDeleteId(null); }}>evet, sil</button></div></div></div>}
+      {confirmDeleteId && <div role="dialog" aria-modal="true" aria-labelledby="youtube-delete-title" className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"><div className="rounded-xl bg-[var(--paper)] p-5"><h2 id="youtube-delete-title">{t("yt.delete_title")}</h2><div className="mt-3 flex gap-2"><button type="button" onClick={() => setConfirmDeleteId(null)}>{t("act.cancel")}</button><button type="button" onClick={() => { handleDeleteVideo(confirmDeleteId); setConfirmDeleteId(null); }}>{t("yt.delete_yes")}</button></div></div></div>}
       {lastDeleted && (
         <div className="pointer-events-auto fixed bottom-6 left-1/2 z-50 -translate-x-1/2 animate-in fade-in slide-in-from-bottom-2 duration-200">
           <div className="flex items-center gap-3 rounded-[14px] border border-[var(--ink)] bg-[var(--ink)] px-4 py-2.5 shadow-lg">
@@ -499,7 +499,7 @@ export function YouTubeLinksView() {
             className="my-5 p-5 card-superr border-2 border-[var(--ink)] bg-[var(--paper)] flex flex-col gap-3.5 shadow-superrCard"
           >
             <span className="font-gelica text-xs font-semibold text-[var(--ink)]">
-              youtube videosunu arşive ekle (otomatik kapak & konu tespiti):
+              {t("yt.add_ph")}
             </span>
 
             <div className="flex items-center gap-2">
@@ -508,7 +508,7 @@ export function YouTubeLinksView() {
                 onClick={handleClipboardPasteButton}
                 className="rounded-[20px] border-2 border-[var(--ink)] bg-[var(--app-bg)] px-3 py-1 font-gelica text-[11px] font-semibold text-[var(--ink)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-all shadow-sm"
               >
-                panodan yapıştır & sınıflandır
+                {t("yt.paste")}
               </button>
               {clipboardHint && (
                 <span className="font-geist text-[11px] text-[var(--accent)] font-semibold">{clipboardHint}</span>
@@ -546,7 +546,7 @@ export function YouTubeLinksView() {
                 {isFetchingMeta ? (
                   <span className="flex items-center gap-1.5 rounded-full border-[1.5px] border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[var(--app-bg)] px-2.5 py-1 font-gelica font-semibold text-[color-mix(in_srgb,var(--border-ink)_20%,transparent)]">
                     <span className="h-2 w-2 animate-pulse rounded-full bg-[var(--accent)]" />
-                    video bilgileri çekiliyor...
+                    {t("yt.fetching")}
                   </span>
                 ) : (
                   <span
@@ -739,7 +739,7 @@ export function YouTubeLinksView() {
               {/* Video Altı Notlar */}
               <div className="p-4 border-t-2 border-[var(--ink)] bg-[var(--app-bg)]">
                 <span className="font-gelica text-xs font-semibold text-[var(--ink)] block mb-1">
-                  bu videodan çıkarılan notlar:
+                  {t("yt.notes_extracted")}
                 </span>
                 <p className="font-geist text-xs text-[var(--ink-soft)] leading-relaxed whitespace-pre-line">
                   {playingVideo.notes || t("yt.no_notes")}
@@ -885,7 +885,7 @@ function VideoCardItem({
           >
             <ExternalLink size={13} />
           </button>
-          <button type="button" onClick={(e) => { e.stopPropagation(); onCategoryChange(video.category); }} title="düzenle" aria-label="videoyu düzenle" className="p-1 text-[var(--ink-soft)] hover:text-[var(--accent)]">
+          <button type="button" onClick={(e) => { e.stopPropagation(); onCategoryChange(video.category); }} title={t("act.edit")} aria-label={t("yt.edit_video")} className="p-1 text-[var(--ink-soft)] hover:text-[var(--accent)]">
             <Pencil size={13} />
           </button>
           <button

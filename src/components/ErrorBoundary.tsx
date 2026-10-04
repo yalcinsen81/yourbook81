@@ -30,8 +30,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             {translate(getSavedUiLanguage(), "sys.error_title")}
           </h2>
           <p className="max-w-md text-center font-geist text-xs text-[var(--ink-soft)]">
-            {translate(getSavedUiLanguage(), "sys.error_desc")}
-            sayfayı yenilemeyi dene.
+            {translate(getSavedUiLanguage(), "sys.error_desc")} {translate(getSavedUiLanguage(), "sys.error_retry")}
           </p>
           <pre className="max-w-md overflow-x-auto rounded-[8px] border border-[var(--border-ink)] bg-[var(--paper)] p-3 font-geist text-[11px] text-[var(--ink-soft)]">
             {this.state.error.message}

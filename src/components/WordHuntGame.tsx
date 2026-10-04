@@ -481,7 +481,7 @@ export function WordHuntGame({
                   onClick={onClose}
                   className="flex-1 rounded-[20px] border border-[var(--ink)] py-2.5 font-gelica text-xs font-semibold text-[var(--ink)] hover:bg-[var(--app-bg)] transition-colors"
                 >
-                  masaya dön
+                  {t("hunt.back")}
                 </button>
                 <button
                   onClick={startNewGame}
