@@ -94,19 +94,21 @@ self.addEventListener("notificationclick", (event) => {
   const data = event.notification.data || {};
   const targetUrl = data.url || "/";
 
-  // "ertele" aksiyonu: 5 dakika sonra tekrar bildir
+  // "ertele" aksiyonu: SW zamanlayıcıları güvenilmez (tarayıcı SW'yi kapatabilir).
+  // Bu yüzden ertelemeyi sayfaya iletiriz; sayfanın kendi alarm döngüsü yeniden çaldırır.
   if (event.action === "snooze") {
     event.waitUntil(
       (async () => {
-        await new Promise((r) => setTimeout(r, 5 * 60 * 1000));
-        await self.registration.showNotification(data.title || "Hatırlatıcı", {
-          body: data.body || "",
-          icon: data.icon || "/icon-192.png",
-          badge: "/icon-192.png",
-          tag: data.tag || "yourbook-alarm",
-          renotify: true,
-          data,
-        });
+        const clientList = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+        if (clientList.length > 0 && data.snooze) {
+          for (const c of clientList) c.postMessage({ type: "SNOOZE_ALARM", snooze: data.snooze, minutes: 5 });
+          return;
+        }
+        // Açık pencere yok: uygulamayı erteleme parametresiyle aç; sayfa ertelemeyi uygular.
+        if (data.snooze && self.clients.openWindow) {
+          const q = encodeURIComponent(data.snooze.kind + ":" + data.snooze.id + ":5");
+          return self.clients.openWindow("/?snooze=" + q);
+        }
       })()
     );
     return;
@@ -151,7 +153,7 @@ self.addEventListener("message", (event) => {
           { action: "open", title: msg.actionOpen || "Aç" },
           { action: "snooze", title: msg.actionSnooze || "5 dk ertele" },
         ],
-        data: { url: msg.url || "/", title: msg.title, body: msg.body, tag: msg.tag, icon: msg.icon },
+        data: { url: msg.url || "/", snooze: msg.snooze, title: msg.title, body: msg.body, tag: msg.tag, icon: msg.icon },
       })
     );
   }

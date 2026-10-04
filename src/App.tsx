@@ -41,6 +41,7 @@ import {
   startAlarmBackgroundAlert,
   stopAlarmBackgroundAlert,
   showAlarmViaServiceWorker,
+  snoozeAgendaEvent,
 } from "./lib/alarm";
 import { useT } from "./i18n/I18nProvider";
 import {
@@ -359,7 +360,7 @@ function AppContent() {
         playAlarmChime();
         const noteBody = `${ringingAlarmNote.title}\n${ringingAlarmNote.content || ""}`;
         const noteTitle = t("alarm.note_title");
-        showAlarmViaServiceWorker({ title: noteTitle, body: noteBody, url: "/?view=notes", lang }).then(
+        showAlarmViaServiceWorker({ title: noteTitle, body: noteBody, url: "/?view=notes", lang, snooze: { kind: "note", id: ringingAlarmNote.id } }).then(
           (shown) => {
             if (!shown) sendDesktopNotification(noteTitle, noteBody);
           }
@@ -373,6 +374,32 @@ function AppContent() {
       }
     }
   }, [ringingAlarmNote]);
+
+  // Bildirimdeki "ertele" aksiyonu: SW mesajı veya /?snooze=kind:id:dk parametresi
+  useEffect(() => {
+    const apply = (snooze: { kind: string; id: string } | undefined, minutes: number) => {
+      if (!snooze?.id) return;
+      stopAlarmBackgroundAlert();
+      if (snooze.kind === "note") snoozeAlarm(snooze.id, minutes);
+      else if (snooze.kind === "agenda") snoozeAgendaEvent(snooze.id, minutes);
+    };
+    const onMsg = (e: MessageEvent) => {
+      if (e.data?.type === "SNOOZE_ALARM") apply(e.data.snooze, Number(e.data.minutes) || 5);
+    };
+    navigator.serviceWorker?.addEventListener("message", onMsg);
+    try {
+      const url = new URL(window.location.href);
+      const q = url.searchParams.get("snooze");
+      if (q) {
+        const [kind, ...rest] = q.split(":");
+        const minutes = Number(rest.pop()) || 5;
+        apply({ kind, id: rest.join(":") }, minutes);
+        url.searchParams.delete("snooze");
+        window.history.replaceState({}, "", url.pathname + url.search + url.hash);
+      }
+    } catch { /* yok say */ }
+    return () => navigator.serviceWorker?.removeEventListener("message", onMsg);
+  }, [snoozeAlarm]);
 
   // ⭐ MERKEZİ AJANDA ALARMI İZLEYİCİSİ (Hangi sayfada olunursa olunsun arka planda çalışır)
   useEffect(() => {
@@ -392,7 +419,7 @@ function AppContent() {
             const evBody = `${ev.title}${ev.description ? `\n${ev.description}` : ""}`;
             const evTitle = `${t("alarm.agenda_title")} (${ev.timeStr || t("alarm.time_now")})`;
             // Zengin SW bildirimi (aç / ertele aksiyonlu); SW yoksa klasik bildirime düşer.
-            showAlarmViaServiceWorker({ title: evTitle, body: evBody, url: "/?view=calendar", lang }).then(
+            showAlarmViaServiceWorker({ title: evTitle, body: evBody, url: "/?view=calendar", lang, snooze: { kind: "agenda", id: String(ev.id) } }).then(
               (shown) => {
                 if (!shown) sendDesktopNotification(evTitle, evBody);
               }

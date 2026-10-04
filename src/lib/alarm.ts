@@ -213,6 +213,8 @@ export async function showAlarmViaServiceWorker(opts: {
   body?: string;
   url?: string;
   lang?: string;
+  /** Ertele aksiyonunun hangi kaydı erteleyeceği (sayfa tarafında uygulanır). */
+  snooze?: { kind: "note" | "agenda"; id: string };
 }): Promise<boolean> {
   try {
     if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return false;
@@ -228,10 +230,34 @@ export async function showAlarmViaServiceWorker(opts: {
       url: opts.url || "/",
       icon: "/icon-192.png",
       tag: "yourbook-alarm",
+      snooze: opts.snooze,
       actionOpen,
       actionSnooze,
     });
     return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Ajanda olayının alarmını `minutes` dakika sonrasına erteler (localStorage). */
+export function snoozeAgendaEvent(id: string, minutes: number, now = Date.now()): boolean {
+  try {
+    const key = "superr_agenda_events_v4";
+    const raw = localStorage.getItem(key);
+    if (!raw) return false;
+    const events = JSON.parse(raw);
+    if (!Array.isArray(events)) return false;
+    let found = false;
+    const updated = events.map((ev: any) => {
+      if (ev && ev.id === id) {
+        found = true;
+        return { ...ev, hasAlarm: true, alarmTimestamp: now + minutes * 60_000, isAlarmTriggered: false };
+      }
+      return ev;
+    });
+    if (found) localStorage.setItem(key, JSON.stringify(updated));
+    return found;
   } catch {
     return false;
   }
