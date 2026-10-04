@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useSpeechDictation } from "./useSpeechDictation";
 import { translate } from "../i18n";
+import "../i18n/allLocales";
 
 /** Basit sahte tanıma nesnesi — Web Speech API'yi taklit eder. */
 class FakeRecognition {

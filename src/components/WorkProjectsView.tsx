@@ -689,7 +689,7 @@ export function WorkProjectsView() {
 
               <span className="font-gelica text-xs font-semibold text-[var(--ink)]">
 
-                tabloya yeni kişi ekle (sıradaki no: {contacts.length + 1}):
+                {t("work.contact_add", { n: contacts.length + 1 })}
 
               </span>
 
@@ -843,7 +843,7 @@ export function WorkProjectsView() {
 
                 <span className="font-handwritten text-[13px] font-bold text-[var(--accent)] bg-[var(--app-bg)] border-[1.5px] border-[var(--ink)] px-2.5 py-0.5 rounded-full shadow-sm animate-pulse whitespace-nowrap">
 
-                  → kaydır
+                  {t("work.scroll")}
 
                 </span>
 
@@ -1255,7 +1255,7 @@ export function WorkProjectsView() {
 
                         >
 
-                          vazgeç
+                          {t("common.back")}
 
                         </button>
 
@@ -1395,7 +1395,7 @@ export function WorkProjectsView() {
               ) : (
                 <>
               <p className="font-handwritten text-sm text-[var(--accent)] mt-1 font-bold">
-                bu sekme henüz boş. yukarıdaki 'not ekle' butonuyla ilk notunu ekleyebilirsin.
+                {t("work.tab_empty")}
               </p>
 
                 </>

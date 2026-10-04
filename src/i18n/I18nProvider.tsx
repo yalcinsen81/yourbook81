@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 import {
   getSavedUiLanguage,
+  isDictionaryLoaded,
+  loadDictionary,
   setSavedUiLanguage,
   translate,
   UI_LANGUAGE_EVENT,
@@ -18,12 +20,23 @@ const I18nContext = createContext<I18nContextValue | null>(null);
 
 export function I18nProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLang] = useState<string>(() => getSavedUiLanguage());
+  // Seçili dilin sözlüğü yüklenene kadar (tr hariç) ilk render bekletilir: yanlış dilde parlama olmaz.
+  const [ready, setReady] = useState<boolean>(() => isDictionaryLoaded(getSavedUiLanguage()));
+
+  useEffect(() => {
+    let cancelled = false;
+    if (isDictionaryLoaded(lang)) { setReady(true); return; }
+    loadDictionary(lang).then(() => { if (!cancelled) setReady(true); });
+    return () => { cancelled = true; };
+  }, [lang]);
 
   useEffect(() => {
     const onChange = (e: Event) => {
       const custom = e as CustomEvent<string>;
       const detail = typeof custom.detail === "string" ? custom.detail : getSavedUiLanguage();
-      if (UI_LANGUAGES.some((language) => language.code === detail)) setLang(detail);
+      if (UI_LANGUAGES.some((language) => language.code === detail)) {
+        loadDictionary(detail).then(() => setLang(detail));
+      }
     };
     window.addEventListener(UI_LANGUAGE_EVENT, onChange as EventListener);
     window.addEventListener("storage", onChange as EventListener);
@@ -43,7 +56,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     } catch {
       /* ignore */
     }
-  }, [lang, dir]);
+  }, [lang, dir, ready]);
 
   const t = useCallback(
     (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars),
@@ -64,7 +77,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <I18nContext.Provider value={ctxValue}>
-      {children}
+      {ready ? children : null}
     </I18nContext.Provider>
   );
 }

@@ -1,14 +1,4 @@
 import tr from "./locales/tr";
-import en from "./locales/en";
-
-import de from "./locales/de";
-import es from "./locales/es";
-import pt from "./locales/pt";
-import ar from "./locales/ar";
-import ru from "./locales/ru";
-import fr from "./locales/fr";
-import nl from "./locales/nl";
-import it from "./locales/it";
 
 export type TranslationDict = typeof tr;
 export type TranslationKey = keyof TranslationDict;
@@ -37,18 +27,40 @@ export const UI_LANGUAGES: UiLanguageDef[] = [
   { code: "ar", label: "العربية", flag: "🇸🇦", dir: "rtl" },
 ];
 
-const DICTS: Record<string, Partial<TranslationDict>> = {
-  tr,
-  en,
-  de,
-  fr,
-  ru,
-  es,
-  pt,
-  ar,
-  nl,
-  it,
+// Yalnızca kaynak dil (tr) pakete dahildir; diğer diller ilk kullanımda yüklenir.
+const DICTS: Record<string, Partial<TranslationDict>> = { tr };
+
+const LOADERS: Record<string, () => Promise<{ default: Partial<TranslationDict> }>> = {
+  en: () => import("./locales/en"),
+  de: () => import("./locales/de"),
+  es: () => import("./locales/es"),
+  pt: () => import("./locales/pt"),
+  ar: () => import("./locales/ar"),
+  ru: () => import("./locales/ru"),
+  fr: () => import("./locales/fr"),
+  nl: () => import("./locales/nl"),
+  it: () => import("./locales/it"),
 };
+
+/** Sözlüğü elle kaydeder (testler ve önceden yüklenmiş sözlükler için). */
+export function registerDictionary(code: string, dict: Partial<TranslationDict>) {
+  DICTS[code] = dict;
+}
+
+export function isDictionaryLoaded(code: string): boolean {
+  return Boolean(DICTS[code]);
+}
+
+/** Verilen dilin sözlüğünü (gerekirse) yükler. Bilinmeyen dil için sessizce tr'ye düşer. */
+export async function loadDictionary(code: string): Promise<void> {
+  if (DICTS[code] || !LOADERS[code]) return;
+  try {
+    const mod = await LOADERS[code]();
+    DICTS[code] = mod.default;
+  } catch {
+    /* ağ hatası: translate() tr kaynağına düşer */
+  }
+}
 
 export const STORAGE_KEY_UI_LANGUAGE = "yourbook_ui_language_v1";
 export const UI_LANGUAGE_EVENT = "yourbook-ui-language-changed";
@@ -101,4 +113,4 @@ export function translate(langCode: string, key: string, vars?: Record<string, s
   return value;
 }
 
-export { tr, en, de, es, pt, ar, ru, fr, nl, it };
+export { tr };

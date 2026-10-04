@@ -379,13 +379,13 @@ export function HandwritingStudioModal({
               </span>
               <div>
                 <h3 className="font-gelica text-base font-bold text-[var(--ink)] flex items-center gap-1.5">
-                  Özel El Yazısı Atölyesi
+                  {t("cust.studio.title")}
                   <span className="rounded-full bg-amber-100 text-amber-900 border border-amber-300 text-[9.5px] px-2 py-0.2 font-mono">
                     Laboratuvar
                   </span>
                 </h3>
                 <p className="font-geist text-[11px] text-[var(--ink-soft)]">
-                  Ekranda örnek harflerini çiz veya defterinden bir fotoğraf yükleyerek kendi el yazını üret.
+                  {t("cust.studio.desc")}
                 </p>
               </div>
             </div>
@@ -468,7 +468,7 @@ export function HandwritingStudioModal({
                   onTouchEnd={handleEndDraw}
                 />
                 <span className="absolute bottom-1.5 end-2 font-mono text-[9.5px] text-amber-900/40 pointer-events-none">
-                  parmakla veya fareyle yazınız
+                  {t("cust.studio.draw_hint")}
                 </span>
               </div>
 
@@ -501,7 +501,7 @@ export function HandwritingStudioModal({
                 >
                   <Upload size={24} className="text-[var(--accent)] mb-2" />
                   <span className="font-gelica text-xs font-bold text-[var(--ink)]">
-                    Defterinden bir not fotoğrafı seç
+                    {t("cust.studio.pick_photo")}
                   </span>
                   <span className="font-geist text-[10.5px] text-[var(--ink-soft)] mt-0.5">
                     JPG, PNG veya kamera görüntüsü (kağıt üzerindeki yazın ayıklanır)
@@ -548,7 +548,7 @@ export function HandwritingStudioModal({
                     onClick={() => photoInputRef.current?.click()}
                     className="text-[10.5px] font-geist text-[var(--accent)] underline block"
                   >
-                    Farklı bir fotoğraf yükle
+                    {t("cust.studio.other_photo")}
                   </button>
                 </div>
               )}
@@ -584,7 +584,7 @@ export function HandwritingStudioModal({
             {/* Temel Karakter İskeleti */}
             <div>
               <span className="font-geist text-[10.5px] text-[var(--ink-soft)] block mb-1">
-                Karakter İskeleti (Baz el yazısı deseni):
+                {t("cust.studio.skeleton")}
               </span>
               <div className="grid grid-cols-4 gap-1.5">
                 {[
@@ -666,11 +666,11 @@ export function HandwritingStudioModal({
           <div className="mb-5">
             <div className="flex items-center justify-between mb-1">
               <span className="font-gelica text-xs font-bold text-[var(--ink)]">
-                Canlı Defter Satırı Önizlemesi:
+                {t("cust.studio.preview")}
               </span>
               {previewImage && (
                 <span className="font-geist text-[10px] text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full font-semibold">
-                  Mürekkep İmzası Kaydedildi ✓
+                  {t("cust.studio.saved")}
                 </span>
               )}
             </div>
@@ -705,7 +705,7 @@ export function HandwritingStudioModal({
                 placeholder="Metin girerek dene..."
               />
               <span className="font-mono text-[9px] text-[var(--ink-soft)] block mt-1">
-                Karakter: {baseFont} · Ağırlık: {weight} · Eğim: {slant}°
+                {t("cust.studio.meta", { font: baseFont, weight, slant })}
               </span>
             </div>
           </div>
@@ -716,7 +716,7 @@ export function HandwritingStudioModal({
               onClick={onClose}
               className="flex-1 py-2.5 rounded-[16px] border border-[var(--ink)] font-gelica text-xs font-bold text-[var(--ink)] hover:bg-[var(--app-bg)] transition-colors"
             >
-              Vazgeç
+              {t("act.cancel")}
             </button>
             <button
               onClick={handleApplyCustomHandwriting}

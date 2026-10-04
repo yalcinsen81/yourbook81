@@ -1,18 +1,10 @@
 import { NotebookCustomizeModal } from "./components/NotebookCustomizeModal";
 import { TimeLightingOverlay } from "./components/TimeLightingOverlay";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { SuperrSidebar, type NavView } from "./components/SuperrSidebar";
 import { SuperrHero } from "./components/SuperrHero";
 import { OnboardingFlow } from "./components/OnboardingFlow";
-import { StudyDesk } from "./components/StudyDesk";
-import { NotesView } from "./components/NotesView";
-import { DailyNotesView } from "./components/DailyNotesView";
-import { JournalView } from "./components/JournalView";
-import { CollectionsView } from "./components/CollectionsView";
-import { WorkProjectsView } from "./components/WorkProjectsView";
-import { YouTubeLinksView } from "./components/YouTubeLinksView";
-import { CalendarAgendaView } from "./components/CalendarAgendaView";
 import { QuickAdd } from "./components/QuickAdd";
 import { CommandPalette } from "./components/CommandPalette";
 import { AlarmAlert } from "./components/AlarmAlert";
@@ -32,7 +24,8 @@ import { AuthModal } from "./components/AuthModal";
 import { MobileHeader } from "./components/MobileHeader";
 import { MobileBottomNav } from "./components/MobileBottomNav";
 import { getSavedLocalUser, saveLocalUser, getCurrentSessionUser, onAuthStateChange, type AppUser } from "./lib/supabase";
-import { performCloudSync } from "./lib/syncEngine";
+import { performCloudSync, isSyncKey } from "./lib/syncEngine";
+import { viewFromSearch } from "./lib/deepLink";
 import { usePwaInstall } from "./lib/usePwaInstall";
 import { InstallPwaModal } from "./components/InstallPwaModal";
 import {
@@ -41,6 +34,7 @@ import {
   startAlarmBackgroundAlert,
   stopAlarmBackgroundAlert,
   showAlarmViaServiceWorker,
+  snoozeAgendaEvent,
 } from "./lib/alarm";
 import { useT } from "./i18n/I18nProvider";
 import {
@@ -56,6 +50,16 @@ import {
   useSidebarVisibility,
   useSidebarWidth,
 } from "./lib/useSidebarVisibility";
+// Agir görünümler ilk açılışta yüklenmez; ilk ziyarette parça olarak getirilir.
+const StudyDesk = lazy(() => import("./components/StudyDesk").then((m) => ({ default: m.StudyDesk })));
+const NotesView = lazy(() => import("./components/NotesView").then((m) => ({ default: m.NotesView })));
+const DailyNotesView = lazy(() => import("./components/DailyNotesView").then((m) => ({ default: m.DailyNotesView })));
+const JournalView = lazy(() => import("./components/JournalView").then((m) => ({ default: m.JournalView })));
+const CollectionsView = lazy(() => import("./components/CollectionsView").then((m) => ({ default: m.CollectionsView })));
+const WorkProjectsView = lazy(() => import("./components/WorkProjectsView").then((m) => ({ default: m.WorkProjectsView })));
+const YouTubeLinksView = lazy(() => import("./components/YouTubeLinksView").then((m) => ({ default: m.YouTubeLinksView })));
+const CalendarAgendaView = lazy(() => import("./components/CalendarAgendaView").then((m) => ({ default: m.CalendarAgendaView })));
+
 export default function App() {
   return (
     <EngagementProvider>
@@ -121,7 +125,19 @@ function AppContent() {
 
   // Superr Defter Bölümleri:
   // hero | collections (Tüm Notlar) | daily (Günlük Notlar) | work (İş ve Projeler) | calendar (Takvim ve Ajanda) | cards (Masalar: DE / EN)
-  const [currentView, setCurrentView] = useState<NavView>("hero");
+  // Bildirim bağlantıları (/?view=notes, /?view=calendar) doğrudan ilgili görünümü açar.
+  const [currentView, setCurrentView] = useState<NavView>(() =>
+    (typeof window !== "undefined" ? viewFromSearch(window.location.search) : null) ?? "hero"
+  );
+  useEffect(() => {
+    try {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has("view")) {
+        url.searchParams.delete("view");
+        window.history.replaceState({}, "", url.pathname + url.search + url.hash);
+      }
+    } catch { /* yok say */ }
+  }, []);
   // Görünümler arası tarih bağlantısı (agenda ↔ günlük). Bir görünüm, diğerinde
   // belirli bir güne atlamak istediğinde buraya tarih yazar; hedef görünüm okur.
   const [crossLinkDateKey, setCrossLinkDateKey] = useState<string | null>(null);
@@ -261,8 +277,10 @@ function AppContent() {
       if (document.visibilityState === "visible") performCloudSync(currentUser);
     };
     const onStorage = (e: StorageEvent) => {
-      // Başka bir sekmede senkronlanan anahtarlar değiştiyse bu sekmeyi de tazele
-      if (e.key && e.key.startsWith("yourbook_")) performCloudSync(currentUser);
+      // Başka bir sekmede senkronlanan anahtarlar değiştiyse bu sekmeyi de tazele.
+      // Yalnızca SYNC_KEYS: son-eşitleme damgası gibi sync'in kendi yazdıkları iki sekme
+      // arasında sonsuz eşitleme döngüsü yaratırdı.
+      if (isSyncKey(e.key)) performCloudSync(currentUser);
     };
 
     window.addEventListener("online", onOnline);
@@ -359,7 +377,7 @@ function AppContent() {
         playAlarmChime();
         const noteBody = `${ringingAlarmNote.title}\n${ringingAlarmNote.content || ""}`;
         const noteTitle = t("alarm.note_title");
-        showAlarmViaServiceWorker({ title: noteTitle, body: noteBody, url: "/?view=notes", lang }).then(
+        showAlarmViaServiceWorker({ title: noteTitle, body: noteBody, url: "/?view=notes", lang, snooze: { kind: "note", id: ringingAlarmNote.id } }).then(
           (shown) => {
             if (!shown) sendDesktopNotification(noteTitle, noteBody);
           }
@@ -373,6 +391,32 @@ function AppContent() {
       }
     }
   }, [ringingAlarmNote]);
+
+  // Bildirimdeki "ertele" aksiyonu: SW mesajı veya /?snooze=kind:id:dk parametresi
+  useEffect(() => {
+    const apply = (snooze: { kind: string; id: string } | undefined, minutes: number) => {
+      if (!snooze?.id) return;
+      stopAlarmBackgroundAlert();
+      if (snooze.kind === "note") snoozeAlarm(snooze.id, minutes);
+      else if (snooze.kind === "agenda") snoozeAgendaEvent(snooze.id, minutes);
+    };
+    const onMsg = (e: MessageEvent) => {
+      if (e.data?.type === "SNOOZE_ALARM") apply(e.data.snooze, Number(e.data.minutes) || 5);
+    };
+    navigator.serviceWorker?.addEventListener("message", onMsg);
+    try {
+      const url = new URL(window.location.href);
+      const q = url.searchParams.get("snooze");
+      if (q) {
+        const [kind, ...rest] = q.split(":");
+        const minutes = Number(rest.pop()) || 5;
+        apply({ kind, id: rest.join(":") }, minutes);
+        url.searchParams.delete("snooze");
+        window.history.replaceState({}, "", url.pathname + url.search + url.hash);
+      }
+    } catch { /* yok say */ }
+    return () => navigator.serviceWorker?.removeEventListener("message", onMsg);
+  }, [snoozeAlarm]);
 
   // ⭐ MERKEZİ AJANDA ALARMI İZLEYİCİSİ (Hangi sayfada olunursa olunsun arka planda çalışır)
   useEffect(() => {
@@ -392,7 +436,7 @@ function AppContent() {
             const evBody = `${ev.title}${ev.description ? `\n${ev.description}` : ""}`;
             const evTitle = `${t("alarm.agenda_title")} (${ev.timeStr || t("alarm.time_now")})`;
             // Zengin SW bildirimi (aç / ertele aksiyonlu); SW yoksa klasik bildirime düşer.
-            showAlarmViaServiceWorker({ title: evTitle, body: evBody, url: "/?view=calendar", lang }).then(
+            showAlarmViaServiceWorker({ title: evTitle, body: evBody, url: "/?view=calendar", lang, snooze: { kind: "agenda", id: String(ev.id) } }).then(
               (shown) => {
                 if (!shown) sendDesktopNotification(evTitle, evBody);
               }
@@ -727,6 +771,7 @@ function AppContent() {
             Ana tuval her zaman --app-bg dolgulu olduğu için "beyaz flash" da imkânsız. */}
         {/* mode="popLayout": yeni sayfa ANINDA mount olur, eski sayfa ayni anda cikar.
             popLayout eski+yeni icerigi ayni anda gosteriyordu (masa gecisinde "hayalet" metin). */}
+        <Suspense fallback={null}>
         <AnimatePresence mode="wait" initial={false}>
           {/* 1. Giriş ve Defter */}
           {currentView === "hero" && (
@@ -736,6 +781,7 @@ function AppContent() {
               className="relative w-full min-h-full overflow-x-hidden lg:absolute lg:inset-0 lg:h-full lg:w-full lg:overflow-y-auto"
             >
               <SuperrHero
+                ownerName={currentUser?.displayName}
                 engagement={engagement}
                 totalCards={counters.totalCards}
                 dueCards={counters.dueCards}
@@ -934,6 +980,7 @@ function AppContent() {
             </motion.div>
           )}
         </AnimatePresence>
+        </Suspense>
       </main>
 
       {/* 3. Komut Paleti (Ctrl + K) */}

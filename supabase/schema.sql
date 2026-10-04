@@ -57,10 +57,10 @@ create trigger user_sync_store_touch
   for each row execute function public.touch_updated_at();
 
 -- ============================================================================
--- 4) ANON KİMLİK DOĞRULAMA (opsiyonel ama önerilir)
+-- 4) KİMLİK DOĞRULAMA
 -- ============================================================================
--- Uygulama şu an `signInAnonymously()` kullanıyor. Supabase panelinde
--- Authentication → Providers → Anonymous Sign-Ins seçeneğini AÇIN.
+-- Uygulama e-posta + şifre ile giriş kullanır (signUp / signInWithPassword).
+-- Anonim giriş (signInAnonymously) KULLANILMAZ; açmanız gerekmez.
 --
 -- ============================================================================
 -- 5) ⚠️  GÜVENLİK UYARISI — İSTEMCİ ANAHTARI

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { translate, UI_LANGUAGES, tr, en, de, es, pt, ar, ru, fr, nl, it as italian } from "./index";
+import { translate, UI_LANGUAGES } from "./index";
+import { tr, en, de, es, pt, ar, ru, fr, nl, it as italian } from "./allLocales";
 
 describe("i18n - interface language system", () => {
   it("offers exactly the 7 intended interface languages (tr, en, de, es, fr, it, ar)", () => {

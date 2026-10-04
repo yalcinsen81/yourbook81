@@ -1,4 +1,4 @@
-import { supabase, isCloudConfigured, type AppUser } from "./supabase";
+import { getSupabase, isCloudConfigured, type AppUser } from "./supabase";
 
 export type SyncStatus = "synced" | "syncing" | "offline" | "ready";
 
@@ -106,11 +106,105 @@ export function importDataToStorage(data: Record<string, any>): boolean {
   return changed;
 }
 
+
+/* ==========================================================================
+   UC YONLU BIRLESTIRME (base / local / cloud)
+   --------------------------------------------------------------------------
+   base  = son basarili eşitlemede iki tarafın da paylaştığı değer
+   local = bu cihazdaki şu anki değer
+   cloud = buluttaki şu anki değer
+   Yalnızca bir taraf değiştiyse o taraf kazanır. İki taraf da değiştiyse,
+   `id` alanlı nesne dizileri öğe bazında birleştirilir (silmeler dahil);
+   diğer değerlerde bu cihazın değeri kazanır.
+   ========================================================================== */
+
+const BASE_KEY = "yourbook_sync_base_v1";
+
+const same = (a: unknown, b: unknown): boolean => {
+  if (a === b) return true;
+  try { return JSON.stringify(a) === JSON.stringify(b); } catch { return false; }
+};
+
+type Item = { id: string | number; [k: string]: any };
+const isIdArray = (v: unknown): v is Item[] =>
+  Array.isArray(v) && v.every((x) => x && typeof x === "object" && !Array.isArray(x) && (typeof x.id === "string" || typeof x.id === "number"));
+
+function mergeIdArrays(base: Item[], local: Item[], cloud: Item[]): Item[] {
+  const b = new Map(base.map((x) => [x.id, x]));
+  const l = new Map(local.map((x) => [x.id, x]));
+  const c = new Map(cloud.map((x) => [x.id, x]));
+  const out: Item[] = [];
+  const seen = new Set<string | number>();
+  // Sıra: yerel sıra, sonra buluttaki yeni öğeler
+  for (const id of [...l.keys(), ...c.keys()]) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const bi = b.get(id), li = l.get(id), ci = c.get(id);
+    if (li && ci) {
+      if (same(li, ci)) out.push(li);
+      else if (bi && same(li, bi)) out.push(ci);   // yalnız bulut düzenledi
+      else if (bi && same(ci, bi)) out.push(li);   // yalnız yerel düzenledi
+      else {
+        // İkisi de düzenledi: updatedAt varsa yeni olan, yoksa yerel
+        const lt = Number(li.updatedAt ?? 0), ct = Number(ci.updatedAt ?? 0);
+        out.push(ct > lt ? ci : li);
+      }
+    } else if (li && !ci) {
+      // Bulutta yok: base'te vardıysa bulut sildi (yerel dokunmadıysa sil)
+      if (bi && same(li, bi)) continue;
+      out.push(li);
+    } else if (ci && !li) {
+      if (bi && same(ci, bi)) continue; // yerel sildi
+      out.push(ci);
+    }
+  }
+  return out;
+}
+
+/** Tek anahtar için üç yönlü birleştirme. */
+export function mergeValue(base: unknown, local: unknown, cloud: unknown): unknown {
+  if (same(local, cloud)) return local;
+  if (local === undefined) return base === undefined ? cloud : (same(cloud, base) ? undefined : cloud);
+  if (cloud === undefined) return base === undefined ? local : (same(local, base) ? undefined : local);
+  if (base !== undefined && same(local, base)) return cloud;
+  if (base !== undefined && same(cloud, base)) return local;
+  if (isIdArray(local) && isIdArray(cloud) && (base === undefined || isIdArray(base))) {
+    return mergeIdArrays((base as Item[]) ?? [], local, cloud);
+  }
+  return local;
+}
+
+/** Tüm paket için birleştirme. */
+export function mergeSyncData(
+  base: Record<string, any>,
+  local: Record<string, any>,
+  cloud: Record<string, any>
+): Record<string, any> {
+  const out: Record<string, any> = {};
+  const keys = new Set([...Object.keys(base), ...Object.keys(local), ...Object.keys(cloud)]);
+  for (const k of keys) {
+    const v = mergeValue(base[k], local[k], cloud[k]);
+    if (v !== undefined) out[k] = v;
+  }
+  return out;
+}
+
+function loadBase(): Record<string, any> {
+  try {
+    const raw = localStorage.getItem(BASE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch { /* yok say */ }
+  return {};
+}
+function saveBase(data: Record<string, any>) {
+  try { localStorage.setItem(BASE_KEY, JSON.stringify(data)); } catch { /* kota dolu olabilir */ }
+}
+
 /**
  * Bulut senkronizasyonunu yürütür.
  * Supabase bağlıysa buluttaki son paketle birleştirir, bağlı değilse yerel yedeklemeyi tazeler.
  */
-export async function performCloudSync(user: AppUser | null): Promise<SyncResult> {
+async function runCloudSync(user: AppUser | null): Promise<SyncResult> {
   const now = Date.now();
 
   // v-migrate: ilk aktarim raporu (varsa donuse eklenir)
@@ -129,7 +223,8 @@ export async function performCloudSync(user: AppUser | null): Promise<SyncResult
   // Postgres "user_id uuid" kolonu gecersiz degeri 400 ile reddeder; bu durum
   // yerel/misafir profillerinde gereksiz istek firtinasi ve konsol hatasi uretir.
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(user.id || ""));
-  if (isCloudConfigured && supabase && isUuid) {
+  const supabase = isCloudConfigured && isUuid ? await getSupabase() : null;
+  if (supabase) {
     try {
       const localData = exportCurrentData();
 
@@ -142,40 +237,25 @@ export async function performCloudSync(user: AppUser | null): Promise<SyncResult
 
       if (!fetchErr && cloudRow?.data) {
         const cloudTime = new Date(cloudRow.updated_at).getTime();
-        const lastLocalSync = getLastSyncedTime() || 0;
+        // Üç yönlü birleştirme: iki tarafın da değişikliği korunur.
+        const merged = mergeSyncData(loadBase(), localData, cloudRow.data);
 
-        // Eğer buluttaki veri yerel son eşitlemeden sonra güncellenmişse, yereli güncelle
-        if (cloudTime > lastLocalSync + 2000) {
-          // Bulut daha yeni: buluttakini uygula, SONRA yerelin kapsamadigi
-          // anahtarlari (bulutta olmayan yerel veriler) korumak icin birlesik
-          // paketi buluta geri yaz. Boylece hicbir yerel alan kaybolmaz.
-          const localBefore = exportCurrentData();
-          const changed = importDataToStorage(cloudRow.data);
+        if (!same(merged, localData)) {
+          const changed = importDataToStorage(merged);
           if (changed && typeof window !== "undefined") {
             window.dispatchEvent(new CustomEvent("yourbook_data_synced", { detail: { updatedAt: cloudTime } }));
             window.dispatchEvent(new Event("notebook-config-changed"));
           }
-          // Mutabakat: bulut + yerel birlesimi (bulut kazanir, yerelde olup
-          // bulutta olmayan anahtarlar korunur)
-          const merged = { ...cloudRow.data, ...localBefore };
-          // Bulutta zaten yeni olan anahtarlar bulut degerini korusun
-          for (const k of Object.keys(cloudRow.data)) {
-            if (cloudRow.data[k] !== undefined) merged[k] = cloudRow.data[k];
-          }
-          await supabase.from("user_sync_store").upsert({
+        }
+        if (!same(merged, cloudRow.data)) {
+          const { error: upErr } = await supabase.from("user_sync_store").upsert({
             user_id: user.id,
             data: merged,
             updated_at: new Date().toISOString(),
           });
-        } else {
-          // Yerel veriyi buluta yaz (Yerel daha yeni veya güncel)
-          const { error: upErr } = await supabase.from("user_sync_store").upsert({
-            user_id: user.id,
-            data: localData,
-            updated_at: new Date().toISOString(),
-          });
           if (upErr) throw upErr;
         }
+        saveBase(merged);
       } else {
         // İlk kayıt veya tablo henüz boş: yereli buluta gönder
         const { error: insErr } = await supabase.from("user_sync_store").upsert({
@@ -184,6 +264,7 @@ export async function performCloudSync(user: AppUser | null): Promise<SyncResult
           updated_at: new Date().toISOString(),
         });
         if (insErr) throw insErr;
+        saveBase(localData);
 
         // v-migrate: ILK AKTARIM. Yerel veri buluta tasindi -> rapor uret.
         const migKeys = Object.keys(localData).filter((x) => localData[x] !== undefined);
@@ -215,6 +296,38 @@ export async function performCloudSync(user: AppUser | null): Promise<SyncResult
   // 2. Çevrimdışı / Yerel Çalışma Modu
   localStorage.setItem("yourbook_last_synced_at", String(now));
   return { success: true, lastSyncedAt: now, message: "Yerel depolamada güncellendi" };
+}
+
+let inflight: Promise<SyncResult> | null = null;
+let rerunUser: AppUser | null | undefined;
+
+/**
+ * Bulut senkronizasyonu (aynı anda tek çalışır).
+ * Bir eşitleme sürerken gelen çağrılar birleştirilir: mevcut eşitleme bitince
+ * yalnızca BİR kez daha çalıştırılır. Böylece çakışan yarış ve istek fırtınası olmaz.
+ */
+export function performCloudSync(user: AppUser | null): Promise<SyncResult> {
+  if (inflight) {
+    rerunUser = user;
+    return inflight;
+  }
+  const p = runCloudSync(user);
+  inflight = p;
+  const done = () => {
+    inflight = null;
+    if (rerunUser !== undefined) {
+      const next = rerunUser;
+      rerunUser = undefined;
+      void performCloudSync(next);
+    }
+  };
+  p.then(done, done);
+  return p;
+}
+
+/** Bu depolama anahtarı bulutla eşitlenen verilerden biri mi? (diğer sekme olaylarını süzmek için) */
+export function isSyncKey(key: string | null | undefined): boolean {
+  return !!key && (SYNC_KEYS as readonly string[]).includes(key);
 }
 
 /** Son senkronizasyon zamanını döndürür */

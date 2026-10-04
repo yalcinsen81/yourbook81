@@ -163,7 +163,7 @@ export function JournalExportModal({
                   günlüğü dışa aktar &amp; baskı al
                 </h3>
                 <p className="font-geist text-[11px] text-[var(--ink-soft)]">
-                  baskıya hazır zengin PDF veya düz metin arşivi
+                  {t("export.sub")}
                 </p>
               </div>
             </div>

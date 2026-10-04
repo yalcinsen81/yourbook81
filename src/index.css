@@ -813,9 +813,11 @@ body.font-custom,
 html, body { overflow-x: hidden; }
 
 /* WCAG AA theme color roles: geometry/layout untouched. */
-[class*="bg-[var(--accent)]"] { color: var(--on-accent) !important; }
-[class*="bg-[var(--accent)]"] svg, [class*="bg-[var(--accent)]"] svg * { color: var(--on-accent) !important; stroke: currentColor; }
-[class*="text-[var(--accent)]"] { color: var(--accent-text) !important; }
-[class*="border-[var(--accent)]"] { border-color: var(--accent-text) !important; }
+/* Not: seçiciler yalnızca varyantsız sınıfları yakalar. Aksi halde `hover:bg-[var(--accent)]`
+   gibi varyantlar da eşleşir ve düğme/ikon her zaman yanlış renkte (örn. görünmez ikon) kalırdı. */
+[class^="bg-[var(--accent)]"], [class*=" bg-[var(--accent)]"] { color: var(--on-accent) !important; }
+[class^="bg-[var(--accent)]"] svg, [class^="bg-[var(--accent)]"] svg *, [class*=" bg-[var(--accent)]"] svg, [class*=" bg-[var(--accent)]"] svg * { color: var(--on-accent) !important; stroke: currentColor; }
+[class^="text-[var(--accent)]"], [class*=" text-[var(--accent)]"] { color: var(--accent-text) !important; }
+[class^="border-[var(--accent)]"], [class*=" border-[var(--accent)]"] { border-color: var(--accent-text) !important; }
 :focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
 :disabled, [aria-disabled="true"] { color: color-mix(in srgb, var(--ink-soft) 80%, var(--paper)) !important; border-color: var(--ink-soft) !important; }

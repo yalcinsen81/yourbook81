@@ -17,7 +17,7 @@ import {
   SketchMic,
 } from "./icons/sketchIcons";
 import { useT } from "../i18n/I18nProvider";
-import { supabase, isCloudConfigured } from "../lib/supabase";
+import { getSupabase, isCloudConfigured } from "../lib/supabase";
 import { JournalExportModal } from "./JournalExportModal";
 import { JournalMoodRadar } from "./JournalMoodRadar";
 import JournalSpread from "./JournalSpread";
@@ -87,22 +87,12 @@ function renderMoodSketchIcon(moodId: string, size = 14) {
 }
 
 const MOODS = [
-  { id: "peaceful", emoji: "", label: "huzurlu", color: "bg-emerald-500/15 text-emerald-700 border-emerald-400" },
-  { id: "productive", emoji: "", label: "üretken", color: "bg-orange-500/15 text-orange-700 border-orange-400" },
-  { id: "calm", emoji: "", label: "sakin", color: "bg-blue-500/15 text-blue-700 border-blue-400" },
-  { id: "tired", emoji: "", label: "yorgun", color: "bg-amber-500/15 text-amber-700 border-amber-400" },
-  { id: "tense", emoji: "", label: "gergin", color: "bg-purple-500/15 text-purple-700 border-purple-400" },
-  { id: "hard", emoji: "", label: "zor bir gün", color: "bg-slate-500/15 text-slate-700 border-slate-400" },
-];
-
-const WRITING_PROMPTS = [
-  "bugün seni gülümseten küçük bir an oldu mu?",
-  "bugün en çok ne yordu seni, neden?",
-  "yarına kendine fısıldamak istediğin tek bir not...",
-  "şu an zihninden geçen filtresiz ilk cümle ne?",
-  "bugün öğrendiğin ya da fark ettiğin bir şey var mı?",
-  "kendine bugün için neyi affetmek veya teşekkür etmek istersin?",
-  "etrafında şu an hissettiğin 3 somut ayrıntı nedir?",
+  { id: "peaceful", emoji: "", color: "bg-emerald-500/15 text-emerald-700 border-emerald-400" },
+  { id: "productive", emoji: "", color: "bg-orange-500/15 text-orange-700 border-orange-400" },
+  { id: "calm", emoji: "", color: "bg-blue-500/15 text-blue-700 border-blue-400" },
+  { id: "tired", emoji: "", color: "bg-amber-500/15 text-amber-700 border-amber-400" },
+  { id: "tense", emoji: "", color: "bg-purple-500/15 text-purple-700 border-purple-400" },
+  { id: "hard", emoji: "", color: "bg-slate-500/15 text-slate-700 border-slate-400" },
 ];
 
 export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: JournalViewProps) {
@@ -214,7 +204,10 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
     return () => window.clearTimeout(id);
   }, [jumpFlash]);
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "idle">("idle");
-  const [currentEntryId, setCurrentEntryId] = useState<string | null>(null);
+  // Kayıt kimliği ref'te tutulur: otomatik kaydetme zamanlayıcısı ve "kaydet" düğmesi
+  // bayat bir kapanıştan okumasın diye (aksi halde aynı metin iki kez kaydedilirdi).
+  const currentEntryIdRef = useRef<string | null>(null);
+  const setCurrentEntryId = (id: string | null) => { currentEntryIdRef.current = id; };
 
   // Kullanıcının kendi elinden çıkan imza örneği (varsa günlük sayfasında gösterilir)
   const [signatureImage, setSignatureImage] = useState<string | null>(null);
@@ -312,23 +305,33 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
     const hasPen = !!pen && Array.isArray(pen.strokes) && pen.strokes.length > 0;
     if (!text.trim() && !hasPen) return;
 
+    // Bekleyen otomatik kaydetme varsa iptal et: bu çağrı zaten en güncel metni kaydediyor.
+    if (saveTimeoutRef.current) {
+      window.clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+
     setSaveStatus("saving");
     const now = new Date();
     const timeStr = now.toTimeString().slice(0, 5);
     const words = text.trim().split(/\s+/).filter(Boolean).length;
 
+    const editingId = currentEntryIdRef.current;
+    const newId = editingId ? null : "j-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6);
+    if (newId) setCurrentEntryId(newId);
+
     setEntries((prev) => {
       // Eğer mevcut bir gün girdisi düzenleniyorsa yerinde güncelle
-      if (currentEntryId) {
+      if (editingId) {
         return prev.map((e) =>
-          e.id === currentEntryId
+          e.id === editingId
             ? { ...e, content: text, mood, wordCount: words, timestamp: Date.now(), pen: pen ?? e.pen ?? null }
             : e
         );
       }
       // Yeni girdi oluştur
       const newEntry: JournalEntry = {
-        id: "j-" + Date.now(),
+        id: newId as string,
         dateKey: selectedDateKey,
         timeStr,
         timestamp: Date.now(),
@@ -338,7 +341,6 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
         wordCount: words,
         pen: pen ?? null,
       };
-      setCurrentEntryId(newEntry.id);
 
       // İlk defa kaydedildiğinde nazik bir XP hediyesi (+8 XP)
       if (onAwardXp && words >= 5) {
@@ -489,7 +491,8 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
     setRecoverError(null);
 
     // Hesap sistemi yoksa (yerel mod) kullaniciyi bilgilendir.
-    if (!isCloudConfigured || !supabase) {
+    const supabase = isCloudConfigured ? await getSupabase() : null;
+    if (!supabase) {
       setRecoverError(t("journal.need_account"));
       return;
     }
@@ -626,10 +629,10 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
             <SketchLock size={24} strokeWidth={1.8} />
           </div>
           <h3 className="font-gelica text-xl font-bold text-[var(--ink)]">
-            günlük kilitli
+            {t("journal.locked")}
           </h3>
           <p className="font-geist text-xs text-[var(--ink-soft)] mt-1 mb-5">
-            Bu kişisel sayfayı açmak için PIN kodunu gir.
+            {t("journal.unlock_hint")}
           </p>
 
           <form onSubmit={handleUnlock} className="space-y-3">
@@ -663,7 +666,7 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
               type="submit"
               className="w-full rounded-[20px] bg-[var(--accent)] py-2.5 font-gelica text-xs font-bold text-white shadow-sm hover:opacity-95"
             >
-              kilidi aç
+              {t("journal.unlock")}
             </button>
           </form>
 
@@ -825,7 +828,7 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
           {/* PIN Kilit Ayarı */}
           <button
             onClick={() => setIsPinModalOpen(true)}
-            aria-label="günlük PIN ayarları"
+            aria-label={t("journal.aria_pin_settings")}
             title={pin ? t("journal.pin_edit") : t("journal.pin_add")}
             className={`flex h-8 items-center gap-1.5 rounded-full border px-2.5 font-gelica text-xs font-semibold transition-colors ${
               pin
@@ -849,7 +852,7 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
           <span className="p-1 rounded-full bg-[color-mix(in_srgb,var(--accent)_15%,transparent)] text-[var(--accent)] shrink-0"><SketchHistoryClock size={16} strokeWidth={1.8} /></span>
           <div className="min-w-0 flex-1">
             <span className="font-handwritten text-xs font-bold text-[var(--accent)] block">
-              geçmişten bir anı ({pastMemory.dateKey})
+              {t("journal.past_memory", { date: pastMemory.dateKey })}
             </span>
             <p className="font-gelica text-xs italic text-[var(--ink)] truncate mt-0.5">
               "{pastMemory.content.slice(0, 120)}..."
@@ -862,7 +865,7 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
             }}
             className="shrink-0 rounded-full border-[var(--ink)] px-2.5 py-1 font-gelica text-[10px] font-bold text-[var(--ink)] hover:bg-[var(--ink)] hover:text-white transition-colors"
           >
-            o güne git
+            {t("journal.go_today")}
           </button>
         </div>
       )}
@@ -1162,7 +1165,7 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
             <div className="mt-4 flex items-center justify-between pt-3 border-t border-black/5">
               <button
                 onClick={handleAddNewSession}
-                aria-label="yeni günlük notu ekle"
+                aria-label={t("journal.aria_new_entry")}
                 className="font-handwritten text-xs text-[var(--accent)] font-bold hover:underline"
               >
                 {t("journal.add_note")}
@@ -1170,7 +1173,7 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
 
               <button
                 onClick={() => saveCurrentEntry(currentText, selectedMood, penLayer)}
-                aria-label="günlüğü kaydet"
+                aria-label={t("journal.aria_save")}
                 className="rounded-[20px] bg-[var(--ink)] text-[var(--app-bg)] px-4 py-1.5 font-gelica text-xs font-semibold shadow-xs hover:bg-[var(--accent)] transition-colors"
               >
                 {t("act.save_now")}
@@ -1213,14 +1216,14 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
                 {searchQuery ? t("journal.empty_search") : t("journal.empty")}
               </h4>
               <p className="font-geist text-xs text-[var(--ink-soft)] max-w-sm mx-auto mt-1 mb-4 leading-relaxed">
-                bugün aklından ne geçiyor? istersen küçük bir şey yaz, kimse okumayacak, bu senin sayfan.
+                {t("journal.placeholder")}
               </p>
               <button
                 onClick={() => setActiveTab("write")}
-                aria-label="yazmaya geç"
+                aria-label={t("journal.aria_go_write")}
                 className="rounded-[20px] bg-[var(--accent)] px-4 py-2 font-gelica text-xs font-bold text-white shadow-sm hover:opacity-95"
               >
-                ilk sayfanı yaz
+                {t("journal.first_page")}
               </button>
             </div>
           ) : (
@@ -1254,7 +1257,7 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
                         }}
                         className="font-gelica text-xs font-semibold text-[var(--accent)] hover:underline"
                       >
-                        düzenle
+                        {t("act.edit")}
                       </button>
                     </div>
 
@@ -1318,7 +1321,7 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
             >
               <div className="mb-3 flex items-center justify-between">
                 <h4 className="font-gelica text-base font-bold text-[var(--ink)]">
-                  günlük mahremiyet kilidi
+                  {t("journal.privacy")}
                 </h4>
                 <button
                   onClick={() => setIsPinModalOpen(false)}
@@ -1329,7 +1332,7 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
               </div>
 
               <p className="font-geist text-xs text-[var(--ink-soft)] mb-4 leading-relaxed">
-                4 haneli bir PIN belirleyerek günlüğünü meraklı gözlerden koru. Boş bırakıp kaydedersen kilit kaldırılır.
+                {t("journal.privacy_desc")}
               </p>
 
               <input
