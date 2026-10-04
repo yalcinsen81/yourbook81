@@ -87,22 +87,12 @@ function renderMoodSketchIcon(moodId: string, size = 14) {
 }
 
 const MOODS = [
-  { id: "peaceful", emoji: "", label: "huzurlu", color: "bg-emerald-500/15 text-emerald-700 border-emerald-400" },
-  { id: "productive", emoji: "", label: "üretken", color: "bg-orange-500/15 text-orange-700 border-orange-400" },
-  { id: "calm", emoji: "", label: "sakin", color: "bg-blue-500/15 text-blue-700 border-blue-400" },
-  { id: "tired", emoji: "", label: "yorgun", color: "bg-amber-500/15 text-amber-700 border-amber-400" },
-  { id: "tense", emoji: "", label: "gergin", color: "bg-purple-500/15 text-purple-700 border-purple-400" },
-  { id: "hard", emoji: "", label: "zor bir gün", color: "bg-slate-500/15 text-slate-700 border-slate-400" },
-];
-
-const WRITING_PROMPTS = [
-  "bugün seni gülümseten küçük bir an oldu mu?",
-  "bugün en çok ne yordu seni, neden?",
-  "yarına kendine fısıldamak istediğin tek bir not...",
-  "şu an zihninden geçen filtresiz ilk cümle ne?",
-  "bugün öğrendiğin ya da fark ettiğin bir şey var mı?",
-  "kendine bugün için neyi affetmek veya teşekkür etmek istersin?",
-  "etrafında şu an hissettiğin 3 somut ayrıntı nedir?",
+  { id: "peaceful", emoji: "", color: "bg-emerald-500/15 text-emerald-700 border-emerald-400" },
+  { id: "productive", emoji: "", color: "bg-orange-500/15 text-orange-700 border-orange-400" },
+  { id: "calm", emoji: "", color: "bg-blue-500/15 text-blue-700 border-blue-400" },
+  { id: "tired", emoji: "", color: "bg-amber-500/15 text-amber-700 border-amber-400" },
+  { id: "tense", emoji: "", color: "bg-purple-500/15 text-purple-700 border-purple-400" },
+  { id: "hard", emoji: "", color: "bg-slate-500/15 text-slate-700 border-slate-400" },
 ];
 
 export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: JournalViewProps) {

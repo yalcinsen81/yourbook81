@@ -8,6 +8,7 @@
 - **Sync:** `syncEngine.ts` artık üç yönlü birleştirme (base/local/cloud) yapar; base `yourbook_sync_base_v1` anahtarında (cihaza özel, SYNC_KEYS'te DEĞİL). `id`'li diziler öğe bazında birleşir.
 - **Alarm:** "ertele" artık SW zamanlayıcısı değil; SW sayfaya `SNOOZE_ALARM` mesajı yollar (pencere yoksa `/?snooze=kind:id:dk`). `snoozeAgendaEvent()` alarm.ts'te.
 - **Perf:** ağır görünümler `React.lazy`; tr dışındaki sözlükler `loadDictionary()` ile lazy. Testler sözlükleri `src/i18n/allLocales.ts` ile yükler.
+- **i18n denetimi:** `node qa/audit-tr.mjs [--files]` kaynakta kalan sabit Türkçe metinleri listeler. Kalanlar bilerek bırakıldı: örnek kart/dil adı verileri, `LANGS` kimlikleri (kayıtlı değer), eski örnek kayıt eşleşme metinleri, LovableInspector.
 - **Repo:** ekran görüntüleri `docs/screenshots/`, QA betikleri `qa/`, `vite.config.mts`.
 
 ## 🔴 0. YENİ CHAT İÇİN ÖNCE OKU (Handoff)

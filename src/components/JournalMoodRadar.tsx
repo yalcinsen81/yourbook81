@@ -33,64 +33,41 @@ interface JournalMoodRadarProps {
   onNewEntry?: () => void;
 }
 
-const MONTH_NAMES_TR = [
-  "Ocak",
-  "Şubat",
-  "Mart",
-  "Nisan",
-  "Mayıs",
-  "Haziran",
-  "Temmuz",
-  "Ağustos",
-  "Eylül",
-  "Ekim",
-  "Kasım",
-  "Aralık",
-];
-
-const WEEKDAYS_TR = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
-
 const MOOD_META: Record<
   string,
-  { label: string; color: string; badgeBg: string; textColor: string; icon: React.ReactNode }
+  { color: string; badgeBg: string; textColor: string; icon: React.ReactNode }
 > = {
   peaceful: {
-    label: "huzurlu",
     color: "#10b981",
     badgeBg: "bg-emerald-500/15 border-emerald-400",
     textColor: "text-emerald-700",
     icon: <SketchMoodPeaceful size={14} strokeWidth={1.8} />,
   },
   productive: {
-    label: "üretken",
     color: "#f97316",
     badgeBg: "bg-orange-500/15 border-orange-400",
     textColor: "text-orange-700",
     icon: <SketchMoodProductive size={14} strokeWidth={1.8} />,
   },
   calm: {
-    label: "sakin",
     color: "#3b82f6",
     badgeBg: "bg-blue-500/15 border-blue-400",
     textColor: "text-blue-700",
     icon: <SketchMoodCalm size={14} strokeWidth={1.8} />,
   },
   tired: {
-    label: "yorgun",
     color: "#f59e0b",
     badgeBg: "bg-amber-500/15 border-amber-400",
     textColor: "text-amber-700",
     icon: <SketchMoodTired size={14} strokeWidth={1.8} />,
   },
   tense: {
-    label: "gergin",
     color: "#a855f7",
     badgeBg: "bg-purple-500/15 border-purple-400",
     textColor: "text-purple-700",
     icon: <SketchMoodTense size={14} strokeWidth={1.8} />,
   },
   hard: {
-    label: "zor gün",
     color: "#64748b",
     badgeBg: "bg-slate-500/15 border-slate-400",
     textColor: "text-slate-700",
