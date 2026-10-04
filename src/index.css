@@ -813,9 +813,10 @@ body.font-custom,
 html, body { overflow-x: hidden; }
 
 /* WCAG AA theme color roles: geometry/layout untouched. */
-[class*="bg-[var(--accent)]"] { color: var(--on-accent) !important; }
-[class*="bg-[var(--accent)]"] svg, [class*="bg-[var(--accent)]"] svg * { color: var(--on-accent) !important; stroke: currentColor; }
-[class*="text-[var(--accent)]"] { color: var(--accent-text) !important; }
-[class*="border-[var(--accent)]"] { border-color: var(--accent-text) !important; }
+/* NOT: Eskiden burada bg-/text-/border-[var(--accent)] sınıflarının rengini ezen WCAG kuralları vardı.
+   Bu kurallar hiçbir yerde tanımlı olmayan --on-accent / --accent-text değişkenlerine bağlıydı;
+   geçersiz sayılıp yazıların çevresinden koyu rengi miras almasına ve hover varyantlarının
+   (hover:text-[var(--accent)]) sürekli etkili olmasına yol açıyordu. 2026-10-03 öncesi görünüm
+   için kaldırıldı. Odak halkası aşağıda --accent-text kullanır (App.tsx tanımlar). */
 :focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
 :disabled, [aria-disabled="true"] { color: color-mix(in srgb, var(--ink-soft) 80%, var(--paper)) !important; border-color: var(--ink-soft) !important; }
