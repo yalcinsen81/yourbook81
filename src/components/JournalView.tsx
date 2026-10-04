@@ -204,7 +204,10 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
     return () => window.clearTimeout(id);
   }, [jumpFlash]);
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "idle">("idle");
-  const [currentEntryId, setCurrentEntryId] = useState<string | null>(null);
+  // Kayıt kimliği ref'te tutulur: otomatik kaydetme zamanlayıcısı ve "kaydet" düğmesi
+  // bayat bir kapanıştan okumasın diye (aksi halde aynı metin iki kez kaydedilirdi).
+  const currentEntryIdRef = useRef<string | null>(null);
+  const setCurrentEntryId = (id: string | null) => { currentEntryIdRef.current = id; };
 
   // Kullanıcının kendi elinden çıkan imza örneği (varsa günlük sayfasında gösterilir)
   const [signatureImage, setSignatureImage] = useState<string | null>(null);
@@ -302,23 +305,33 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
     const hasPen = !!pen && Array.isArray(pen.strokes) && pen.strokes.length > 0;
     if (!text.trim() && !hasPen) return;
 
+    // Bekleyen otomatik kaydetme varsa iptal et: bu çağrı zaten en güncel metni kaydediyor.
+    if (saveTimeoutRef.current) {
+      window.clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+
     setSaveStatus("saving");
     const now = new Date();
     const timeStr = now.toTimeString().slice(0, 5);
     const words = text.trim().split(/\s+/).filter(Boolean).length;
 
+    const editingId = currentEntryIdRef.current;
+    const newId = editingId ? null : "j-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6);
+    if (newId) setCurrentEntryId(newId);
+
     setEntries((prev) => {
       // Eğer mevcut bir gün girdisi düzenleniyorsa yerinde güncelle
-      if (currentEntryId) {
+      if (editingId) {
         return prev.map((e) =>
-          e.id === currentEntryId
+          e.id === editingId
             ? { ...e, content: text, mood, wordCount: words, timestamp: Date.now(), pen: pen ?? e.pen ?? null }
             : e
         );
       }
       // Yeni girdi oluştur
       const newEntry: JournalEntry = {
-        id: "j-" + Date.now(),
+        id: newId as string,
         dateKey: selectedDateKey,
         timeStr,
         timestamp: Date.now(),
@@ -328,7 +341,6 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
         wordCount: words,
         pen: pen ?? null,
       };
-      setCurrentEntryId(newEntry.id);
 
       // İlk defa kaydedildiğinde nazik bir XP hediyesi (+8 XP)
       if (onAwardXp && words >= 5) {
