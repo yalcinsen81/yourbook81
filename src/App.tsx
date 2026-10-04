@@ -1,18 +1,10 @@
 import { NotebookCustomizeModal } from "./components/NotebookCustomizeModal";
 import { TimeLightingOverlay } from "./components/TimeLightingOverlay";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { SuperrSidebar, type NavView } from "./components/SuperrSidebar";
 import { SuperrHero } from "./components/SuperrHero";
 import { OnboardingFlow } from "./components/OnboardingFlow";
-import { StudyDesk } from "./components/StudyDesk";
-import { NotesView } from "./components/NotesView";
-import { DailyNotesView } from "./components/DailyNotesView";
-import { JournalView } from "./components/JournalView";
-import { CollectionsView } from "./components/CollectionsView";
-import { WorkProjectsView } from "./components/WorkProjectsView";
-import { YouTubeLinksView } from "./components/YouTubeLinksView";
-import { CalendarAgendaView } from "./components/CalendarAgendaView";
 import { QuickAdd } from "./components/QuickAdd";
 import { CommandPalette } from "./components/CommandPalette";
 import { AlarmAlert } from "./components/AlarmAlert";
@@ -57,6 +49,16 @@ import {
   useSidebarVisibility,
   useSidebarWidth,
 } from "./lib/useSidebarVisibility";
+// Agir görünümler ilk açılışta yüklenmez; ilk ziyarette parça olarak getirilir.
+const StudyDesk = lazy(() => import("./components/StudyDesk").then((m) => ({ default: m.StudyDesk })));
+const NotesView = lazy(() => import("./components/NotesView").then((m) => ({ default: m.NotesView })));
+const DailyNotesView = lazy(() => import("./components/DailyNotesView").then((m) => ({ default: m.DailyNotesView })));
+const JournalView = lazy(() => import("./components/JournalView").then((m) => ({ default: m.JournalView })));
+const CollectionsView = lazy(() => import("./components/CollectionsView").then((m) => ({ default: m.CollectionsView })));
+const WorkProjectsView = lazy(() => import("./components/WorkProjectsView").then((m) => ({ default: m.WorkProjectsView })));
+const YouTubeLinksView = lazy(() => import("./components/YouTubeLinksView").then((m) => ({ default: m.YouTubeLinksView })));
+const CalendarAgendaView = lazy(() => import("./components/CalendarAgendaView").then((m) => ({ default: m.CalendarAgendaView })));
+
 export default function App() {
   return (
     <EngagementProvider>
@@ -754,6 +756,7 @@ function AppContent() {
             Ana tuval her zaman --app-bg dolgulu olduğu için "beyaz flash" da imkânsız. */}
         {/* mode="popLayout": yeni sayfa ANINDA mount olur, eski sayfa ayni anda cikar.
             popLayout eski+yeni icerigi ayni anda gosteriyordu (masa gecisinde "hayalet" metin). */}
+        <Suspense fallback={null}>
         <AnimatePresence mode="wait" initial={false}>
           {/* 1. Giriş ve Defter */}
           {currentView === "hero" && (
@@ -961,6 +964,7 @@ function AppContent() {
             </motion.div>
           )}
         </AnimatePresence>
+        </Suspense>
       </main>
 
       {/* 3. Komut Paleti (Ctrl + K) */}
