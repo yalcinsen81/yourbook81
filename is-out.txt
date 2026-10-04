@@ -1,0 +1,294 @@
+﻿url        https://yourbook-app.vercel.app/
+http       200
+load       7765ms
+title      "yourbook — çalışma defteri & ajanda"
+bodyChars  1815
+patchright C:\Users\yalci\.vscode\extensions\danielsanmedium.dscodegpt-3.24.75\standalone/
+text       your book çalışma defteri & ajanda giriş yap / kaydol cihazda kayıtlı GİRİŞ ara veya komut... ⌘K DEFTER BÖLÜMLERİ giriş & defter kapağı tüm notlar [0] günlük notlar ve görevler bugün sevgili günlük iç
+script     {
+ "isHits": [
+  {
+   "text": "iş",
+   "chain": [
+    {
+     "tag": "span",
+     "cls": "font-handwritten text-[var(--accent)] text-[12px] flex-shrink-0 ms-auto ps-1 font-bold",
+     "bg": "rgba(0, 0, 0, 0)",
+     "color": "rgb(255, 111, 30)",
+     "border": "0px solid rgb(255, 111, 30)",
+     "radius": "0px",
+     "font": "Kalam",
+     "fs": "12px",
+     "text": "iş",
+     "box": [
+      237,
+      378,
+      13,
+      16
+     ]
+    },
+    {
+     "tag": "button",
+     "cls": "relative flex h-[26px] w-full items-center justify-between rounded-[20px] px-3.5 text-xs font-gelica font-semibold transition-colors z-10 text-[var(--",
+     "bg": "rgba(0, 0, 0, 0)",
+     "color": "rgb(28, 25, 23)",
+     "border": "0px solid rgb(28, 25, 23)",
+     "radius": "20px",
+     "font": "Gelica",
+     "fs": "12px",
+     "text": "iş ve projeler. iş",
+     "box": [
+      14,
+      373,
+      250,
+      26
+     ]
+    },
+    {
+     "tag": "div",
+     "cls": "relative z-0 flex-1 overflow-y-auto px-3.5 pt-[9px] pb-6 space-y-[3px] scrollbar-none",
+     "bg": "rgba(0, 0, 0, 0)",
+     "color": "rgb(28, 25, 23)",
+     "border": "0px solid rgb(28, 25, 23)",
+     "radius": "0px",
+     "font": "Inter",
+     "fs": "16px",
+     "text": "DEFTER BÖLÜMLERİ giriş & defter kapağı t",
+     "box": [
+      0,
+      196,
+      278,
+      618
+     ]
+    },
+    {
+     "tag": "aside",
+     "cls": "relative z-20 flex h-full  flex-col border-r-2 border-[var(--ink)] text-[var(--ink)] select-none flex-shrink-0",
+     "bg": "rgb(243, 236, 226)",
+     "color": "rgb(28, 25, 23)",
+     "border": "",
+     "radius": "0px",
+     "font": "Inter",
+     "fs": "16px",
+     "text": "your book çalışma defteri & ajanda Q QA ",
+     "box": [
+      0,
+      0,
+      280,
+      900
+     ]
+    }
+   ]
+  }
+ ],
+ "menuItems": [
+  {
+   "text": "Q QA yerel profil KİMLİK",
+   "bg": "rgb(250, 247, 242)",
+   "color": "rgb(28, 25, 23)",
+   "fw": "400",
+   "box": [
+    12,
+    81,
+    254,
+    49
+   ]
+  },
+  {
+   "text": "ara veya komut... ⌘K",
+   "bg": "rgb(250, 247, 242)",
+   "color": "rgb(28, 25, 23)",
+   "fw": "400",
+   "box": [
+    12,
+    146,
+    254,
+    35
+   ]
+  },
+  {
+   "text": "giriş & defter kapağı",
+   "bg": "rgba(0, 0, 0, 0)",
+   "color": "rgb(250, 247, 242)",
+   "fw": "600",
+   "box": [
+    14,
+    225,
+    250,
+    29
+   ]
+  },
+  {
+   "text": "tüm notlar [0]",
+   "bg": "rgba(0, 0, 0, 0)",
+   "color": "rgb(28, 25, 23)",
+   "fw": "600",
+   "box": [
+    14,
+    257,
+    250,
+    26
+   ]
+  },
+  {
+   "text": "sevgili günlük iç dök",
+   "bg": "rgba(0, 0, 0, 0)",
+   "color": "rgb(28, 25, 23)",
+   "fw": "600",
+   "box": [
+    14,
+    315,
+    250,
+    26
+   ]
+  },
+  {
+   "text": "klasörlenmiş notlar not",
+   "bg": "rgba(0, 0, 0, 0)",
+   "color": "rgb(28, 25, 23)",
+   "fw": "600",
+   "box": [
+    14,
+    344,
+    250,
+    26
+   ]
+  },
+  {
+   "text": "iş ve projeler. iş",
+   "bg": "rgba(0, 0, 0, 0)",
+   "color": "rgb(28, 25, 23)",
+   "fw": "600",
+   "box": [
+    14,
+    373,
+    250,
+    26
+   ]
+  },
+  {
+   "text": "takvim ve ajanda ajanda",
+   "bg": "rgba(0, 0, 0, 0)",
+   "color": "rgb(28, 25, 23)",
+   "fw": "600",
+   "box": [
+    14,
+    402,
+    250,
+    26
+   ]
+  },
+  {
+   "text": "dil masaları 6 dil masası",
+   "bg": "rgba(0, 0, 0, 0)",
+   "color": "rgb(28, 25, 23)",
+   "fw": "600",
+   "box": [
+    14,
+    431,
+    250,
+    30
+   ]
+  },
+  {
+   "text": "yeni çalışma masası",
+   "bg": "rgba(0, 0, 0, 0)",
+   "color": "rgb(28, 25, 23)",
+   "fw": "600",
+   "box": [
+    14,
+    464,
+    250,
+    26
+   ]
+  },
+  {
+   "text": "youtube arşivi video",
+   "bg": "rgba(0, 0, 0, 0)",
+   "color": "rgb(28, 25, 23)",
+   "fw": "600",
+   "box": [
+    14,
+    493,
+    250,
+    26
+   ]
+  },
+  {
+   "text": "krem portakal",
+   "bg": "rgba(0, 0, 0, 0)",
+   "color": "rgb(250, 247, 242)",
+   "fw": "600",
+   "box": [
+    14,
+    542,
+    250,
+    26
+   ]
+  },
+  {
+   "text": "nane yeşili",
+   "bg": "rgba(0, 0, 0, 0)",
+   "color": "rgb(28, 25, 23)",
+   "fw": "600",
+   "box": [
+    14,
+    571,
+    250,
+    26
+   ]
+  },
+  {
+   "text": "okyanus defteri",
+   "bg": "rgba(0, 0, 0, 0)",
+   "color": "rgb(28, 25, 23)",
+   "fw": "600",
+   "box": [
+    14,
+    600,
+    250,
+    26
+   ]
+  },
+  {
+   "text": "türkçe 🇹🇷",
+   "bg": "rgba(0, 0, 0, 0)",
+   "color": "rgb(28, 25, 23)",
+   "fw": "600",
+   "box": [
+    14,
+    649,
+    250,
+    26
+   ]
+  },
+  {
+   "text": "taktil ses",
+   "bg": "rgb(250, 247, 242)",
+   "color": "rgb(28, 25, 23)",
+   "fw": "400",
+   "box": [
+    12,
+    864,
+    95,
+    26
+   ]
+  },
+  {
+   "text": "yükle",
+   "bg": "rgb(250, 247, 242)",
+   "color": "rgb(255, 111, 30)",
+   "fw": "400",
+   "box": [
+    113,
+    865,
+    64,
+    25
+   ]
+  }
+ ]
+}
+
+console errors/warnings (0):
+
+requests failed (0):

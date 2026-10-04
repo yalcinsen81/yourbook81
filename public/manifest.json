@@ -1,0 +1,72 @@
+{
+  "id": "/",
+  "name": "yourbook — çalışma defteri & ajanda",
+  "short_name": "yourbook",
+  "description": "Superr Defter estetiğine sahip kişisel çalışma, Almanca & İngilizce SRS dil kartları, notlar ve ajanda uygulaması.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#faf7f2",
+  "theme_color": "#faf7f2",
+  "lang": "tr",
+  "dir": "ltr",
+  "categories": ["education", "productivity", "lifestyle"],
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Almanca Masası",
+      "short_name": "Almanca",
+      "description": "Almanca kelime kartları masasını aç",
+      "url": "/?view=cards&space=space-de",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "İngilizce Masası",
+      "short_name": "İngilizce",
+      "description": "İngilizce kelime kartları masasını aç",
+      "url": "/?view=cards&space=space-en",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Günlük Notlar",
+      "short_name": "Günlük",
+      "description": "Bugünün görevleri ve düşünce defteri",
+      "url": "/?view=daily",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Takvim ve Ajanda",
+      "short_name": "Ajanda",
+      "description": "Saatlik plan ve alarmlar",
+      "url": "/?view=calendar",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+node_modules
+dist
+.vercel
+*.log
+
+.vercel
+
+.env
+.env.local
+.env.*.local
+!.env.example
