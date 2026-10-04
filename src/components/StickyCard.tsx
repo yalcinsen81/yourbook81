@@ -282,7 +282,7 @@ export function StickyCard({ card, onLearn, onForgot, onUpdateImage, onEdit, onD
                   +{XP_FOR_LEARN} XP {t("praise.2")}
                 </span>
               </div>
-              <span className="font-gelica text-[11px] font-semibold text-[var(--ink)] uppercase tracking-wider mt-0.5">
+              <span className="font-geist text-[11px] font-semibold text-[var(--ink)] uppercase tracking-wider mt-0.5">
                 {t("cards.sealed")}
               </span>
             </div>
@@ -312,7 +312,7 @@ export function StickyCard({ card, onLearn, onForgot, onUpdateImage, onEdit, onD
         <div className="flex items-center gap-2">
           <motion.span
             whileHover={{ scale: 1.05 }}
-            className="inline-flex items-center gap-1.5 rounded-[20px] border border-[var(--line-strong)] bg-[var(--paper)] px-3 py-1 font-gelica text-xs font-semibold text-[var(--ink)]"
+            className="inline-flex items-center gap-1.5 rounded-[20px] border border-[var(--line-strong)] bg-[var(--paper)] px-3 py-1 font-geist text-xs font-semibold text-[var(--ink)]"
           >
             <span>
               {card.article
@@ -437,7 +437,7 @@ export function StickyCard({ card, onLearn, onForgot, onUpdateImage, onEdit, onD
               aria-expanded={speakMenuOpen}
               title={t("card.speak_menu")}
               data-speak-menu-toggle="1"
-              className="absolute -end-1.5 -bottom-1 flex h-4 w-4 items-center justify-center rounded-full border-[1.2px] border-[var(--ink)] bg-[var(--app-bg)] text-[var(--ink)] shadow-superrButton"
+              className="absolute -end-1.5 -bottom-1 flex h-4 w-4 items-center justify-center rounded-full border-[1.2px] border-[var(--line-strong)] bg-[var(--app-bg)] text-[var(--ink)] shadow-superrButton"
             >
               <ChevronDown size={9} />
             </button>
@@ -524,8 +524,8 @@ export function StickyCard({ card, onLearn, onForgot, onUpdateImage, onEdit, onD
         </div>
         {/* Kağıt kart flip: blur yerine kısa 3D Y dönüşü. */}
         <motion.div onClick={toggleRecall} className="group/recall relative mt-5 cursor-pointer [perspective:1000px]" animate={{ rotateY: isReducedMotion || !isTranslationRevealed ? 0 : 180 }} transition={{ duration: isReducedMotion ? 0 : 0.24, ease: [0.23, 1, 0.32, 1] }} style={{ transformStyle: "preserve-3d" }} aria-label={t("cards.meaning")}>
-          <div className="relative min-h-[118px] rounded-[14px] border border-[var(--line-strong)] bg-[var(--paper)] p-4 shadow-superrCard [backface-visibility:hidden] [transform:rotateY(0deg)]"><div className="flex items-center justify-between pb-2 text-xs font-gelica text-[var(--ink-soft)]"><span className="font-semibold text-[var(--ink)]">{t("cards.meaning")}</span><EyeOff size={12} /></div><p className="font-mono text-xs text-[var(--ink-soft)]">{t("sticky.hidden")}</p></div>
-          <div className="absolute inset-0 min-h-[118px] rounded-[14px] border border-[var(--line-strong)] bg-[var(--paper)] p-4 shadow-superrCard [backface-visibility:hidden] [transform:rotateY(180deg)]"><div className="flex items-center justify-between pb-2 text-xs font-gelica text-[var(--ink-soft)]"><span className="font-semibold text-[var(--ink)]">{t("cards.meaning")}</span><Eye size={12} /></div><p className="font-gelica text-[19px] font-medium leading-[1.4] text-[var(--ink)]">{card.translation}</p>{card.note && <p className="mt-2 font-geist text-xs text-[var(--ink-soft)]">• {noteLabel(card.note)}</p>}</div>
+          <div className="relative min-h-[118px] rounded-[14px] border border-[var(--line-strong)] bg-[var(--paper)] p-4 shadow-superrCard [backface-visibility:hidden] [transform:rotateY(0deg)]"><div className="flex items-center justify-between pb-2 text-xs font-geist text-[var(--ink-soft)]"><span className="font-semibold text-[var(--ink)]">{t("cards.meaning")}</span><EyeOff size={12} /></div><p className="font-mono text-xs text-[var(--ink-soft)]">{t("sticky.hidden")}</p></div>
+          <div className="absolute inset-0 min-h-[118px] rounded-[14px] border border-[var(--line-strong)] bg-[var(--paper)] p-4 shadow-superrCard [backface-visibility:hidden] [transform:rotateY(180deg)]"><div className="flex items-center justify-between pb-2 text-xs font-geist text-[var(--ink-soft)]"><span className="font-semibold text-[var(--ink)]">{t("cards.meaning")}</span><Eye size={12} /></div><p className="font-gelica text-[19px] font-medium leading-[1.4] text-[var(--ink)]">{card.translation}</p>{card.note && <p className="mt-2 font-geist text-xs text-[var(--ink-soft)]">• {noteLabel(card.note)}</p>}</div>
         </motion.div>
       </div>
 
@@ -541,7 +541,7 @@ export function StickyCard({ card, onLearn, onForgot, onUpdateImage, onEdit, onD
               playPopSound();
               setDrawerOpen((prev) => !prev);
             }}
-            className="flex w-full items-center justify-between px-6 py-2.5 text-xs font-gelica font-semibold text-[var(--ink)] hover:text-[var(--accent)] transition-colors"
+            className="flex w-full items-center justify-between px-6 py-2.5 text-xs font-geist font-semibold text-[var(--ink)] hover:text-[var(--accent)] transition-colors"
           >
             <span className="flex items-center gap-2">
               <BookOpen size={13} className="text-[var(--accent)]" />
@@ -589,7 +589,7 @@ export function StickyCard({ card, onLearn, onForgot, onUpdateImage, onEdit, onD
           {/* MADDE 5: metin BASILAN BUTONA gore dogru araligi gosterir.
               "hatırlayamadım" -> aralik sifirlanir (1 gun) -> "yarın masaya döner"
               "öğrendim"       -> bir sonraki (daha uzun) kademe gosterilir. */}
-          <span className="font-gelica text-[11px] sm:text-xs font-semibold text-[var(--ink)]" data-srs-return="1">
+          <span className="font-geist text-[11px] sm:text-xs font-semibold text-[var(--ink)]" data-srs-return="1">
             {forgotPressed
               ? t("card.srs_return_forgot")
               : (() => {
@@ -666,21 +666,21 @@ export function StickyCard({ card, onLearn, onForgot, onUpdateImage, onEdit, onD
               </h3>
               <div className="mt-4 space-y-2.5">
                 <label className="block text-xs font-semibold text-[var(--ink-soft)]">{t("field.word")}</label>
-                <input value={editWord} onChange={(e) => setEditWord(e.target.value)} data-edit-word="1" aria-label={t("field.word")} className="w-full rounded-[10px] border-[var(--ink)] bg-[var(--app-bg)] px-3 py-2 font-gelica text-sm text-[var(--ink)]" />
+                <input value={editWord} onChange={(e) => setEditWord(e.target.value)} data-edit-word="1" aria-label={t("field.word")} className="w-full rounded-[10px] border-[var(--line-strong)] bg-[var(--app-bg)] px-3 py-2 font-gelica text-sm text-[var(--ink)]" />
                 <label className="block text-xs font-semibold text-[var(--ink-soft)]">{t("field.word_type")}</label>
-                <select value={editPos} onChange={(e) => setEditPos(e.target.value)} data-edit-pos="1" className="w-full rounded-[10px] border-[var(--ink)] bg-[var(--app-bg)] px-3 py-2 font-gelica text-sm text-[var(--ink)]">
+                <select value={editPos} onChange={(e) => setEditPos(e.target.value)} data-edit-pos="1" className="w-full rounded-[10px] border-[var(--line-strong)] bg-[var(--app-bg)] px-3 py-2 font-gelica text-sm text-[var(--ink)]">
                   <option value="">—</option><option value="noun">{t("pos.noun")}</option><option value="verb">{t("pos.verb")}</option><option value="adjective">{t("pos.adj")}</option><option value="adverb">{t("pos.adv")}</option>
                 </select>
                 {editPos === "noun" && ["DE","IT","ES","FR"].includes(card.lang) && <>
                   <label className="block text-xs font-semibold text-[var(--ink-soft)]">{t("field.artikel")}</label>
-                  <select value={editArticle} onChange={(e) => setEditArticle(e.target.value)} data-edit-article="1" className="w-full rounded-[10px] border-[var(--ink)] bg-[var(--app-bg)] px-3 py-2 font-gelica text-sm text-[var(--ink)]">
+                  <select value={editArticle} onChange={(e) => setEditArticle(e.target.value)} data-edit-article="1" className="w-full rounded-[10px] border-[var(--line-strong)] bg-[var(--app-bg)] px-3 py-2 font-gelica text-sm text-[var(--ink)]">
                     <option value="">—</option>{({DE:["der","die","das"],IT:["il","lo","la"],ES:["el","la"],FR:["le","la"]}[card.lang] || []).map((a) => <option key={a} value={a}>{a}</option>)}
                   </select>
                 </>}
                 <label className="block text-xs font-semibold text-[var(--ink-soft)]">{t("cards.meaning")}</label>
-                <input value={editTrans} onChange={(e) => setEditTrans(e.target.value)} data-edit-trans="1" aria-label={t("cards.meaning")} className="w-full rounded-[10px] border-[var(--ink)] bg-[var(--app-bg)] px-3 py-2 font-gelica text-sm text-[var(--ink)]" />
+                <input value={editTrans} onChange={(e) => setEditTrans(e.target.value)} data-edit-trans="1" aria-label={t("cards.meaning")} className="w-full rounded-[10px] border-[var(--line-strong)] bg-[var(--app-bg)] px-3 py-2 font-gelica text-sm text-[var(--ink)]" />
                 <label className="block text-xs font-semibold text-[var(--ink-soft)]">{t("field.note")}</label>
-                <input value={editNote} onChange={(e) => setEditNote(e.target.value)} data-edit-note="1" aria-label={t("field.note")} className="w-full rounded-[10px] border-[var(--ink)] bg-[var(--app-bg)] px-3 py-2 font-geist text-xs text-[var(--ink)]" />
+                <input value={editNote} onChange={(e) => setEditNote(e.target.value)} data-edit-note="1" aria-label={t("field.note")} className="w-full rounded-[10px] border-[var(--line-strong)] bg-[var(--app-bg)] px-3 py-2 font-geist text-xs text-[var(--ink)]" />
               </div>
               <div className="mt-5 flex justify-end gap-2">
                 <button onClick={() => setEditOpen(false)} className="btn-pill-superr text-xs">

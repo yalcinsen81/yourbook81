@@ -239,7 +239,7 @@ export function WordHuntGame({
           {/* Üst Bar: Başlık & Kapat */}
           <div className="mb-4 flex items-center justify-between border-b border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] pb-3">
             <div className="flex items-center gap-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--accent)] text-white font-gelica text-xs font-bold shadow-sm">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--accent)] text-white font-geist text-xs font-bold shadow-sm">
                               </span>
               <div>
                 <h3 className="font-gelica text-base font-bold text-[var(--ink)]">
@@ -292,7 +292,7 @@ export function WordHuntGame({
               ) : (
                 <div className="w-full rounded-[12px] border border-amber-300 bg-amber-50 p-4 text-center">
                   <span className="text-xl mb-1 block">⏳</span>
-                  <p className="font-gelica text-xs font-bold text-amber-900 mb-1">
+                  <p className="font-geist text-xs font-bold text-amber-900 mb-1">
                     {t("hunt.need4")}
                   </p>
                   <p className="font-geist text-[11px] text-amber-700 leading-normal">
@@ -362,7 +362,7 @@ export function WordHuntGame({
                   const isSelected = selectedOption === opt;
                   const isCorrect = opt === currentQ.correctAnswer;
 
-                  let btnStyle = "border-[var(--ink)] bg-[var(--paper)] text-[var(--ink)] hover:bg-[color-mix(in_srgb,var(--accent)_10%,transparent)]";
+                  let btnStyle = "border-[var(--line-strong)] bg-[var(--paper)] text-[var(--ink)] hover:bg-[color-mix(in_srgb,var(--accent)_10%,transparent)]";
                   if (isAnswerChecked) {
                     if (isCorrect) {
                       btnStyle = "border-emerald-600 bg-emerald-50 text-emerald-800 shadow-sm";
@@ -445,7 +445,7 @@ export function WordHuntGame({
               {totalXpEarned > 0 && (
                 <div className="inline-flex items-center gap-2 rounded-full border border-amber-300 bg-amber-50 px-4 py-1.5 shadow-sm">
                   <SketchSparkles size={16} className="text-amber-600 shrink-0" strokeWidth={1.8} />
-                  <span className="font-gelica text-xs font-bold text-amber-900">
+                  <span className="font-geist text-xs font-bold text-amber-900">
                     {t("hunt.xp_earned").replace("{n}", String(totalXpEarned))}
                   </span>
                 </div>
@@ -479,13 +479,13 @@ export function WordHuntGame({
               <div className="flex gap-2 pt-2">
                 <button
                   onClick={onClose}
-                  className="flex-1 rounded-[20px] border border-[var(--line)] py-2.5 font-gelica text-xs font-semibold text-[var(--ink)] hover:bg-[var(--app-bg)] transition-colors"
+                  className="flex-1 rounded-[20px] border border-[var(--line)] py-2.5 font-geist text-xs font-semibold text-[var(--ink)] hover:bg-[var(--app-bg)] transition-colors"
                 >
                   {t("hunt.back")}
                 </button>
                 <button
                   onClick={startNewGame}
-                  className="flex-1 rounded-[20px] bg-[var(--accent)] py-2.5 font-gelica text-xs font-bold text-white shadow-sm hover:opacity-95 transition-opacity"
+                  className="flex-1 rounded-[20px] bg-[var(--accent)] py-2.5 font-geist text-xs font-bold text-white shadow-sm hover:opacity-95 transition-opacity"
                 >
                   <span className="inline-flex items-center justify-center gap-1.5"><span>{t("hunt.play_again")}</span><SketchBow size={13} strokeWidth={1.8} /></span>
                 </button>

@@ -87,7 +87,7 @@ export function InstallPwaModal({
 
               {isInstalled ? (
                 /* 1. Zaten Yüklü Durum */
-                <div className="bg-[color-mix(in_srgb,var(--accent)_12%,var(--paper))] p-4 rounded-[12px] border border-[var(--line)] flex items-center gap-3 text-xs font-gelica">
+                <div className="bg-[color-mix(in_srgb,var(--accent)_12%,var(--paper))] p-4 rounded-[12px] border border-[var(--line)] flex items-center gap-3 text-xs font-geist">
                   <span className="p-1.5 rounded-full bg-[#22c55e] text-white">
                     <Check size={14} strokeWidth={2.6} />
                   </span>
@@ -103,7 +103,7 @@ export function InstallPwaModal({
               ) : isIOS ? (
                 /* 2. iOS Safari Özel Yönergesi */
                 <div className="space-y-3 bg-[var(--app-bg)] p-4 rounded-[12px] border border-[var(--line)] text-xs font-geist">
-                  <span className="font-gelica text-xs font-bold text-[var(--ink)] block">
+                  <span className="font-geist text-xs font-bold text-[var(--ink)] block">
                     {t("pwa.ios_steps_title")}
                   </span>
                   <div className="space-y-2 text-[var(--ink-soft)]">
@@ -149,7 +149,7 @@ export function InstallPwaModal({
               <div className="pt-2 flex justify-end">
                 <button
                   onClick={onClose}
-                  className="font-gelica text-xs text-[var(--ink-soft)] hover:text-[var(--ink)] px-3 py-1"
+                  className="font-geist text-xs text-[var(--ink-soft)] hover:text-[var(--ink)] px-3 py-1"
                 >
                   kapat
                 </button>

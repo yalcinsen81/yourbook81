@@ -1,9 +1,10 @@
 // Kullanım: node <skill>/browser.mjs http://localhost:PORT/ --script qa/shot.mjs
-// Ortam: SHOT_PREFIX (dosya öneki), SHOT_THEME (tema adı, ops.)
-import fs from "fs";
+// Ortam: SHOT_PREFIX, SHOT_W, SHOT_H, SHOT_THEME (örn. "gece defteri"), SHOT_VIEWS ("hero,calendar,...")
 export default async function run(page) {
   const prefix = process.env.SHOT_PREFIX || "shot";
-  await page.setViewportSize({ width: 1440, height: 900 });
+  const W = Number(process.env.SHOT_W || 1440), H = Number(process.env.SHOT_H || 900);
+  const theme = process.env.SHOT_THEME || "";
+  await page.setViewportSize({ width: W, height: H });
   await page.evaluate(() => {
     localStorage.clear();
     localStorage.setItem("yourbook_ui_language_v1", "tr");
@@ -12,14 +13,39 @@ export default async function run(page) {
   });
   await page.reload();
   await page.waitForTimeout(2500);
+  const all = {
+    hero: null,
+    archive: "arşiv",
+    daily: "günlük notlar ve görevler",
+    notes: "klasörlenmiş notlar",
+    work: "iş ve projeler.",
+    calendar: "takvim ve ajanda",
+    youtube: "youtube arşivi",
+  };
+  const want = (process.env.SHOT_VIEWS || "hero,calendar,daily,work").split(",");
+  const mobile = W < 1024;
+  if (theme) {
+    await page.evaluate((t) => {
+      const el = [...document.querySelectorAll("span,div")].find((e) => e.children.length === 0 && e.textContent.trim() === t);
+      (el?.closest("button") || el)?.click();
+    }, theme);
+    await page.waitForTimeout(500);
+  }
   const out = [];
-  const shots = [["hero", null], ["calendar", "takvim ve ajanda"], ["journal", "günlük notlar ve görevler"], ["work", "iş ve projeler."]];
-  for (const [name, label] of shots) {
-    if (label) {
+  for (const name of want) {
+    const label = all[name];
+    if (label && !mobile) {
       await page.evaluate((l) => {
         const el = [...document.querySelectorAll("aside span, aside div, aside button")].find((e) => e.children.length === 0 && e.textContent.trim().toLowerCase() === l);
         (el?.closest("button") || el)?.click();
       }, label);
+      await page.waitForTimeout(900);
+    }
+    if (name === "cards" && !mobile) {
+      await page.evaluate(() => {
+        const el = [...document.querySelectorAll("aside span")].find((e) => /almanca/i.test(e.textContent) && e.children.length === 0);
+        (el?.closest("button") || el)?.click();
+      });
       await page.waitForTimeout(900);
     }
     const p = `docs/design/${prefix}-${name}.png`;

@@ -664,7 +664,7 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
             )}
             <button
               type="submit"
-              className="w-full rounded-[20px] bg-[var(--accent)] py-2.5 font-gelica text-xs font-bold text-white shadow-sm hover:opacity-95"
+              className="w-full rounded-[20px] bg-[var(--accent)] py-2.5 font-geist text-xs font-bold text-white shadow-sm hover:opacity-95"
             >
               {t("journal.unlock")}
             </button>
@@ -726,7 +726,7 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
                   <button
                     type="button"
                     onClick={() => { setRecoverMode(false); setRecoverError(null); setRecoverPassword(""); }}
-                    className="rounded-[20px] border border-[var(--line-strong)] bg-[var(--app-bg)] px-3 py-1.5 font-gelica text-[11px] font-semibold text-[var(--ink)]"
+                    className="rounded-[20px] border border-[var(--line-strong)] bg-[var(--app-bg)] px-3 py-1.5 font-geist text-[11px] font-semibold text-[var(--ink)]"
                   >
                     {t("act.cancel")}
                   </button>
@@ -734,7 +734,7 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
                     type="submit"
                     disabled={recoverBusy}
                     data-recover-submit="1"
-                    className="rounded-[20px] bg-[var(--accent)] px-3.5 py-1.5 font-gelica text-[11px] font-bold text-white disabled:opacity-50"
+                    className="rounded-[20px] bg-[var(--accent)] px-3.5 py-1.5 font-geist text-[11px] font-bold text-white disabled:opacity-50"
                   >
                     {recoverBusy ? "…" : t("journal.sign_in")}
                   </button>
@@ -764,7 +764,7 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
               {t("journal.title_meta")}
             </span>
             {journalStreak > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-orange-400 bg-orange-50 px-2 py-0.5 font-gelica text-[10px] font-bold text-orange-700">
+              <span className="inline-flex items-center gap-1 rounded-full border border-orange-400 bg-orange-50 px-2 py-0.5 font-geist text-[10px] font-bold text-orange-700">
                 <SketchFlame size={12} strokeWidth={2} className="shrink-0 text-orange-600" />
                 <span>{t("journal.streak_days").replace("{n}", String(journalStreak))}</span>
               </span>
@@ -783,8 +783,8 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
           <div className="flex rounded-[22px] border border-[var(--line)] bg-[var(--paper)] p-0.5 shadow-xs">
             <button
               onClick={() => { playPopSound(); setActiveTab("write"); }}
-              className={`flex items-center gap-1.5 rounded-[18px] px-3 py-1 font-gelica text-xs font-semibold transition-colors ${
-                activeTab === "write" ? "bg-[var(--ink)] text-white shadow-xs border-[var(--ink)]" : "text-[var(--ink)] border-[var(--ink)] hover:bg-[color-mix(in_srgb,var(--ink)_8%,transparent)]"
+              className={`flex items-center gap-1.5 rounded-[18px] px-3 py-1 font-geist text-xs font-semibold transition-colors ${
+                activeTab === "write" ? "bg-[var(--ink)] text-white shadow-xs border-[var(--line-strong)]" : "text-[var(--ink)] border-[var(--line-strong)] hover:bg-[color-mix(in_srgb,var(--ink)_8%,transparent)]"
               }`}
             >
               <SketchFeatherEdit size={13} strokeWidth={1.8} className="shrink-0" />
@@ -792,8 +792,8 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
             </button>
             <button
               onClick={() => { playPopSound(); setActiveTab("timeline"); }}
-              className={`flex items-center gap-1.5 rounded-[18px] px-3 py-1 font-gelica text-xs font-semibold transition-colors ${
-                activeTab === "timeline" ? "bg-[var(--ink)] text-white shadow-xs border-[var(--ink)]" : "text-[var(--ink)] border-[var(--ink)] hover:bg-[color-mix(in_srgb,var(--ink)_8%,transparent)]"
+              className={`flex items-center gap-1.5 rounded-[18px] px-3 py-1 font-geist text-xs font-semibold transition-colors ${
+                activeTab === "timeline" ? "bg-[var(--ink)] text-white shadow-xs border-[var(--line-strong)]" : "text-[var(--ink)] border-[var(--line-strong)] hover:bg-[color-mix(in_srgb,var(--ink)_8%,transparent)]"
               }`}
             >
               <SketchOpenBook size={13} strokeWidth={1.8} className="shrink-0" />
@@ -801,8 +801,8 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
             </button>
             <button
               onClick={() => { playPopSound(); setActiveTab("calendar"); }}
-              className={`flex items-center gap-1.5 rounded-[18px] px-3 py-1 font-gelica text-xs font-semibold transition-colors ${
-                activeTab === "calendar" ? "bg-[var(--ink)] text-white shadow-xs border-[var(--ink)]" : "text-[var(--ink)] border-[var(--ink)] hover:bg-[color-mix(in_srgb,var(--ink)_8%,transparent)]"
+              className={`flex items-center gap-1.5 rounded-[18px] px-3 py-1 font-geist text-xs font-semibold transition-colors ${
+                activeTab === "calendar" ? "bg-[var(--ink)] text-white shadow-xs border-[var(--line-strong)]" : "text-[var(--ink)] border-[var(--line-strong)] hover:bg-[color-mix(in_srgb,var(--ink)_8%,transparent)]"
               }`}
             >
               <SketchCompass size={13} strokeWidth={1.8} className="shrink-0" />
@@ -818,7 +818,7 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
                 setIsExportModalOpen(true);
               }}
               title={t("journal.export_modal_sub")}
-              className="flex h-8 items-center gap-1.5 rounded-full border border-[var(--line)] bg-[var(--paper)] px-2.5 text-[var(--ink)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition-colors text-xs font-gelica font-semibold"
+              className="flex h-8 items-center gap-1.5 rounded-full border border-[var(--line)] bg-[var(--paper)] px-2.5 text-[var(--ink)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition-colors text-xs font-geist font-semibold"
             >
               <Download size={13} />
               <span className="hidden sm:inline">{t("journal.export")}</span>
@@ -830,10 +830,10 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
             onClick={() => setIsPinModalOpen(true)}
             aria-label={t("journal.aria_pin_settings")}
             title={pin ? t("journal.pin_edit") : t("journal.pin_add")}
-            className={`flex h-8 items-center gap-1.5 rounded-full border px-2.5 font-gelica text-xs font-semibold transition-colors ${
+            className={`flex h-8 items-center gap-1.5 rounded-full border px-2.5 font-geist text-xs font-semibold transition-colors ${
               pin
-                ? "border-[var(--ink)] bg-[var(--ink)] text-white"
-                : "border-[var(--ink)] bg-[color-mix(in_srgb,var(--accent)_7%,var(--paper))] text-[var(--ink)] hover:bg-[color-mix(in_srgb,var(--accent)_13%,transparent)]"
+                ? "border-[var(--line-strong)] bg-[var(--ink)] text-white"
+                : "border-[var(--line-strong)] bg-[color-mix(in_srgb,var(--accent)_7%,var(--paper))] text-[var(--ink)] hover:bg-[color-mix(in_srgb,var(--accent)_13%,transparent)]"
             }`}
           >
             {pin ? (
@@ -848,13 +848,13 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
 
       {/* 2. GEÇMİŞTEN BİR SAYFA (ANLIK STICKER KARTI) */}
       {pastMemory && activeTab === "write" && (
-        <div className="paper-grain mt-4 rounded-[14px] border border-dashed border-[var(--ink)] bg-[color-mix(in_srgb,var(--accent)_9%,var(--paper))] p-3.5 flex items-start gap-3">
+        <div className="paper-grain mt-4 rounded-[14px] border border-dashed border-[var(--line-strong)] bg-[color-mix(in_srgb,var(--accent)_9%,var(--paper))] p-3.5 flex items-start gap-3">
           <span className="p-1 rounded-full bg-[color-mix(in_srgb,var(--accent)_15%,transparent)] text-[var(--accent)] shrink-0"><SketchHistoryClock size={16} strokeWidth={1.8} /></span>
           <div className="min-w-0 flex-1">
             <span className="font-handwritten text-xs font-bold text-[var(--accent)] block">
               {t("journal.past_memory", { date: pastMemory.dateKey })}
             </span>
-            <p className="font-gelica text-xs italic text-[var(--ink)] truncate mt-0.5">
+            <p className="font-geist text-xs italic text-[var(--ink)] truncate mt-0.5">
               "{pastMemory.content.slice(0, 120)}..."
             </p>
           </div>
@@ -863,7 +863,7 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
               setSelectedDateKey(pastMemory.dateKey);
               setActiveTab("write");
             }}
-            className="shrink-0 rounded-full border-[var(--ink)] px-2.5 py-1 font-gelica text-[10px] font-bold text-[var(--ink)] hover:bg-[var(--ink)] hover:text-white transition-colors"
+            className="shrink-0 rounded-full border-[var(--line-strong)] px-2.5 py-1 font-geist text-[10px] font-bold text-[var(--ink)] hover:bg-[var(--ink)] hover:text-white transition-colors"
           >
             {t("journal.go_today")}
           </button>
@@ -876,7 +876,7 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
           {/* Ruh Hali Seçici (Bugün nasıl hissediyorsun?) */}
           <div className="paper-grain rounded-[16px] border border-[var(--line)] bg-[color-mix(in_srgb,var(--accent)_7%,var(--paper))] p-4 shadow-sm">
             <div className="flex items-center justify-between pb-2.5">
-              <span className="font-gelica text-xs font-semibold lowercase text-[var(--ink)]">
+              <span className="font-geist text-xs font-semibold lowercase text-[var(--ink)]">
                 <span className="font-handwritten text-[var(--ink)] font-bold">{t("journal.mood_q")}</span>
               </span>
               {saveStatus === "saving" && (
@@ -899,10 +899,10 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
                     key={m.id}
                     onClick={() => handleMoodSelect(m.id)}
                     aria-label={`${moodLabel(m.id)} ruh hali`}
-                    className={`flex items-center gap-1.5 rounded-[20px] border-2 px-3 py-1.5 text-xs font-gelica transition-all ${
+                    className={`flex items-center gap-1.5 rounded-[20px] border-2 px-3 py-1.5 text-xs font-geist transition-all ${
                       isSelected
-                        ? "border-[var(--ink)] bg-[var(--accent)] text-white font-bold shadow-xs scale-105"
-                        : "border-[var(--ink)] bg-[color-mix(in_srgb,var(--accent)_6%,var(--paper))] text-[var(--ink)] hover:bg-[color-mix(in_srgb,var(--accent)_14%,var(--paper))]"
+                        ? "border-[var(--line-strong)] bg-[var(--accent)] text-white font-bold shadow-xs scale-105"
+                        : "border-[var(--line-strong)] bg-[color-mix(in_srgb,var(--accent)_6%,var(--paper))] text-[var(--ink)] hover:bg-[color-mix(in_srgb,var(--accent)_14%,var(--paper))]"
                     }`}
                   >
                     <span className="shrink-0">{renderMoodSketchIcon(m.id, 14)}</span>
@@ -919,7 +919,7 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
               <span className="font-handwritten text-[11px] font-bold text-[var(--accent)] block mb-0.5">
                 <span className="inline-flex items-center gap-1.5"><SketchLightbulb size={13} className="text-amber-700 shrink-0" strokeWidth={1.8} /> {t("radar.stat.prompt")}:{promptSource && ( <span data-prompt-source={promptSource} className="rounded-full border-[var(--accent)] px-1.5 py-[1px] font-geist text-[9px] font-bold text-[var(--accent)]">{t(promptSource === "agenda" ? "aprompt.from_agenda" : promptSource === "alarm" ? "aprompt.from_alarm_badge" : "aprompt.from_note_badge")}</span>)}</span>
               </span>
-              <p className="font-gelica text-xs italic text-[var(--ink)]">
+              <p className="font-geist text-xs italic text-[var(--ink)]">
                 "{activePrompt}"
               </p>
               <button
@@ -941,7 +941,7 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
                   type="date"
                   value={selectedDateKey}
                   onChange={(e) => setSelectedDateKey(e.target.value)}
-                  className="font-mono text-xs bg-transparent border border-[var(--border-ink)] rounded px-2 py-0.5 text-[var(--ink)] outline-none"
+                  className="font-mono text-xs bg-transparent border border-[var(--line-strong)] rounded px-2 py-0.5 text-[var(--ink)] outline-none"
                 />
                 {selectedDateKey === todayKey && (
                   <span className="font-handwritten text-[var(--accent)] font-bold text-xs">
@@ -950,7 +950,7 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
                 )}
               </div>
               {/* v-pen: yazim modu secici - mevcut klavye akisini DEGISTIRMEZ. */}
-              <div className="flex items-center gap-1 rounded-full border border-[var(--border-ink)] p-[2px]">
+              <div className="flex items-center gap-1 rounded-full border border-[var(--line-strong)] p-[2px]">
                 <button
                   type="button"
                   onClick={() => setPenMode("keyboard")}
@@ -1014,12 +1014,12 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
                         ? t("dict.stop")
                         : t("dict.start")
                   }
-                  className={`flex items-center gap-1 rounded-full border px-2 py-0.5 font-gelica text-[11px] font-bold transition ${
+                  className={`flex items-center gap-1 rounded-full border px-2 py-0.5 font-geist text-[11px] font-bold transition ${
                     !dictation.supported
                       ? "cursor-not-allowed border-dashed border-[var(--ink-soft)] text-[var(--ink-soft)] opacity-60"
                       : dictation.listening
                         ? "border-[var(--accent)] bg-[var(--accent)] text-white"
-                        : "border-[var(--ink)] text-[var(--ink)] hover:bg-[color-mix(in_srgb,var(--ink)_8%,transparent)]"
+                        : "border-[var(--line-strong)] text-[var(--ink)] hover:bg-[color-mix(in_srgb,var(--ink)_8%,transparent)]"
                   }`}
                 >
                   <SketchMic size={12} strokeWidth={1.8} className="shrink-0" />
@@ -1138,7 +1138,7 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
                 className="mt-4 rounded-[12px] border border-[var(--line-strong)] bg-[color-mix(in_srgb,var(--ink)_4%,var(--paper))] px-3.5 py-2.5"
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-gelica text-[11px] font-bold lowercase text-[var(--ink)]">
+                  <span className="font-geist text-[11px] font-bold lowercase text-[var(--ink)]">
                     {t("link.journal_agenda")}
                   </span>
                   <span className="font-mono text-[10px] text-[var(--accent)]">
@@ -1174,7 +1174,7 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
               <button
                 onClick={() => saveCurrentEntry(currentText, selectedMood, penLayer)}
                 aria-label={t("journal.aria_save")}
-                className="rounded-[20px] bg-[var(--ink)] text-[var(--app-bg)] px-4 py-1.5 font-gelica text-xs font-semibold shadow-xs hover:bg-[var(--accent)] transition-colors"
+                className="rounded-[20px] bg-[var(--ink)] text-[var(--app-bg)] px-4 py-1.5 font-geist text-xs font-semibold shadow-xs hover:bg-[var(--accent)] transition-colors"
               >
                 {t("act.save_now")}
               </button>
@@ -1202,7 +1202,7 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
               data-spread-open="1"
               onClick={() => { playPopSound(); setSpreadOpen(true); }}
               title={t("spread.open_tip")}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-[20px] border-[var(--ink)] bg-[var(--paper)] px-3.5 py-2.5 font-gelica text-xs font-bold text-[var(--ink)] transition hover:bg-[var(--ink)] hover:text-white"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-[20px] border-[var(--line-strong)] bg-[var(--paper)] px-3.5 py-2.5 font-geist text-xs font-bold text-[var(--ink)] transition hover:bg-[var(--ink)] hover:text-white"
             >
               <SketchOpenBook size={14} strokeWidth={1.8} />
               {t("spread.open")}
@@ -1221,7 +1221,7 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
               <button
                 onClick={() => setActiveTab("write")}
                 aria-label={t("journal.aria_go_write")}
-                className="rounded-[20px] bg-[var(--accent)] px-4 py-2 font-gelica text-xs font-bold text-white shadow-sm hover:opacity-95"
+                className="rounded-[20px] bg-[var(--accent)] px-4 py-2 font-geist text-xs font-bold text-white shadow-sm hover:opacity-95"
               >
                 {t("journal.first_page")}
               </button>
@@ -1243,7 +1243,7 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
                           {item.dateKey} · {item.timeStr}
                         </span>
                         {moodObj && (
-                          <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-gelica ${moodObj.color}`}>
+                          <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-geist ${moodObj.color}`}>
                             <span className="shrink-0">{renderMoodSketchIcon(moodObj.id, 13)}</span>
                             <span>{moodLabel(moodObj.id)}</span>
                           </span>
@@ -1255,7 +1255,7 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
                           setCurrentEntryId(item.id);
                           setActiveTab("write");
                         }}
-                        className="font-gelica text-xs font-semibold text-[var(--accent)] hover:underline"
+                        className="font-geist text-xs font-semibold text-[var(--accent)] hover:underline"
                       >
                         {t("act.edit")}
                       </button>
@@ -1347,13 +1347,13 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
               <div className="flex gap-2">
                 <button
                   onClick={() => setIsPinModalOpen(false)}
-                  className="flex-1 rounded-[20px] border border-[var(--line)] py-2 font-gelica text-xs font-semibold"
+                  className="flex-1 rounded-[20px] border border-[var(--line)] py-2 font-geist text-xs font-semibold"
                 >
                   iptal
                 </button>
                 <button
                   onClick={handleSavePin}
-                  className="flex-1 rounded-[20px] bg-[var(--accent)] py-2 font-gelica text-xs font-bold text-white shadow-sm"
+                  className="flex-1 rounded-[20px] bg-[var(--accent)] py-2 font-geist text-xs font-bold text-white shadow-sm"
                 >
                   kaydet
                 </button>

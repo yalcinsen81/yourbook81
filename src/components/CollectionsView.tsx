@@ -64,7 +64,7 @@ export function CollectionsView() {
                 playPopSound();
                 setTab("cards");
               }}
-              className={`btn-pill-superr flex-1 justify-center whitespace-nowrap text-[11px] lg:flex-none lg:text-xs ${tab === "cards" ? "!bg-[var(--ink)] !text-[var(--app-bg)] !border-[var(--ink)]" : "opacity-70"}`}
+              className={`btn-pill-superr flex-1 justify-center whitespace-nowrap text-[11px] lg:flex-none lg:text-xs ${tab === "cards" ? "!bg-[var(--ink)] !text-[var(--app-bg)] !border-[var(--line-strong)]" : "opacity-70"}`}
             >
               <Layers size={13} />
               <span>{t("col.cards_tab", { n: cards.length })}</span>
@@ -75,7 +75,7 @@ export function CollectionsView() {
                 playPopSound();
                 setTab("notes");
               }}
-              className={`btn-pill-superr flex-1 justify-center whitespace-nowrap text-[11px] lg:flex-none lg:text-xs ${tab === "notes" ? "!bg-[var(--ink)] !text-[var(--app-bg)] !border-[var(--ink)]" : "opacity-70"}`}
+              className={`btn-pill-superr flex-1 justify-center whitespace-nowrap text-[11px] lg:flex-none lg:text-xs ${tab === "notes" ? "!bg-[var(--ink)] !text-[var(--app-bg)] !border-[var(--line-strong)]" : "opacity-70"}`}
             >
               <StickyNote size={13} />
               <span>{t("col.notes_tab")} ({notes.length})</span>
@@ -121,7 +121,7 @@ export function CollectionsView() {
               className="card-superr p-6"
             >
               <div className="flex items-center justify-between pb-3 border-b border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)]">
-                <span className="rounded-[20px] border border-[var(--line)] bg-[var(--paper)] px-2.5 py-0.5 font-gelica text-[11px] font-semibold text-[var(--ink)]">
+                <span className="rounded-[20px] border border-[var(--line)] bg-[var(--paper)] px-2.5 py-0.5 font-geist text-[11px] font-semibold text-[var(--ink)]">
                   {card.article
                     ? `${card.article} · ${t("lang.de.short")}`
                     : card.lang === "DE"
@@ -206,7 +206,7 @@ export function CollectionsView() {
               className="card-superr p-6"
             >
               <div className="flex items-center justify-between pb-3 border-b border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] text-xs">
-                <span className="rounded-[20px] border border-[var(--line)] bg-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] px-2.5 py-0.5 font-gelica text-[11px] font-semibold text-[var(--accent)]">
+                <span className="rounded-[20px] border border-[var(--line)] bg-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] px-2.5 py-0.5 font-geist text-[11px] font-semibold text-[var(--accent)]">
                   {note.category}
                 </span>
                 <span className="font-handwritten text-sm text-[var(--ink-soft)] font-bold">

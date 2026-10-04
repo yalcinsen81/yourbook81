@@ -110,7 +110,7 @@ export function GiftNotebookModal({ isOpen, onClose, onGiftSent, senderName: sen
                 <h3 className="font-gelica text-base font-bold text-[var(--ink)]">
                   {t("gift.title")}
                 </h3>
-                <p className="font-gelica text-[11px] text-[var(--ink-soft)]">
+                <p className="font-geist text-[11px] text-[var(--ink-soft)]">
                   {t("gift.sub")}
                 </p>
               </div>
@@ -132,7 +132,7 @@ export function GiftNotebookModal({ isOpen, onClose, onGiftSent, senderName: sen
             <span className="font-handwritten text-sm font-bold text-[var(--ink)]">
               {t("gift.card_title")}
             </span>
-            <p className="font-gelica text-[11px] text-[var(--ink-soft)] mt-0.5">
+            <p className="font-geist text-[11px] text-[var(--ink-soft)] mt-0.5">
               {t("gift.card_desc")}
             </p>
           </div>
@@ -140,7 +140,7 @@ export function GiftNotebookModal({ isOpen, onClose, onGiftSent, senderName: sen
           {/* Rozet Bilgilendirme Notu */}
           <div className="mb-4 p-2.5 rounded-[10px] bg-amber-50 border border-amber-200 text-amber-900 flex items-center gap-2">
             <SketchTag size={16} className="text-amber-800 shrink-0" strokeWidth={1.8} />
-            <span className="font-gelica text-[11px]">
+            <span className="font-geist text-[11px]">
               {t("gift.badge_note_a")} <strong>"{t("gift.badge_name")}"</strong> {t("gift.badge_note_b")}
             </span>
           </div>
@@ -151,7 +151,7 @@ export function GiftNotebookModal({ isOpen, onClose, onGiftSent, senderName: sen
            <div
               role="status"
               aria-live="polite"
-              className="mb-3 flex items-center gap-2 rounded-[12px] border-emerald-400 bg-emerald-50 px-3 py-2 font-gelica text-[11px] font-bold text-emerald-800 transition-all duration-200 ease-out"
+              className="mb-3 flex items-center gap-2 rounded-[12px] border-emerald-400 bg-emerald-50 px-3 py-2 font-geist text-[11px] font-bold text-emerald-800 transition-all duration-200 ease-out"
             >
               <span className="text-base leading-none">✓</span>
               <span>{t("gift.copied")}</span>
@@ -161,21 +161,21 @@ export function GiftNotebookModal({ isOpen, onClose, onGiftSent, senderName: sen
           <div className="space-y-2 mb-4">
             <button
               onClick={handleCopyLink}
-              className={`w-full flex items-center justify-center gap-2 rounded-[12px] border py-2.5 px-3 font-gelica text-xs font-bold active:scale-[0.98] transition-all ${copied ? "border-emerald-500 bg-emerald-50 text-emerald-800" : copyFailed ? "border-amber-500 bg-amber-50 text-amber-900" : "border-[var(--ink)] bg-[var(--paper)] text-[var(--ink)] hover:bg-[var(--app-bg)]"}`}
+              className={`w-full flex items-center justify-center gap-2 rounded-[12px] border py-2.5 px-3 font-geist text-xs font-bold active:scale-[0.98] transition-all ${copied ? "border-emerald-500 bg-emerald-50 text-emerald-800" : copyFailed ? "border-amber-500 bg-amber-50 text-amber-900" : "border-[var(--line-strong)] bg-[var(--paper)] text-[var(--ink)] hover:bg-[var(--app-bg)]"}`}
             >
               <span>{copied ? t("gift.copied") : copyFailed ? t("gift.copy_failed") : t("gift.copy")}</span>
             </button>
 
             <button
               onClick={handleShareWhatsApp}
-              className="w-full flex items-center justify-center gap-2 rounded-[12px] bg-[#25D366] text-white py-2.5 px-3 font-gelica text-xs font-bold hover:opacity-95 active:scale-[0.98] shadow-xs transition-all"
+              className="w-full flex items-center justify-center gap-2 rounded-[12px] bg-[#25D366] text-white py-2.5 px-3 font-geist text-xs font-bold hover:opacity-95 active:scale-[0.98] shadow-xs transition-all"
             >
               <span>{t("gift.share_whatsapp")}</span>
             </button>
           </div>
 
           {copyFailed && (
-           <div className="mb-3 rounded-[10px] border-amber-300 bg-amber-50 p-2.5 font-gelica text-[10px] text-amber-900">
+           <div className="mb-3 rounded-[10px] border-amber-300 bg-amber-50 p-2.5 font-geist text-[10px] text-amber-900">
               <div className="mb-1 font-bold">{t("gift.copy_failed_hint")}</div>
               <input readOnly value={giftUrl} onFocus={(e) => e.currentTarget.select()} className="w-full rounded-md border-amber-300 bg-white px-2 py-1 font-mono text-[10px] text-[var(--ink)]" />
            </div>
@@ -185,7 +185,7 @@ export function GiftNotebookModal({ isOpen, onClose, onGiftSent, senderName: sen
           <div className="flex justify-end pt-1">
             <button
               onClick={onClose}
-              className="font-gelica text-xs text-[var(--ink-soft)] hover:text-[var(--ink)] transition-colors"
+              className="font-geist text-xs text-[var(--ink-soft)] hover:text-[var(--ink)] transition-colors"
             >
               {t("act.cancel")}
             </button>

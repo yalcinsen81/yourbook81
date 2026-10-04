@@ -258,7 +258,7 @@ export function NotebookCustomizeModal({
             <motion.div
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mb-3 rounded-[12px] border border-emerald-500 bg-emerald-50 p-2.5 text-center font-gelica text-xs font-bold text-emerald-800"
+              className="mb-3 rounded-[12px] border border-emerald-500 bg-emerald-50 p-2.5 text-center font-geist text-xs font-bold text-emerald-800"
             >
               {celebrationMsg}
             </motion.div>
@@ -310,11 +310,11 @@ export function NotebookCustomizeModal({
                       className={`relative flex flex-col items-start rounded-[14px] border-2 p-3.5 text-start transition-all ${tex.previewClass} ${
                         isSelected
                           ? "border-[var(--accent)] shadow-md scale-[1.02] bg-[var(--paper)]"
-                          : "border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[var(--paper)] hover:border-[var(--ink)] opacity-85 hover:opacity-100"
+                          : "border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[var(--paper)] hover:border-[var(--line-strong)] opacity-85 hover:opacity-100"
                       }`}
                     >
                       <div className="flex w-full items-center justify-between mb-1">
-                        <span className="font-gelica text-xs font-bold text-[var(--ink)]">
+                        <span className="font-geist text-xs font-bold text-[var(--ink)]">
                           {t(tex.nameKey)}
                         </span>
                         {isSelected && (
@@ -342,7 +342,7 @@ export function NotebookCustomizeModal({
               {/* Kendi El Yazını Kalibre Et / Üret Butonu */}
               <div className="p-3 rounded-[14px] border-2 border-dashed border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_6%,transparent)] flex items-center justify-between">
                 <div>
-                  <span className="font-gelica text-xs font-bold text-[var(--accent)] flex items-center gap-1.5">
+                  <span className="font-geist text-xs font-bold text-[var(--accent)] flex items-center gap-1.5">
                     <span>{t("cust.studio.title")}</span>
                   </span>
                   <span className="font-geist text-[10.5px] text-[var(--ink-soft)] block mt-0.5">
@@ -354,7 +354,7 @@ export function NotebookCustomizeModal({
                     playPopSound();
                     setIsStudioOpen(true);
                   }}
-                  className="shrink-0 px-3 py-1.5 rounded-[12px] bg-[var(--accent)] text-white font-gelica text-[11px] font-bold shadow-xs hover:opacity-90 transition-all"
+                  className="shrink-0 px-3 py-1.5 rounded-[12px] bg-[var(--accent)] text-white font-geist text-[11px] font-bold shadow-xs hover:opacity-90 transition-all"
                 >
                   {hasCustomHw ? t("cust.studio.open") : t("cust.studio.create")}
                 </button>
@@ -369,12 +369,12 @@ export function NotebookCustomizeModal({
                       className={`flex w-full items-center justify-between rounded-[14px] border-2 p-3 text-start transition-all ${
                         isSelected
                           ? "border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] shadow-xs scale-[1.01]"
-                          : "border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[var(--app-bg)] hover:border-[var(--ink)]"
+                          : "border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[var(--app-bg)] hover:border-[var(--line-strong)]"
                       }`}
                     >
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 mb-0.5">
-                          <span className="font-gelica text-xs font-bold text-[var(--ink)]">
+                          <span className="font-geist text-xs font-bold text-[var(--ink)]">
                             {t(f.nameKey)}
                           </span>
                           <span className="font-geist text-[9.5px] text-[var(--ink-soft)]">
@@ -421,7 +421,7 @@ export function NotebookCustomizeModal({
                       className={`relative flex items-center justify-between rounded-[14px] border-2 p-3 transition-all cursor-pointer active:scale-[0.98] ${
                         isSelected
                           ? "border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_6%,transparent)] shadow-xs"
-                          : "border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[var(--app-bg)] hover:border-[var(--ink)]"
+                          : "border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[var(--app-bg)] hover:border-[var(--line-strong)]"
                       }`}
                     >
                       <div className="flex items-center gap-3">
@@ -430,7 +430,7 @@ export function NotebookCustomizeModal({
                         </span>
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="font-gelica text-xs font-bold text-[var(--ink)]">
+                            <span className="font-geist text-xs font-bold text-[var(--ink)]">
                               {t(p.nameKey)}
                             </span>
                             {isSelected && (
@@ -489,7 +489,7 @@ export function NotebookCustomizeModal({
                       className={`flex flex-col items-center justify-center rounded-[14px] border-2 p-4 text-center transition-all ${
                         isSelected
                           ? "border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] shadow-xs scale-[1.02]"
-                          : "border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[var(--app-bg)] hover:border-[var(--ink)]"
+                          : "border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[var(--app-bg)] hover:border-[var(--line-strong)]"
                       }`}
                     >
                       {s.id !== "none" ? (
@@ -500,7 +500,7 @@ export function NotebookCustomizeModal({
                       ) : (
                         <span className="text-xs mb-1 font-mono uppercase font-bold text-[var(--ink-soft)]">{t("stamp.none.label")}</span>
                       )}
-                      <span className="font-gelica text-xs font-bold text-[var(--ink)]">
+                      <span className="font-geist text-xs font-bold text-[var(--ink)]">
                         {t(s.titleKey)}
                       </span>
                     </button>
@@ -524,13 +524,13 @@ export function NotebookCustomizeModal({
                   </span>
                 </div>
 
-                <p className="font-gelica text-xs text-[var(--ink)] mt-2 leading-relaxed">
+                <p className="font-geist text-xs text-[var(--ink)] mt-2 leading-relaxed">
                   {t("cust.volume.active")}
                 </p>
 
                 <button
                   onClick={handleStartNewVolume}
-                  className="mt-3.5 w-full flex items-center justify-center gap-2 rounded-[20px] bg-[var(--ink)] py-2.5 font-gelica text-xs font-bold text-[var(--app-bg)] shadow-sm hover:bg-[var(--accent)] transition-colors"
+                  className="mt-3.5 w-full flex items-center justify-center gap-2 rounded-[20px] bg-[var(--ink)] py-2.5 font-geist text-xs font-bold text-[var(--app-bg)] shadow-sm hover:bg-[var(--accent)] transition-colors"
                 >
                   {t("vol.complete_start").replace("{next}", String(volume + 1))}
                 </button>
@@ -540,7 +540,7 @@ export function NotebookCustomizeModal({
               <div className="rounded-[14px] border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[var(--app-bg)] p-3.5">
                 <div className="flex items-center justify-between">
                   <div>
-                    <span className="font-gelica text-xs font-bold text-[var(--ink)] block">
+                    <span className="font-geist text-xs font-bold text-[var(--ink)] block">
                       {t("volume.autoswitch")}
                     </span>
                     <span className="font-geist text-[10.5px] text-[var(--ink-soft)] block mt-0.5 leading-relaxed">
@@ -556,7 +556,7 @@ export function NotebookCustomizeModal({
                       setVolumeAutoswitchEnabled(next);
                       onConfigChange();
                     }}
-                    className={"shrink-0 ms-2 rounded-full px-3 py-1 font-gelica text-xs font-bold transition-colors " + (autoSwitch ? "bg-[var(--ink)] text-[var(--app-bg)]" : "border border-[var(--line)] text-[var(--ink)]")}
+                    className={"shrink-0 ms-2 rounded-full px-3 py-1 font-geist text-xs font-bold transition-colors " + (autoSwitch ? "bg-[var(--ink)] text-[var(--app-bg)]" : "border border-[var(--line)] text-[var(--ink)]")}
                   >
                     {autoSwitch ? t("common.on") : t("common.off")}
                   </button>
@@ -581,7 +581,7 @@ export function NotebookCustomizeModal({
                        type="button"
                        onClick={() => setSelectedArchiveVolume(arc)}
                        title={t("vol.open_detail")}
-                       className="flex w-full items-center justify-between rounded-[10px] border-[color-mix(in_srgb,var(--border-ink)_18%,transparent)] bg-[var(--app-bg)] p-2.5 text-start transition-colors hover:border-[var(--ink)]"
+                       className="flex w-full items-center justify-between rounded-[10px] border-[color-mix(in_srgb,var(--border-ink)_18%,transparent)] bg-[var(--app-bg)] p-2.5 text-start transition-colors hover:border-[var(--line-strong)]"
                      >
                        <div>
                          <span className="font-mono text-xs font-bold text-[var(--ink)]">
@@ -609,7 +609,7 @@ export function NotebookCustomizeModal({
               <div className="rounded-[14px] border border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[var(--app-bg)] p-3.5">
                 <div className="flex items-center justify-between">
                   <div>
-                    <span className="font-gelica text-xs font-bold text-[var(--ink)] block">
+                    <span className="font-geist text-xs font-bold text-[var(--ink)] block">
                       {t("cust.light_title")}
                     </span>
                     <span className="font-geist text-[10.5px] text-[var(--ink-soft)] block mt-0.5 leading-relaxed">
@@ -624,7 +624,7 @@ export function NotebookCustomizeModal({
                       setTimeLightingEnabled(next);
                       onConfigChange();
                     }}
-                    className={`shrink-0 ms-2 rounded-full px-3 py-1 font-gelica text-xs font-bold transition-colors ${
+                    className={`shrink-0 ms-2 rounded-full px-3 py-1 font-geist text-xs font-bold transition-colors ${
                       timeLight
                         ? "bg-emerald-600 text-white"
                         : "bg-gray-200 text-gray-700"
@@ -638,7 +638,7 @@ export function NotebookCustomizeModal({
                   <div className="mt-3 flex items-center gap-2 rounded-[10px] border border-[color-mix(in_srgb,var(--border-ink)_15%,transparent)] bg-[var(--paper)] p-2">
                     <span className="text-base">{TIME_PERIOD_META[getCurrentTimePeriod()].icon}</span>
                     <div className="min-w-0 flex-1">
-                      <span className="font-gelica text-xs font-semibold text-[var(--ink)] block">
+                      <span className="font-geist text-xs font-semibold text-[var(--ink)] block">
                         {t("cust.light_current")} {t(TIME_PERIOD_META[getCurrentTimePeriod()].labelKey)}
                       </span>
                       <span className="font-geist text-[9.5px] text-[var(--ink-soft)] block">
@@ -651,7 +651,7 @@ export function NotebookCustomizeModal({
 
               {/* Kişisel Açılış Ritüeli */}
               <div className="rounded-[14px] border border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[var(--app-bg)] p-3.5">
-                <span className="font-gelica text-xs font-bold text-[var(--ink)] block">
+                <span className="font-geist text-xs font-bold text-[var(--ink)] block">
                   {t("cust.ritual_title")}
                 </span>
                 <span className="font-geist text-[10.5px] text-[var(--ink-soft)] block mt-0.5 mb-2.5 leading-relaxed">
@@ -673,7 +673,7 @@ export function NotebookCustomizeModal({
                         setRitualPreference(r.id);
                         onConfigChange();
                       }}
-                      className={`rounded-[10px] border p-2 text-start font-gelica text-xs transition-all ${
+                      className={`rounded-[10px] border p-2 text-start font-geist text-xs transition-all ${
                         ritualPref === r.id
                           ? "border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,transparent)] font-bold text-[var(--ink)]"
                           : "border-black/10 bg-[var(--paper)] text-[var(--ink-soft)] hover:border-black/20"
@@ -691,7 +691,7 @@ export function NotebookCustomizeModal({
           <div className="mt-5 pt-3 border-t border-[color-mix(in_srgb,var(--border-ink)_15%,transparent)] flex justify-end">
             <button
               onClick={onClose}
-              className="rounded-[20px] bg-[var(--ink)] px-5 py-2 font-gelica text-xs font-semibold text-[var(--app-bg)] hover:bg-[var(--accent)] transition-colors shadow-xs"
+              className="rounded-[20px] bg-[var(--ink)] px-5 py-2 font-geist text-xs font-semibold text-[var(--app-bg)] hover:bg-[var(--accent)] transition-colors shadow-xs"
             >
               {t("cust.save_close")}
             </button>

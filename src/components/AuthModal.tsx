@@ -168,7 +168,7 @@ export function AuthModal({
                 <p className="mt-1 font-geist text-[10px] text-[var(--ink-soft)]">
                   {t("auth.migrated_detail").replace("{n}", String(migrationNotice.keyCount)).replace("{kb}", String(Math.max(1, Math.round(migrationNotice.bytes / 1024))))}
                 </p>
-                <button type="button" onClick={() => onMigrationSeen?.()} className="mt-2 font-gelica text-[10px] text-[var(--accent)] hover:underline">
+                <button type="button" onClick={() => onMigrationSeen?.()} className="mt-2 font-geist text-[10px] text-[var(--accent)] hover:underline">
                   {t("auth.migrated_ok")}
                 </button>
               </div>
@@ -210,7 +210,7 @@ export function AuthModal({
 
                 {/* Bulut ve Senkronizasyon Durumu */}
                 <div className="bg-[var(--app-bg)] p-3.5 rounded-[12px] border border-[var(--line)] space-y-2">
-                  <div className="flex items-center justify-between text-xs font-gelica">
+                  <div className="flex items-center justify-between text-xs font-geist">
                     <span className="font-semibold text-[var(--ink)]">{t("auth.sync_title")}</span>
                     <span className="font-mono text-[11px] text-[var(--accent)] font-bold">
                       {currentUser.isCloud ? t("auth.cloud_on") : t("auth.local_on")}
@@ -259,7 +259,7 @@ export function AuthModal({
 
                   <button
                     onClick={handleLogout}
-                    className="text-xs font-gelica text-red-600 hover:underline px-3 py-1.5"
+                    className="text-xs font-geist text-red-600 hover:underline px-3 py-1.5"
                   >
                     {t("auth.sign_out")}
                   </button>
@@ -306,7 +306,7 @@ export function AuthModal({
                   <p
                     role="note"
                     data-testid="auth-local-notice"
-                    className="mb-3 rounded-[8px] border-[1.5px] border-dashed border-[var(--ink)] bg-[var(--app-bg)] p-2.5 font-geist text-[11px] leading-snug text-[var(--ink-soft)]"
+                    className="mb-3 rounded-[8px] border-[1.5px] border-dashed border-[var(--line-strong)] bg-[var(--app-bg)] p-2.5 font-geist text-[11px] leading-snug text-[var(--ink-soft)]"
                   >
                     {t("auth.local_notice")}
                   </p>
@@ -317,7 +317,7 @@ export function AuthModal({
                 >
                   {!forgotMode && tab === "register" && (
                     <div>
-                      <label className="font-gelica text-xs text-[var(--ink-soft)] block mb-1">
+                      <label className="font-geist text-xs text-[var(--ink-soft)] block mb-1">
                         {t("auth.name")}
                       </label>
                       <input
@@ -331,7 +331,7 @@ export function AuthModal({
                   )}
 
                   <div>
-                    <label className="font-gelica text-xs text-[var(--ink-soft)] block mb-1">
+                    <label className="font-geist text-xs text-[var(--ink-soft)] block mb-1">
                       {t("auth.email_label")}
                     </label>
                     <input
@@ -345,7 +345,7 @@ export function AuthModal({
                   </div>
 
                   {!forgotMode && <div>
-                    <label className="font-gelica text-xs text-[var(--ink-soft)] block mb-1">
+                    <label className="font-geist text-xs text-[var(--ink-soft)] block mb-1">
                       {t("auth.password")}
                     </label>
                     <input
@@ -372,7 +372,7 @@ export function AuthModal({
                       <button
                         type="button"
                         onClick={() => onMigrationSeen?.()}
-                        className="mt-2 font-gelica text-[10px] text-[var(--accent)] hover:underline"
+                        className="mt-2 font-geist text-[10px] text-[var(--accent)] hover:underline"
                       >
                         {t("auth.migrated_ok")}
                       </button>
@@ -399,7 +399,7 @@ export function AuthModal({
                         type="button"
                         data-forgot-password="1"
                         onClick={() => { setForgotMode(true); setErrorMsg(null); setResetSent(false); }}
-                        className="font-gelica text-xs text-[var(--accent)] hover:underline"
+                        className="font-geist text-xs text-[var(--accent)] hover:underline"
                       >
                         {t("auth.forgot")}
                       </button>
@@ -408,7 +408,7 @@ export function AuthModal({
                       <button
                         type="button"
                         onClick={() => { setForgotMode(false); setErrorMsg(null); setResetSent(false); }}
-                        className="font-gelica text-xs text-[var(--ink-soft)] hover:text-[var(--ink)]"
+                        className="font-geist text-xs text-[var(--ink-soft)] hover:text-[var(--ink)]"
                       >
                         {t("auth.back_to_login")}
                       </button>
@@ -417,7 +417,7 @@ export function AuthModal({
                     <button
                       type="button"
                       onClick={onClose}
-                      className="font-gelica text-xs text-[var(--ink-soft)] hover:text-[var(--ink)]"
+                      className="font-geist text-xs text-[var(--ink-soft)] hover:text-[var(--ink)]"
                     >
                       {t("auth.guest")}
                     </button>

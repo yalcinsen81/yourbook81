@@ -224,10 +224,10 @@ export function NotesView({ onSendToJournal }: NotesViewProps) {
                   playPopSound();
                   setActiveCategory(cat.id);
                 }}
-                className={`flex items-center gap-1.5 rounded-[20px] px-3 py-1 text-xs font-gelica font-semibold transition-all ${
+                className={`flex items-center gap-1.5 rounded-[20px] px-3 py-1 text-xs font-geist font-semibold transition-all ${
                   isActive
                     ? "bg-[var(--ink)] text-[var(--app-bg)] shadow-sm border border-[var(--line)]"
-                    : "border border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[var(--app-bg)] text-[var(--ink)] hover:border-[var(--ink)]"
+                    : "border border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[var(--app-bg)] text-[var(--ink)] hover:border-[var(--line-strong)]"
                 }`}
               >
                 <span>{cat.label}</span>
@@ -292,10 +292,10 @@ export function NotesView({ onSendToJournal }: NotesViewProps) {
                         type="button"
                         key={cKey}
                         onClick={() => setNewCategory(cKey)}
-                        className={`rounded-[20px] border px-2.5 py-1 text-[11px] font-gelica transition-all ${
+                        className={`rounded-[20px] border px-2.5 py-1 text-[11px] font-geist transition-all ${
                           isSelected
-                            ? "bg-[var(--accent)] text-white border-[var(--ink)] font-semibold"
-                            : "border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[var(--app-bg)] text-[var(--ink)] hover:border-[var(--ink)]"
+                            ? "bg-[var(--accent)] text-white border-[var(--line-strong)] font-semibold"
+                            : "border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[var(--app-bg)] text-[var(--ink)] hover:border-[var(--line-strong)]"
                         }`}
                       >
                         {t(cat.nameKey || cat.name)}
@@ -345,7 +345,7 @@ export function NotesView({ onSendToJournal }: NotesViewProps) {
                 className="card-superr p-6"
               >
                 <div className="flex items-center justify-between pb-3 border-b-2 border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)]">
-                  <span className="rounded-[20px] border border-[var(--line)] bg-[var(--paper)] px-2.5 py-0.5 font-gelica text-[11px] font-semibold text-[var(--ink)]">
+                  <span className="rounded-[20px] border border-[var(--line)] bg-[var(--paper)] px-2.5 py-0.5 font-geist text-[11px] font-semibold text-[var(--ink)]">
                     {CATEGORY_MAP[note.category] ? t(CATEGORY_MAP[note.category].nameKey) : note.category}
                   </span>
 

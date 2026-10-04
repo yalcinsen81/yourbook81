@@ -118,7 +118,7 @@ export default function VolumeCompleteBanner({ onVolumeChange }: VolumeCompleteB
                   data-volume-switch="1"
                   onClick={handleSwitch}
                   disabled={switching}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-[var(--line)] bg-[var(--accent)] px-3.5 py-1.5 font-gelica text-xs font-bold text-white transition hover:brightness-95 disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[var(--line)] bg-[var(--accent)] px-3.5 py-1.5 font-geist text-xs font-bold text-white transition hover:brightness-95 disabled:opacity-50"
                 >
                   <SketchSparkles size={13} strokeWidth={1.8} />
                   {t("volume.start_new")}
@@ -126,7 +126,7 @@ export default function VolumeCompleteBanner({ onVolumeChange }: VolumeCompleteB
                 <button
                   data-volume-dismiss="1"
                   onClick={handleDismiss}
-                  className="rounded-full border border-[var(--line)] px-3 py-1.5 font-gelica text-xs font-semibold text-[var(--ink)] transition hover:bg-[color-mix(in_srgb,var(--ink)_8%,transparent)]"
+                  className="rounded-full border border-[var(--line)] px-3 py-1.5 font-geist text-xs font-semibold text-[var(--ink)] transition hover:bg-[color-mix(in_srgb,var(--ink)_8%,transparent)]"
                 >
                   {t("volume.later")}
                 </button>

@@ -189,7 +189,7 @@ export function VolumeArchiveModal({
               <button
                 onClick={handleExportThisVolume}
                 title={t("vol.pdf_tip")}
-                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-[12px] bg-[var(--accent)] text-white font-gelica text-xs font-bold shadow-xs hover:opacity-90 transition-all"
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-[12px] bg-[var(--accent)] text-white font-geist text-xs font-bold shadow-xs hover:opacity-90 transition-all"
               >
                 <span>{t("vol.pdf")}</span>
               </button>
@@ -210,7 +210,7 @@ export function VolumeArchiveModal({
                   playPopSound();
                   setActiveTab("journal");
                 }}
-                className={`flex-1 sm:flex-none px-4 py-1.5 rounded-[10px] font-gelica text-xs font-bold transition-all ${
+                className={`flex-1 sm:flex-none px-4 py-1.5 rounded-[10px] font-geist text-xs font-bold transition-all ${
                   activeTab === "journal"
                     ? "bg-[var(--ink)] text-[var(--app-bg)] shadow-xs"
                     : "text-[var(--ink)] hover:text-[var(--accent)]"
@@ -222,7 +222,7 @@ export function VolumeArchiveModal({
                   playPopSound();
                   setActiveTab("words");
                 }}
-                className={`flex-1 sm:flex-none px-4 py-1.5 rounded-[10px] font-gelica text-xs font-bold transition-all ${
+                className={`flex-1 sm:flex-none px-4 py-1.5 rounded-[10px] font-geist text-xs font-bold transition-all ${
                   activeTab === "words"
                     ? "bg-[var(--ink)] text-[var(--app-bg)] shadow-xs"
                     : "text-[var(--ink)] hover:text-[var(--accent)]"
@@ -252,7 +252,7 @@ export function VolumeArchiveModal({
                 {filteredEntries.length === 0 ? (
                   <div className="text-center py-10">
                     <SketchJournalPen className="w-8 h-8 mx-auto mb-2 text-[var(--ink-soft)]" />
-                    <span className="font-gelica text-xs text-[var(--ink-soft)]">
+                    <span className="font-geist text-xs text-[var(--ink-soft)]">
                       {searchQuery ? t("vol.no_journal_search") : t("vol.no_journal")}
                     </span>
                   </div>
@@ -268,7 +268,7 @@ export function VolumeArchiveModal({
                             <span className="font-mono text-[10px] font-bold text-[var(--ink-soft)]">
                               {entry.dateKey} · {entry.timeStr}
                             </span>
-                            <span className="text-[11px] font-gelica text-[var(--accent)] font-semibold">
+                            <span className="text-[11px] font-geist text-[var(--accent)] font-semibold">
                               {entry.mood}
                             </span>
                           </div>
@@ -296,7 +296,7 @@ export function VolumeArchiveModal({
                 {filteredWords.length === 0 ? (
                   <div className="text-center py-10">
                     <SketchTranslate className="w-8 h-8 mx-auto mb-2 text-[var(--ink-soft)]" />
-                    <span className="font-gelica text-xs text-[var(--ink-soft)]">
+                    <span className="font-geist text-xs text-[var(--ink-soft)]">
                       {searchQuery ? t("vol.no_word_search") : t("vol.no_word")}
                     </span>
                   </div>
@@ -338,7 +338,7 @@ export function VolumeArchiveModal({
             </span>
             <button
               onClick={onClose}
-              className="px-4 py-1.5 rounded-[14px] bg-[var(--ink)] text-[var(--app-bg)] font-gelica text-xs font-semibold hover:bg-[var(--accent)] transition-colors shadow-xs"
+              className="px-4 py-1.5 rounded-[14px] bg-[var(--ink)] text-[var(--app-bg)] font-geist text-xs font-semibold hover:bg-[var(--accent)] transition-colors shadow-xs"
             >
               {t("vol.close")}
             </button>

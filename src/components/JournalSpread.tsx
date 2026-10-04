@@ -192,7 +192,7 @@ export default function JournalSpread({
                 {entry.dateKey} · {entry.timeStr}
               </span>
               {!editing && entry.mood && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-gelica text-[var(--ink-soft)]">
+                <span className="inline-flex items-center gap-1 text-[10px] font-geist text-[var(--ink-soft)]">
                   <span className="shrink-0">{renderMoodIcon(entry.mood, 13)}</span>
                   <span>{moodLabel(entry.mood)}</span>
                 </span>
@@ -211,10 +211,10 @@ export default function JournalSpread({
                       onClick={() => setDraftMood(draftMood === m ? null : m)}
                       title={moodLabel(m)}
                       aria-pressed={draftMood === m}
-                      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-gelica text-[10px] transition ${
+                      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-geist text-[10px] transition ${
                         draftMood === m
-                          ? "border-[var(--ink)] bg-[var(--ink)] text-white"
-                          : "border-[var(--ink)] text-[var(--ink-soft)] hover:bg-[color-mix(in_srgb,var(--ink)_8%,transparent)]"
+                          ? "border-[var(--line-strong)] bg-[var(--ink)] text-white"
+                          : "border-[var(--line-strong)] text-[var(--ink-soft)] hover:bg-[color-mix(in_srgb,var(--ink)_8%,transparent)]"
                       }`}
                     >
                       <span className="shrink-0">{renderMoodIcon(m, 12)}</span>
@@ -240,7 +240,7 @@ export default function JournalSpread({
                       type="button"
                       data-spread-cancel="1"
                       onClick={cancelEdit}
-                      className="rounded-full border border-[var(--line)] px-3 py-1 font-gelica text-[11px] font-semibold text-[var(--ink)] transition hover:bg-[color-mix(in_srgb,var(--ink)_8%,transparent)]"
+                      className="rounded-full border border-[var(--line)] px-3 py-1 font-geist text-[11px] font-semibold text-[var(--ink)] transition hover:bg-[color-mix(in_srgb,var(--ink)_8%,transparent)]"
                     >
                       {t("act.cancel")}
                     </button>
@@ -248,7 +248,7 @@ export default function JournalSpread({
                       type="button"
                       data-spread-save="1"
                       onClick={saveEdit}
-                      className="rounded-full border border-[var(--line)] bg-[var(--accent)] px-3 py-1 font-gelica text-[11px] font-bold text-white transition hover:brightness-95"
+                      className="rounded-full border border-[var(--line)] bg-[var(--accent)] px-3 py-1 font-geist text-[11px] font-bold text-white transition hover:brightness-95"
                     >
                       {t("act.save")}
                     </button>
@@ -277,7 +277,7 @@ export default function JournalSpread({
                         type="button"
                         data-spread-edit="1"
                         onClick={() => startEdit(entry)}
-                        className="font-gelica text-[11px] font-semibold text-[var(--accent)] hover:underline"
+                        className="font-geist text-[11px] font-semibold text-[var(--accent)] hover:underline"
                       >
                         {t("spread.edit_inline")}
                       </button>
@@ -286,7 +286,7 @@ export default function JournalSpread({
                       <button
                         type="button"
                         onClick={() => onEdit(entry)}
-                        className="font-gelica text-[11px] font-semibold text-[var(--ink-soft)] hover:underline"
+                        className="font-geist text-[11px] font-semibold text-[var(--ink-soft)] hover:underline"
                       >
                         {t("act.open")}
                       </button>
@@ -319,10 +319,10 @@ export default function JournalSpread({
                   title={moodLabel(m)}
                   aria-pressed={draftMood === m}
                   className={
-                    "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-gelica text-[10px] transition " +
+                    "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-geist text-[10px] transition " +
                     (draftMood === m
-                      ? "border-[var(--ink)] bg-[var(--ink)] text-white"
-                      : "border-[var(--ink)] text-[var(--ink-soft)] hover:bg-[color-mix(in_srgb,var(--ink)_8%,transparent)]")
+                      ? "border-[var(--line-strong)] bg-[var(--ink)] text-white"
+                      : "border-[var(--line-strong)] text-[var(--ink-soft)] hover:bg-[color-mix(in_srgb,var(--ink)_8%,transparent)]")
                   }
                 >
                   <span className="shrink-0">{renderMoodIcon(m, 12)}</span>
@@ -348,7 +348,7 @@ export default function JournalSpread({
                   type="button"
                   data-spread-new-cancel="1"
                   onClick={cancelNewPage}
-                  className="rounded-full border border-[var(--line)] px-3 py-1 font-gelica text-[11px] font-semibold text-[var(--ink)] transition hover:bg-[color-mix(in_srgb,var(--ink)_8%,transparent)]"
+                  className="rounded-full border border-[var(--line)] px-3 py-1 font-geist text-[11px] font-semibold text-[var(--ink)] transition hover:bg-[color-mix(in_srgb,var(--ink)_8%,transparent)]"
                 >
                   {t("act.cancel")}
                 </button>
@@ -357,7 +357,7 @@ export default function JournalSpread({
                   data-spread-new-save="1"
                   onClick={saveNewPage}
                   disabled={!draft.trim()}
-                  className="rounded-full border border-[var(--line)] bg-[var(--accent)] px-3 py-1 font-gelica text-[11px] font-bold text-white transition hover:brightness-95 disabled:opacity-40"
+                  className="rounded-full border border-[var(--line)] bg-[var(--accent)] px-3 py-1 font-geist text-[11px] font-bold text-white transition hover:brightness-95 disabled:opacity-40"
                 >
                   {t("act.save")}
                 </button>
@@ -376,7 +376,7 @@ export default function JournalSpread({
               {t("spread.blank_page")}
             </span>
             {onCreateEntry && (
-              <span className="font-gelica text-[11px] font-semibold text-[var(--accent)]">
+              <span className="font-geist text-[11px] font-semibold text-[var(--accent)]">
                 + {t("spread.write_this_day")} · {blankDateKey}
               </span>
             )}
@@ -416,7 +416,7 @@ export default function JournalSpread({
                 {currentSpread + 1} / {totalSpreads}
               </span>
               {hasUnsaved && (
-                <span className="rounded-full bg-[var(--accent)] px-2 py-0.5 font-gelica text-[10px] font-bold text-white">
+                <span className="rounded-full bg-[var(--accent)] px-2 py-0.5 font-geist text-[10px] font-bold text-white">
                   {t("spread.unsaved")}
                 </span>
               )}
@@ -448,7 +448,7 @@ export default function JournalSpread({
             <button
               onClick={() => go(-1)}
               disabled={editingId !== null || currentSpread === 0}
-              className="inline-flex items-center gap-1 rounded-full border-white/40 px-3 py-1.5 font-gelica text-xs text-white/90 transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-30"
+              className="inline-flex items-center gap-1 rounded-full border-white/40 px-3 py-1.5 font-geist text-xs text-white/90 transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-30"
               aria-label={t("spread.prev")}
             >
               <ChevronLeft size={14} /> {t("spread.prev")}
@@ -459,7 +459,7 @@ export default function JournalSpread({
             <button
               onClick={() => go(1)}
               disabled={editingId !== null || currentSpread >= totalSpreads - 1}
-              className="inline-flex items-center gap-1 rounded-full border-white/40 px-3 py-1.5 font-gelica text-xs text-white/90 transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-30"
+              className="inline-flex items-center gap-1 rounded-full border-white/40 px-3 py-1.5 font-geist text-xs text-white/90 transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-30"
               aria-label={t("spread.next")}
             >
               {t("spread.next")} <ChevronRight size={14} />

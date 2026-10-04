@@ -258,7 +258,7 @@ export function WordStatusPanel({ allCards, queueIds, onReturnToQueue, onAwardXp
           return (
             <div
               key={t.key}
-              className="rounded-[12px] border border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[var(--paper)] shadow-[2px_3px_0_0_color-mix(in_srgb,var(--border-ink)_12%,transparent)] transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]"
+              className="rounded-[12px] border border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[var(--paper)] shadow-[var(--shadow-soft)] transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]"
             >
               <button
                 onClick={() => {
@@ -324,7 +324,7 @@ export function WordStatusPanel({ allCards, queueIds, onReturnToQueue, onAwardXp
             playPaperRustle();
             setIsGameOpen(true);
           }}
-          className="group relative flex w-full items-center justify-between overflow-hidden rounded-[12px] border border-[var(--line-strong)] bg-[var(--paper)] p-2.5 shadow-[2px_3px_0_0_var(--ink)] transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)] active:translate-y-0"
+          className="group relative flex w-full items-center justify-between overflow-hidden rounded-[12px] border border-[var(--line-strong)] bg-[var(--paper)] p-2.5 shadow-[var(--shadow-soft)] transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)] active:translate-y-0"
         >
           <div className="flex items-center gap-2">
             <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--accent)] text-white shadow-xs group-hover:scale-110 transition-transform">
@@ -342,7 +342,7 @@ export function WordStatusPanel({ allCards, queueIds, onReturnToQueue, onAwardXp
             </div>
           </div>
 
-          <span className="rounded-full bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] px-2 py-0.5 font-gelica text-[10px] font-bold text-[var(--accent)]">
+          <span className="rounded-full bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] px-2 py-0.5 font-geist text-[10px] font-bold text-[var(--accent)]">
             <span className="inline-flex items-center gap-1"><span>{t("hunt.play")}</span><SketchBow size={12} strokeWidth={1.8} /></span>
           </span>
         </button>
@@ -365,7 +365,7 @@ export function WordStatusPanel({ allCards, queueIds, onReturnToQueue, onAwardXp
             className="flex h-full w-full flex-col items-center gap-3 rounded-[12px] border border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[var(--paper)] py-4 transition-colors hover:border-[var(--accent)]"
           >
             <ChevronLeft size={14} className="text-[var(--accent)]" />
-            <span className="font-gelica text-[11px] font-semibold text-[var(--ink)] [writing-mode:vertical-rl]">
+            <span className="font-geist text-[11px] font-semibold text-[var(--ink)] [writing-mode:vertical-rl]">
               {t("ws.title")}
             </span>
             <span className="rounded-full border border-[var(--accent)] px-1.5 font-geist text-[9px] text-[var(--accent)]">

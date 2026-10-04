@@ -161,7 +161,7 @@ export function JournalOcrImportModal({
           ) : (
             <div className="space-y-4">
               {/* Fotoğraf Önizleme ve Tarama Çubuğu */}
-              <div className="relative rounded-[14px] border border-[var(--border-ink)] overflow-hidden bg-black/5 max-h-56 flex items-center justify-center">
+              <div className="relative rounded-[14px] border border-[var(--line-strong)] overflow-hidden bg-black/5 max-h-56 flex items-center justify-center">
                 <img
                   src={imageSrc}
                   alt={t("ocr.page_alt")}
@@ -178,7 +178,7 @@ export function JournalOcrImportModal({
                     >
                       <Sparkle size={26} />
                     </motion.div>
-                    <span className="font-gelica text-xs font-semibold">
+                    <span className="font-geist text-xs font-semibold">
                       {t("ocr.scanning").replace("{n}", String(scanProgress))}
                     </span>
                     <div className="w-48 bg-white/20 h-1.5 rounded-full mt-2 overflow-hidden">
@@ -238,14 +238,14 @@ export function JournalOcrImportModal({
           <div className="mt-5 pt-3 border-t border-black/10 flex items-center justify-end gap-2">
             <button
               onClick={onClose}
-              className="rounded-[20px] border border-[var(--line)] px-4 py-1.5 font-gelica text-xs font-semibold"
+              className="rounded-[20px] border border-[var(--line)] px-4 py-1.5 font-geist text-xs font-semibold"
             >
               {t("ocr.cancel")}
             </button>
             <button
               onClick={handleApply}
               disabled={!extractedText.trim()}
-              className="rounded-[20px] bg-[var(--ink)] text-[var(--app-bg)] px-5 py-1.5 font-gelica text-xs font-bold shadow-xs hover:bg-[var(--accent)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+              className="rounded-[20px] bg-[var(--ink)] text-[var(--app-bg)] px-5 py-1.5 font-geist text-xs font-bold shadow-xs hover:bg-[var(--accent)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
             >
               <Check size={13} />
               <span>{t("ocr.import")}</span>

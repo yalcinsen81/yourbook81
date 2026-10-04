@@ -64,7 +64,7 @@ export function CoverStickerCluster({
               onOpenVolumes();
             }}
             title={t("cover.volumes.tip")}
-            className="rounded-full border-[var(--ink)] bg-[var(--paper)] px-2.5 py-0.5 font-gelica text-[10px] font-semibold text-[var(--ink)] hover:bg-[var(--ink)] hover:text-white active:scale-95 transition-all shadow-2xs"
+            className="rounded-full border-[var(--line-strong)] bg-[var(--paper)] px-2.5 py-0.5 font-geist text-[10px] font-semibold text-[var(--ink)] hover:bg-[var(--ink)] hover:text-white active:scale-95 transition-all shadow-2xs"
           >
             {t("cover.badges.volume")} 0{currentVolume}
           </button>
@@ -74,7 +74,7 @@ export function CoverStickerCluster({
               onOpenCustomize();
             }}
             title={t("cover.customize.tip")}
-            className="flex items-center gap-1 rounded-full border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,transparent)] px-2.5 py-0.5 font-gelica text-[10px] font-bold text-[var(--accent)] hover:scale-105 active:scale-95 transition-all shadow-2xs"
+            className="flex items-center gap-1 rounded-full border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,transparent)] px-2.5 py-0.5 font-geist text-[10px] font-bold text-[var(--accent)] hover:scale-105 active:scale-95 transition-all shadow-2xs"
           >
             <SketchPalette size={13} strokeWidth={1.8} className="shrink-0" />
             <span>{t("cover.customize")}</span>

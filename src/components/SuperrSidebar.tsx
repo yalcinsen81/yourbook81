@@ -439,7 +439,7 @@ export function SuperrSidebar({
           className="flex items-center justify-between w-full px-3 py-2 rounded-[12px] border border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[var(--app-bg)] hover:border-[var(--accent)] transition-colors text-start shadow-xs"
         >
           <div className="flex items-center gap-2.5 min-w-0">
-            <span className="w-7 h-7 rounded-lg border border-[var(--line-strong)] bg-[var(--accent)] text-white flex items-center justify-center font-gelica text-xs font-bold flex-shrink-0 shadow-xs">
+            <span className="w-7 h-7 rounded-lg border border-[var(--line-strong)] bg-[var(--accent)] text-white flex items-center justify-center font-geist text-xs font-bold flex-shrink-0 shadow-xs">
               {currentUser ? currentUser.avatarLetter : <User size={13} />}
             </span>
             <div className="flex flex-col min-w-0">
@@ -620,7 +620,7 @@ export function SuperrSidebar({
             playPopSound();
             onSelectView("notes");
           }}
-          className={`relative flex h-8 w-full items-center justify-between rounded-[20px] px-3.5 text-[13px] font-geist font-medium transition border-[var(--ink)] z-10 ${
+          className={`relative flex h-8 w-full items-center justify-between rounded-[20px] px-3.5 text-[13px] font-geist font-medium transition border-[var(--line-strong)] z-10 ${
             currentView === "notes" ? "text-[var(--app-bg)]" : "text-[var(--ink)] hover:text-[#000]"
           }`}
         >
@@ -628,7 +628,7 @@ export function SuperrSidebar({
             <motion.div
               layoutId="sidebar-view-indicator"
               transition={SPRING_PILL}
-              className="absolute inset-0 rounded-[20px] bg-[var(--ink)] -z-10 border-[var(--ink)] shadow-sm"
+              className="absolute inset-0 rounded-[20px] bg-[var(--ink)] -z-10 border-[var(--line-strong)] shadow-sm"
             />
           )}
           <div className="flex items-center gap-2.5">
@@ -930,7 +930,7 @@ export function SuperrSidebar({
                         setLanguage(l.code);
                         setIsUiLangPickerOpen(false);
                       }}
-                      className={`flex items-center justify-between rounded-[16px] px-3 py-1 text-[11px] font-gelica font-semibold transition-colors ${
+                      className={`flex items-center justify-between rounded-[16px] px-3 py-1 text-[11px] font-geist font-semibold transition-colors ${
                         active
                           ? "bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] text-[var(--accent)]"
                           : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
@@ -955,7 +955,7 @@ export function SuperrSidebar({
               playPopSound();
               onOpenCustomize();
             }}
-            className="flex w-full items-center justify-between rounded-[20px] box-border border-[1.5px] border-dashed border-[var(--line-strong)] bg-transparent px-3 py-1.5 font-gelica text-[11px] font-semibold text-[var(--ink)] hover:bg-[color-mix(in_srgb,var(--ink)_6%,transparent)] transition-colors"
+            className="flex w-full items-center justify-between rounded-[20px] box-border border-[1.5px] border-dashed border-[var(--line-strong)] bg-transparent px-3 py-1.5 font-geist text-[11px] font-semibold text-[var(--ink)] hover:bg-[color-mix(in_srgb,var(--ink)_6%,transparent)] transition-colors"
           >
             <span className="flex items-center gap-1.5">
               <SketchPalette size={14} className="shrink-0 text-current" strokeWidth={1.8} />
@@ -967,7 +967,7 @@ export function SuperrSidebar({
       </div>
 
       {/* 4.5. Seri & Seviye Göstergesi */}
-      <div className="relative z-20 shrink-0 isolate px-3 pt-1.5 pb-1 bg-[var(--app-bg)] border-t-2 border-dashed border-[var(--border-ink)]">
+      <div className="relative z-20 shrink-0 isolate px-3 pt-1.5 pb-1 bg-[var(--app-bg)] border-t-2 border-dashed border-[var(--line-strong)]">
         <div className="flex items-center justify-between pb-1">
           <div className="flex items-center gap-2.5">
             {/* v105: seri 0 iken gizle -> '0 XP' ile karismasin */}
@@ -975,7 +975,7 @@ export function SuperrSidebar({
             {/* MADDE 4: TOPLAM XP / gunluk hedef — "86 / 2000 XP" bicimi.
                 Onceden yalnizca totalXp yaziliyordu ve istatistik panelindeki
                 "86" (yuzde) ile karisiyordu. Simdi ikisi AYRI gosterilir. */}
-            <span className="font-gelica text-xs font-bold text-[var(--accent)]" title={t("tip.total_xp")} data-xp-display="1">
+            <span className="font-geist text-xs font-bold text-[var(--accent)]" title={t("tip.total_xp")} data-xp-display="1">
               {totalXp ?? todayXp ?? 0}{" / "}{goalXp ?? 2000}{" XP"}
             </span>
             {/* Gunluk hedef yuzdesi ayri rozet */}
@@ -985,13 +985,13 @@ export function SuperrSidebar({
               </span>
             )}
           </div>
-          <span className="text-[11px] font-gelica font-semibold text-[var(--ink)]/60">
+          <span className="text-[11px] font-geist font-semibold text-[var(--ink)]/60">
             {t("xp.level_word")} {level}
           </span>
         </div>
         <div
           id="xp-bar-anchor"
-          className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--paper)] border-[1.5px] border-[var(--border-ink)]"
+          className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--paper)] border-[1.5px] border-[var(--line-strong)]"
         >
           <motion.div
             className="h-full rounded-full"
@@ -1013,7 +1013,7 @@ export function SuperrSidebar({
             className="flex items-center gap-1.5 rounded-[20px] border border-[var(--line-strong)] bg-[var(--app-bg)] px-2.5 py-1 text-xs text-[var(--ink)] hover:bg-[var(--paper)] transition-colors shadow-superrButton"
           >
             {isMuted ? <VolumeX size={12} /> : <Volume2 size={12} className="text-[var(--accent)]" />}
-            <span className="font-gelica text-xs font-semibold">
+            <span className="font-geist text-xs font-semibold">
               {isMuted ? t("sidebar.muted") : t("sidebar.tactile_sound")}
             </span>
           </motion.button>
@@ -1031,7 +1031,7 @@ export function SuperrSidebar({
               className="flex items-center gap-1 rounded-[20px] border border-[var(--line-strong)] bg-[var(--app-bg)] px-2 py-1 text-xs text-[var(--accent)] hover:bg-[var(--paper)] transition-colors shadow-superrButton"
             >
               <Download size={11} />
-              <span className="font-gelica text-[11px] font-bold">{t("act.upload")}</span>
+              <span className="font-geist text-[11px] font-bold">{t("act.upload")}</span>
             </motion.button>
           )}
         </div>
@@ -1108,11 +1108,11 @@ export function SuperrSidebar({
                         <span className="block font-gelica text-sm font-bold text-[var(--ink)]">
                           {t(lang.deskNameKey || lang.deskName)}
                         </span>
-                        <span className="block font-gelica text-[11px] text-[var(--ink-soft)] truncate">
+                        <span className="block font-geist text-[11px] text-[var(--ink-soft)] truncate">
                           {t(lang.descriptionKey || lang.description)}
                         </span>
                       </span>
-                      <span className="font-gelica text-[10px] font-semibold text-[var(--accent)] shrink-0">
+                      <span className="font-geist text-[10px] font-semibold text-[var(--accent)] shrink-0">
                         {alreadyOpen ? t("common.open_state") : t("common.open")}
                       </span>
                     </button>

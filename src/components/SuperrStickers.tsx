@@ -176,7 +176,7 @@ export function NameLabelSticker({
       <span className="age-layer age-edges" aria-hidden="true" />
       <span className="age-layer age-stain" aria-hidden="true" />
 
-      <div className="relative z-10 flex items-center justify-between border-b border-[var(--ink)] pb-1.5 mb-1.5 font-gelica text-xs text-[var(--ink)] font-semibold">
+      <div className="relative z-10 flex items-center justify-between border-b border-[var(--line-strong)] pb-1.5 mb-1.5 font-geist text-xs text-[var(--ink)] font-semibold">
         <span>{t("cover.notebook_no")} 0{volume}</span>
         <span className="text-[var(--accent)]">{t("cover.super")}</span>
       </div>

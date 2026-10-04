@@ -687,7 +687,7 @@ export function WorkProjectsView() {
 
             >
 
-              <span className="font-gelica text-xs font-semibold text-[var(--ink)]">
+              <span className="font-geist text-xs font-semibold text-[var(--ink)]">
 
                 {t("work.contact_add", { n: contacts.length + 1 })}
 
@@ -1185,7 +1185,7 @@ export function WorkProjectsView() {
 
                       <div className="flex items-center justify-between pb-2 border-b border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)]">
 
-                        <span className="font-gelica text-xs font-semibold text-[var(--accent)] uppercase flex items-center gap-1.5">
+                        <span className="font-geist text-xs font-semibold text-[var(--accent)] uppercase flex items-center gap-1.5">
 
                           <DEdit size={13} />
 
@@ -1199,7 +1199,7 @@ export function WorkProjectsView() {
 
                           onClick={handleCancelEdit}
 
-                          className="text-xs font-gelica text-[var(--ink-soft)] hover:text-[var(--ink)] flex items-center gap-1"
+                          className="text-xs font-geist text-[var(--ink-soft)] hover:text-[var(--ink)] flex items-center gap-1"
 
                         >
 
@@ -1293,7 +1293,7 @@ export function WorkProjectsView() {
 
                     <div className="flex items-center justify-between pb-2 border-b border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)]">
 
-                      <span className="font-gelica text-xs font-semibold text-[var(--accent)] uppercase">
+                      <span className="font-geist text-xs font-semibold text-[var(--accent)] uppercase">
 
                         {activeTab}
 
@@ -1387,7 +1387,7 @@ export function WorkProjectsView() {
                     type="button"
                     data-clear-search="1"
                     onClick={() => setSearch("")}
-                    className="mt-3 rounded-[20px] border border-[var(--line-strong)] bg-[var(--app-bg)] px-3.5 py-1.5 font-gelica text-xs font-semibold text-[var(--ink)] transition-colors hover:bg-[var(--paper)]"
+                    className="mt-3 rounded-[20px] border border-[var(--line-strong)] bg-[var(--app-bg)] px-3.5 py-1.5 font-geist text-xs font-semibold text-[var(--ink)] transition-colors hover:bg-[var(--paper)]"
                   >
                     {t("search.clear")}
                   </button>

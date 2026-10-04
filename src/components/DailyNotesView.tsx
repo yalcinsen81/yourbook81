@@ -139,7 +139,7 @@ export function DailyNotesView({ onOpenJournal }: DailyNotesViewProps = {}) {
           <span className="font-handwritten text-[var(--accent)] text-sm font-bold">
             {t("daily.sub")}
           </span>
-          <span className="rounded-[20px] border border-[var(--line)] bg-[var(--paper)] px-3 py-1 font-gelica text-xs text-[var(--ink)] font-semibold">
+          <span className="rounded-[20px] border border-[var(--line)] bg-[var(--paper)] px-3 py-1 font-geist text-xs text-[var(--ink)] font-semibold">
             {t("daily.done_of", { done: completedCount, total: tasks.length })}
           </span>
         </div>
@@ -152,7 +152,7 @@ export function DailyNotesView({ onOpenJournal }: DailyNotesViewProps = {}) {
       {/* 2. Serbest Düşünce Alanı (Card-Superr + kağıt greni) */}
       <div className="paper-grain mt-6 card-superr p-6 relative">
         <div className="flex items-center justify-between pb-2">
-          <span className="font-gelica text-xs font-semibold lowercase text-[var(--accent)]">
+          <span className="font-geist text-xs font-semibold lowercase text-[var(--accent)]">
             {t("daily.focus")}
           </span>
           <span className="font-geist text-xs text-[var(--ink-soft)]">{t("daily.autosave")}</span>

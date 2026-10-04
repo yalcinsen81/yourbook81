@@ -77,7 +77,7 @@ export function MobileHeader({
                 <button
                   key={sp.id}
                   onClick={() => { playPopSound(); onSwitchSpace(sp.id); }}
-                  className={"flex items-center gap-1.5 px-2.5 py-0.5 rounded-[16px] text-[11px] font-gelica font-semibold transition-all " + (isActive ? "bg-[var(--ink)] text-[var(--app-bg)] shadow-xs" : "text-[var(--ink-soft)] hover:text-[var(--ink)]")}
+                  className={"flex items-center gap-1.5 px-2.5 py-0.5 rounded-[16px] text-[11px] font-geist font-semibold transition-all " + (isActive ? "bg-[var(--ink)] text-[var(--app-bg)] shadow-xs" : "text-[var(--ink-soft)] hover:text-[var(--ink)]")}
                 >
                   {(() => { const LangIcon = spaceTopicIcon(sp.targetLang); return <LangIcon size={12} className={isActive ? "text-[var(--accent)]" : ""} />; })()}
                   <span>{tag}</span>
@@ -131,7 +131,7 @@ export function MobileHeader({
           className="flex items-center gap-1.5 p-0.5 rounded-full border border-[var(--line-strong)] bg-[var(--app-bg)] shadow-xs"
           title={t("tip.identity")}
         >
-          <span className="w-6 h-6 rounded-full border border-[var(--line)] bg-[var(--accent)] text-white flex items-center justify-center font-gelica text-[11px] font-bold">
+          <span className="w-6 h-6 rounded-full border border-[var(--line)] bg-[var(--accent)] text-white flex items-center justify-center font-geist text-[11px] font-bold">
             {currentUser ? currentUser.avatarLetter : <User size={12} />}
           </span>
         </motion.button>

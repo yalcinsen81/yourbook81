@@ -804,7 +804,7 @@ export function CalendarAgendaView({ onOpenJournal }: CalendarAgendaViewProps) {
           //   `line-height: 15px` yazilsa bile tarayici 20.25px (1.5x) uyguluyor.
           //   line-height ile savasmak yerine fazla DIKEY ALANI negatif marjla kirptik.
           const cls = hasJournal
-            ? "mt-3 flex w-full items-center justify-between gap-3 rounded-[12px] border-[1.5px] px-3.5 py-2 text-start shadow-[2px_2px_0_0_color-mix(in_srgb,var(--accent)_28%,transparent)] transition border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,var(--paper))] hover:brightness-[0.98]"
+            ? "mt-3 flex w-full items-center justify-between gap-3 rounded-[12px] border-[1.5px] px-3.5 py-2 text-start shadow-[var(--shadow-soft)] transition border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,var(--paper))] hover:brightness-[0.98]"
             : "mt-3 flex w-full items-center justify-between gap-3 rounded-[12px] border-[1.5px] border-[color-mix(in_srgb,var(--ink)_55%,transparent)] bg-[var(--paper)] px-3.5 py-2 text-start shadow-[var(--shadow-soft)] transition-colors hover:bg-[color-mix(in_srgb,var(--ink)_6%,transparent)]";
           return (
             <button
@@ -866,7 +866,7 @@ export function CalendarAgendaView({ onOpenJournal }: CalendarAgendaViewProps) {
                 className={`group flex items-center gap-3 rounded-[12px] border-[1.5px] p-3.5 transition-all ${
                   ev.isDone
                     ? "border-[color-mix(in_srgb,var(--ink)_35%,transparent)] bg-[var(--paper)] opacity-70"
-                    : "border-[color-mix(in_srgb,var(--ink)_55%,transparent)] bg-[var(--paper)] shadow-[var(--shadow-soft)] hover:border-[var(--accent)] hover:shadow-[2px_2px_0_0_color-mix(in_srgb,var(--accent)_28%,transparent)]"
+                    : "border-[color-mix(in_srgb,var(--ink)_55%,transparent)] bg-[var(--paper)] shadow-[var(--shadow-soft)] hover:border-[var(--accent)] hover:shadow-[var(--shadow-soft)]"
                 }`}
               >
                 <div

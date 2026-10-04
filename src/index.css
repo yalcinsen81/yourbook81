@@ -160,14 +160,14 @@ input, textarea, [contenteditable="true"] {
 .card-superr { background: var(--paper); border: var(--border-strong); border-radius: var(--radius-md); box-shadow: var(--shadow-card); transform: rotate(var(--card-tilt)); transition: transform 0.15s ease-out, box-shadow 0.15s ease-out; will-change: transform; }
 .card-superr:hover {
   transform: translateY(-8px) rotate(0deg) scale(1.015);
-  box-shadow: 9px 13px 0 0 color-mix(in srgb, var(--ink) 96%, transparent);
-  border-color: var(--ink);
+  box-shadow: 0 2px 4px color-mix(in srgb, var(--ink) 8%, transparent), 0 18px 36px -14px color-mix(in srgb, var(--ink) 38%, transparent);
+  border-color: color-mix(in srgb, var(--ink) 55%, transparent);
 }
 .card-superr:focus-visible {
   outline: none;
   transform: translateY(-8px) rotate(0deg) scale(1.015);
-  box-shadow: 9px 13px 0 0 color-mix(in srgb, var(--ink) 96%, transparent);
-  border-color: var(--ink);
+  box-shadow: 0 2px 4px color-mix(in srgb, var(--ink) 8%, transparent), 0 18px 36px -14px color-mix(in srgb, var(--ink) 38%, transparent);
+  border-color: color-mix(in srgb, var(--ink) 55%, transparent);
 }
 @media (hover: none) {
   .card-superr:active {

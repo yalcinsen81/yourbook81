@@ -178,10 +178,10 @@ export function QuickAdd({ isOpen, onClose, onAdd, existingCards, onDuplicate, d
                       key={tag}
                       onClick={() => setLang(tag)}
                       title={t(language.deskNameKey || language.deskName)}
-                      className={`rounded-[20px] border px-3 py-1 text-xs font-gelica font-semibold transition-all flex items-center gap-1.5 ${
+                      className={`rounded-[20px] border px-3 py-1 text-xs font-geist font-semibold transition-all flex items-center gap-1.5 ${
                         lang === tag
                           ? "border-[var(--accent)] text-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,transparent)]"
-                          : "border-[var(--ink)] text-[var(--ink-soft)]"
+                          : "border-[var(--line-strong)] text-[var(--ink-soft)]"
                       }`}
                     >
                       {(() => {
@@ -194,10 +194,10 @@ export function QuickAdd({ isOpen, onClose, onAdd, existingCards, onDuplicate, d
                 })}
                 <button
                   onClick={() => setLang("Memo")}
-                  className={`rounded-[20px] border px-3 py-1 text-xs font-gelica font-semibold transition-all flex items-center gap-1.5 ${
+                  className={`rounded-[20px] border px-3 py-1 text-xs font-geist font-semibold transition-all flex items-center gap-1.5 ${
                     lang === "Memo"
                       ? "border-[var(--accent)] text-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,transparent)]"
-                      : "border-[var(--ink)] text-[var(--ink-soft)]"
+                      : "border-[var(--line-strong)] text-[var(--ink-soft)]"
                   }`}
                 >
                   <DNote size={13} />
@@ -212,7 +212,7 @@ export function QuickAdd({ isOpen, onClose, onAdd, existingCards, onDuplicate, d
                     // Isim degilse artikel secimini SIFIRLA (artikel alani bos kalir).
                     if (next !== "noun") setArticle("");
                   }}
-                  className="ms-auto rounded-[20px] border border-[var(--line)] bg-[var(--app-bg)] px-2.5 py-1 text-xs font-gelica text-[var(--ink)] outline-none"
+                  className="ms-auto rounded-[20px] border border-[var(--line)] bg-[var(--app-bg)] px-2.5 py-1 text-xs font-geist text-[var(--ink)] outline-none"
                 >
                   <option value="noun">{t("pos.noun")}</option>
                   <option value="verb">{t("pos.verb")}</option>
@@ -223,7 +223,7 @@ export function QuickAdd({ isOpen, onClose, onAdd, existingCards, onDuplicate, d
                 </select>
                 {/* Artikel yalnızca isim türünde; dilin kendi seçenekleri. */}
                 {wordType === "noun" && ["DE", "IT", "ES", "FR"].includes(lang) && (
-                  <select value={article} onChange={(e) => setArticle(e.target.value as any)} className="rounded-[20px] border-[var(--ink)] bg-[var(--app-bg)] px-2.5 py-1 text-xs font-gelica text-[var(--ink)] outline-none">
+                  <select value={article} onChange={(e) => setArticle(e.target.value as any)} className="rounded-[20px] border-[var(--line-strong)] bg-[var(--app-bg)] px-2.5 py-1 text-xs font-geist text-[var(--ink)] outline-none">
                     <option value="">{t("field.artikel")}</option>
                     {(lang === "DE" ? ["der", "die", "das"] : lang === "IT" ? ["il", "lo", "la"] : lang === "ES" ? ["el", "la"] : ["le", "la"]).map((value) => <option key={value} value={value}>{value}</option>)}
                   </select>

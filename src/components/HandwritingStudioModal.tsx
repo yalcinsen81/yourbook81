@@ -405,7 +405,7 @@ export function HandwritingStudioModal({
                 playPopSound();
                 setMode("draw");
               }}
-              className={`flex items-center justify-center gap-2 py-2 rounded-[12px] font-gelica text-xs font-bold transition-all ${
+              className={`flex items-center justify-center gap-2 py-2 rounded-[12px] font-geist text-xs font-bold transition-all ${
                 mode === "draw"
                   ? "bg-[var(--ink)] text-[var(--app-bg)] shadow-xs"
                   : "text-[var(--ink)] hover:text-[var(--accent)]"
@@ -418,7 +418,7 @@ export function HandwritingStudioModal({
                 playPopSound();
                 setMode("photo");
               }}
-              className={`flex items-center justify-center gap-2 py-2 rounded-[12px] font-gelica text-xs font-bold transition-all ${
+              className={`flex items-center justify-center gap-2 py-2 rounded-[12px] font-geist text-xs font-bold transition-all ${
                 mode === "photo"
                   ? "bg-[var(--ink)] text-[var(--app-bg)] shadow-xs"
                   : "text-[var(--ink)] hover:text-[var(--accent)]"
@@ -475,7 +475,7 @@ export function HandwritingStudioModal({
               <button
                 onClick={handleAnalyzeDrawing}
                 disabled={strokes.length === 0}
-                className="w-full flex items-center justify-center gap-2 py-2 rounded-[12px] bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] border border-[var(--accent)] text-[var(--accent)] font-gelica text-xs font-bold hover:bg-[var(--accent)] hover:text-white transition-all disabled:opacity-40"
+                className="w-full flex items-center justify-center gap-2 py-2 rounded-[12px] bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] border border-[var(--accent)] text-[var(--accent)] font-geist text-xs font-bold hover:bg-[var(--accent)] hover:text-white transition-all disabled:opacity-40"
               >
                 <Sparkle size={13} />
                 <span>{t("hws.analyze")}</span>
@@ -500,7 +500,7 @@ export function HandwritingStudioModal({
                   className="flex flex-col items-center justify-center p-6 rounded-[14px] border-2 border-dashed border-[color-mix(in_srgb,var(--border-ink)_30%,transparent)] bg-[var(--app-bg)] hover:border-[var(--accent)] cursor-pointer transition-all"
                 >
                   <Upload size={24} className="text-[var(--accent)] mb-2" />
-                  <span className="font-gelica text-xs font-bold text-[var(--ink)]">
+                  <span className="font-geist text-xs font-bold text-[var(--ink)]">
                     {t("cust.studio.pick_photo")}
                   </span>
                   <span className="font-geist text-[10.5px] text-[var(--ink-soft)] mt-0.5">
@@ -564,7 +564,7 @@ export function HandwritingStudioModal({
             >
               <div className="flex items-center gap-2">
                 <Check size={14} className="text-emerald-700" />
-                <span className="font-gelica text-xs font-bold">
+                <span className="font-geist text-xs font-bold">
                   {t("hw.solved")}
                 </span>
               </div>
@@ -577,7 +577,7 @@ export function HandwritingStudioModal({
 
           {/* İNCE AYAR KONTROLLERİ */}
           <div className="rounded-[14px] border border-[color-mix(in_srgb,var(--border-ink)_18%,transparent)] bg-[var(--app-bg)] p-3.5 space-y-3 mb-4">
-            <span className="font-gelica text-xs font-bold text-[var(--ink)] block">
+            <span className="font-geist text-xs font-bold text-[var(--ink)] block">
               Stil Kalibrasyonu & Temel Karakter
             </span>
 
@@ -599,7 +599,7 @@ export function HandwritingStudioModal({
                       playPopSound();
                       setBaseFont(b.id as any);
                     }}
-                    className={`py-1.5 px-1 rounded-[10px] text-center font-gelica text-[11px] font-bold border transition-all ${
+                    className={`py-1.5 px-1 rounded-[10px] text-center font-geist text-[11px] font-bold border transition-all ${
                       baseFont === b.id
                         ? "border-[var(--accent)] bg-[var(--paper)] text-[var(--accent)] shadow-xs"
                         : "border-[color-mix(in_srgb,var(--border-ink)_15%,transparent)] text-[var(--ink-soft)] hover:text-[var(--ink)]"
@@ -665,7 +665,7 @@ export function HandwritingStudioModal({
           {/* CANLI DEFTER SATIRI ÖNİZLEMESİ */}
           <div className="mb-5">
             <div className="flex items-center justify-between mb-1">
-              <span className="font-gelica text-xs font-bold text-[var(--ink)]">
+              <span className="font-geist text-xs font-bold text-[var(--ink)]">
                 {t("cust.studio.preview")}
               </span>
               {previewImage && (
@@ -714,13 +714,13 @@ export function HandwritingStudioModal({
           <div className="flex items-center gap-2">
             <button
               onClick={onClose}
-              className="flex-1 py-2.5 rounded-[16px] border border-[var(--line)] font-gelica text-xs font-bold text-[var(--ink)] hover:bg-[var(--app-bg)] transition-colors"
+              className="flex-1 py-2.5 rounded-[16px] border border-[var(--line)] font-geist text-xs font-bold text-[var(--ink)] hover:bg-[var(--app-bg)] transition-colors"
             >
               {t("act.cancel")}
             </button>
             <button
               onClick={handleApplyCustomHandwriting}
-              className="flex-[2] py-2.5 rounded-[16px] bg-[var(--ink)] text-[var(--app-bg)] font-gelica text-xs font-bold hover:bg-[var(--accent)] transition-all shadow-md flex items-center justify-center gap-2"
+              className="flex-[2] py-2.5 rounded-[16px] bg-[var(--ink)] text-[var(--app-bg)] font-geist text-xs font-bold hover:bg-[var(--accent)] transition-all shadow-md flex items-center justify-center gap-2"
             >
               <Check size={14} />
               <span>{t("hws.save_apply")}</span>
