@@ -1126,5 +1126,13 @@ const esExtra = {
   "archive.deleted": "eliminado",
   "archive.undo": "deshacer",
   "auth.local_notice": "No hay cuenta en la nube conectada: este es un perfil local. Tus datos solo se quedan en este dispositivo, no se sincronizan con otros y la contraseña no se verifica.",
+  "auth.register_tab": "registrarse",
+  "auth.email_label": "correo electrónico:",
+  "auth.email_ph": "tu@ejemplo.com",
+  "auth.guest": "continuar como invitado",
+  "auth.sync_in_progress": "sincronizando...",
+  "auth.sync_waiting": "esperando para sincronizar.",
+  "auth.cloud_unreachable": "No se pudo conectar con el servicio en la nube. Revisa tu conexión.",
+  "auth.pass_min4": "La contraseña debe tener al menos 4 caracteres.",
 };
 export default esExtra;

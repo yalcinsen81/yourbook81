@@ -1174,6 +1174,14 @@ const trExtra = {
   "archive.deleted": "silindi",
   "archive.undo": "geri al",
   "auth.local_notice": "bulut hesabı bağlı değil: bu bir yerel profildir. verilerin yalnızca bu cihazda kalır, başka cihazlarla eşitlenmez ve şifre doğrulanmaz.",
+  "auth.register_tab": "deftere kaydol",
+  "auth.email_label": "e-posta adresi:",
+  "auth.email_ph": "adiniz@ornek.com",
+  "auth.guest": "misafir devam et",
+  "auth.sync_in_progress": "senkronize ediliyor...",
+  "auth.sync_waiting": "senkronizasyon bekleniyor.",
+  "auth.cloud_unreachable": "Bulut servisine ulaşılamadı. Bağlantınızı kontrol edin.",
+  "auth.pass_min4": "Şifre en az 4 karakter olmalıdır.",
 };
 
 export default trExtra;

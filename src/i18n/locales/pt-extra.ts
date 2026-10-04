@@ -1126,5 +1126,13 @@ const ptExtra = {
   "archive.deleted": "eliminado",
   "archive.undo": "desfazer",
   "auth.local_notice": "Nenhuma conta na nuvem conectada: este é um perfil local. Seus dados ficam apenas neste dispositivo, não são sincronizados com outros e a senha não é verificada.",
+  "auth.register_tab": "registrar",
+  "auth.email_label": "endereço de e-mail:",
+  "auth.email_ph": "voce@exemplo.com",
+  "auth.guest": "continuar como convidado",
+  "auth.sync_in_progress": "sincronizando...",
+  "auth.sync_waiting": "aguardando sincronização.",
+  "auth.cloud_unreachable": "Não foi possível acessar o serviço na nuvem. Verifique sua conexão.",
+  "auth.pass_min4": "A senha deve ter pelo menos 4 caracteres.",
 };
 export default ptExtra;

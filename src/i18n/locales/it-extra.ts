@@ -1125,5 +1125,13 @@ const itExtra: Record<string, string> = {
   "archive.deleted": "eliminato",
   "archive.undo": "annulla",
   "auth.local_notice": "Nessun account cloud collegato: questo è un profilo locale. I tuoi dati restano solo su questo dispositivo, non vengono sincronizzati con altri e la password non viene verificata.",
+  "auth.register_tab": "registrati",
+  "auth.email_label": "indirizzo e-mail:",
+  "auth.email_ph": "tu@esempio.it",
+  "auth.guest": "continua come ospite",
+  "auth.sync_in_progress": "sincronizzazione...",
+  "auth.sync_waiting": "in attesa di sincronizzare.",
+  "auth.cloud_unreachable": "Impossibile raggiungere il servizio cloud. Controlla la connessione.",
+  "auth.pass_min4": "La password deve contenere almeno 4 caratteri.",
 };
 export default itExtra;

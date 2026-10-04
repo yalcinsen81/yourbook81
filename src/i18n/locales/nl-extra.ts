@@ -1125,5 +1125,13 @@ const nlExtra: Record<string, string> = {
   "archive.deleted": "verwijderd",
   "archive.undo": "ongedaan maken",
   "auth.local_notice": "Er is geen cloudaccount verbonden: dit is een lokaal profiel. Je gegevens blijven alleen op dit apparaat, worden niet met andere apparaten gesynchroniseerd en het wachtwoord wordt niet gecontroleerd.",
+  "auth.register_tab": "registreren",
+  "auth.email_label": "e-mailadres:",
+  "auth.email_ph": "jij@voorbeeld.nl",
+  "auth.guest": "doorgaan als gast",
+  "auth.sync_in_progress": "synchroniseren...",
+  "auth.sync_waiting": "wachten op synchronisatie.",
+  "auth.cloud_unreachable": "De cloudservice is niet bereikbaar. Controleer je verbinding.",
+  "auth.pass_min4": "Het wachtwoord moet minstens 4 tekens bevatten.",
 };
 export default nlExtra;

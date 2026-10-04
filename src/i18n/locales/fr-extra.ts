@@ -1126,5 +1126,13 @@ const frExtra = {
   "archive.deleted": "supprimé",
   "archive.undo": "annuler",
   "auth.local_notice": "Aucun compte cloud n'est connecté : il s'agit d'un profil local. Tes données restent sur cet appareil, ne sont pas synchronisées avec d'autres appareils et le mot de passe n'est pas vérifié.",
+  "auth.register_tab": "s'inscrire",
+  "auth.email_label": "adresse e-mail :",
+  "auth.email_ph": "toi@exemple.fr",
+  "auth.guest": "continuer en invité",
+  "auth.sync_in_progress": "synchronisation...",
+  "auth.sync_waiting": "en attente de synchronisation.",
+  "auth.cloud_unreachable": "Impossible de joindre le service cloud. Vérifie ta connexion.",
+  "auth.pass_min4": "Le mot de passe doit contenir au moins 4 caractères.",
 };
 export default frExtra;

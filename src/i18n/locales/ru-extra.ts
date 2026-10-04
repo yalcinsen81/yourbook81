@@ -1126,5 +1126,13 @@ const ruExtra = {
   "archive.deleted": "удалено",
   "archive.undo": "отменить",
   "auth.local_notice": "Облачный аккаунт не подключён: это локальный профиль. Данные остаются только на этом устройстве, не синхронизируются с другими, а пароль не проверяется.",
+  "auth.register_tab": "зарегистрироваться",
+  "auth.email_label": "адрес эл. почты:",
+  "auth.email_ph": "you@example.com",
+  "auth.guest": "продолжить как гость",
+  "auth.sync_in_progress": "синхронизация...",
+  "auth.sync_waiting": "ожидание синхронизации.",
+  "auth.cloud_unreachable": "Не удалось связаться с облачным сервисом. Проверьте соединение.",
+  "auth.pass_min4": "Пароль должен содержать не менее 4 символов.",
 };
 export default ruExtra;

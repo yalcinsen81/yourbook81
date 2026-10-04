@@ -1126,5 +1126,13 @@ const arExtra = {
   "archive.deleted": "تم الحذف",
   "archive.undo": "تراجع",
   "auth.local_notice": "لا يوجد حساب سحابي متصل: هذا ملف محلي. تبقى بياناتك على هذا الجهاز فقط ولا تتم مزامنتها مع أجهزة أخرى ولا يتم التحقق من كلمة المرور.",
+  "auth.register_tab": "إنشاء حساب",
+  "auth.email_label": "البريد الإلكتروني:",
+  "auth.email_ph": "you@example.com",
+  "auth.guest": "المتابعة كضيف",
+  "auth.sync_in_progress": "جارٍ المزامنة...",
+  "auth.sync_waiting": "في انتظار المزامنة.",
+  "auth.cloud_unreachable": "تعذّر الوصول إلى الخدمة السحابية. تحقق من اتصالك.",
+  "auth.pass_min4": "يجب ألا تقل كلمة المرور عن 4 أحرف.",
 };
 export default arExtra;

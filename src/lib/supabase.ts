@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { translate, getSavedUiLanguage } from "../i18n";
 
 // Vite ortam değişkenleri
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
@@ -105,7 +106,7 @@ export async function loginUser(email: string, pass: string): Promise<{ user: Ap
 
   // 1. Supabase Yapılandırılmışsa gerçek buluta bağlan
   const sb = await getSupabase();
-  if (isCloudConfigured && !sb) return { user: null, error: "Bulut servisine ulaşılamadı. Bağlantınızı kontrol edin." };
+  if (isCloudConfigured && !sb) return { user: null, error: translate(getSavedUiLanguage(), "auth.cloud_unreachable") };
   if (sb) {
     try {
       const { data, error } = await sb.auth.signInWithPassword({
@@ -132,7 +133,7 @@ export async function loginUser(email: string, pass: string): Promise<{ user: Ap
 
   // 2. Çevrimdışı / Yerel Çalışma Modu (Kullanıcı dilediğinde hemen test edebilir)
   if (pass.length < 4) {
-    return { user: null, error: "Şifre en az 4 karakter olmalıdır." };
+    return { user: null, error: translate(getSavedUiLanguage(), "auth.pass_min4") };
   }
 
   const appUser: AppUser = {
@@ -154,7 +155,7 @@ export async function registerUser(email: string, pass: string, name?: string): 
   const displayName = name?.trim() || cleanEmail.split("@")[0];
 
   const sb = await getSupabase();
-  if (isCloudConfigured && !sb) return { user: null, error: "Bulut servisine ulaşılamadı. Bağlantınızı kontrol edin." };
+  if (isCloudConfigured && !sb) return { user: null, error: translate(getSavedUiLanguage(), "auth.cloud_unreachable") };
   if (sb) {
     try {
       const { data, error } = await sb.auth.signUp({
@@ -184,7 +185,7 @@ export async function registerUser(email: string, pass: string, name?: string): 
 
   // Çevrimdışı kayıt
   if (pass.length < 4) {
-    return { user: null, error: "Şifre en az 4 karakter olmalıdır." };
+    return { user: null, error: translate(getSavedUiLanguage(), "auth.pass_min4") };
   }
 
   const appUser: AppUser = {

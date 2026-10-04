@@ -123,14 +123,14 @@ export function AuthModal({
 
   const handleSyncNow = async () => {
     playPopSound();
-    setSyncStatus("senkronize ediliyor...");
+    setSyncStatus(t("auth.sync_in_progress"));
     const res = await performCloudSync(currentUser);
     if (res.success) {
       playSuccessSound();
       setSyncStatus(t("auth.synced"));
       setTimeout(() => setSyncStatus(null), 2500);
     } else {
-      setSyncStatus("senkronizasyon bekleniyor.");
+      setSyncStatus(t("auth.sync_waiting"));
     }
   };
 
@@ -261,7 +261,7 @@ export function AuthModal({
                     onClick={handleLogout}
                     className="text-xs font-gelica text-red-600 hover:underline px-3 py-1.5"
                   >
-                    çıkış yap
+                    {t("auth.sign_out")}
                   </button>
                 </div>
               </div>
@@ -283,7 +283,7 @@ export function AuthModal({
                         : "border-transparent text-[var(--ink-soft)] hover:text-[var(--ink)]"
                     }`}
                   >
-                    giriş yap
+                    {t("auth.sign_in")}
                   </button>
                   <button
                     type="button"
@@ -298,7 +298,7 @@ export function AuthModal({
                         : "border-transparent text-[var(--ink-soft)] hover:text-[var(--ink)]"
                     }`}
                   >
-                    deftere kaydol
+                    {t("auth.register_tab")}
                   </button>
                 </div>
 
@@ -318,7 +318,7 @@ export function AuthModal({
                   {!forgotMode && tab === "register" && (
                     <div>
                       <label className="font-gelica text-xs text-[var(--ink-soft)] block mb-1">
-                        isminiz / imzanız:
+                        {t("auth.name")}
                       </label>
                       <input
                         type="text"
@@ -332,21 +332,21 @@ export function AuthModal({
 
                   <div>
                     <label className="font-gelica text-xs text-[var(--ink-soft)] block mb-1">
-                      e-posta adresi:
+                      {t("auth.email_label")}
                     </label>
                     <input
                       type="email"
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="adiniz@ornek.com"
+                      placeholder={t("auth.email_ph")}
                       className="w-full rounded-[8px] border-[1.5px] border-[var(--ink)] bg-[var(--app-bg)] px-3 py-2 font-geist text-xs text-[var(--ink)] outline-none focus:border-[var(--accent)]"
                     />
                   </div>
 
                   {!forgotMode && <div>
                     <label className="font-gelica text-xs text-[var(--ink-soft)] block mb-1">
-                      şifre:
+                      {t("auth.password")}
                     </label>
                     <input
                       type="password"
@@ -419,7 +419,7 @@ export function AuthModal({
                       onClick={onClose}
                       className="font-gelica text-xs text-[var(--ink-soft)] hover:text-[var(--ink)]"
                     >
-                      misafir devam et
+                      {t("auth.guest")}
                     </button>
 
                     <button

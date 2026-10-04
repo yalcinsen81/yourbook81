@@ -1127,5 +1127,13 @@ const deExtra = {
   "archive.deleted": "gelöscht",
   "archive.undo": "rückgängig",
   "auth.local_notice": "Kein Cloud-Konto verbunden: Dies ist ein lokales Profil. Deine Daten bleiben nur auf diesem Gerät, werden nicht mit anderen Geräten synchronisiert und das Passwort wird nicht überprüft.",
+  "auth.register_tab": "registrieren",
+  "auth.email_label": "E-Mail-Adresse:",
+  "auth.email_ph": "du@beispiel.de",
+  "auth.guest": "als Gast fortfahren",
+  "auth.sync_in_progress": "synchronisiere...",
+  "auth.sync_waiting": "warte auf Synchronisierung.",
+  "auth.cloud_unreachable": "Der Cloud-Dienst ist nicht erreichbar. Prüfe deine Verbindung.",
+  "auth.pass_min4": "Das Passwort muss mindestens 4 Zeichen lang sein.",
 };
 export default deExtra;

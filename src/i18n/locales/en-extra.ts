@@ -1174,6 +1174,14 @@ const enExtra: Record<string, string> = {
   "archive.deleted": "deleted",
   "archive.undo": "undo",
   "auth.local_notice": "No cloud account is connected: this is a local profile. Your data stays on this device only, is not synced to other devices, and the password is not verified.",
+  "auth.register_tab": "sign up",
+  "auth.email_label": "email address:",
+  "auth.email_ph": "you@example.com",
+  "auth.guest": "continue as guest",
+  "auth.sync_in_progress": "syncing...",
+  "auth.sync_waiting": "waiting to sync.",
+  "auth.cloud_unreachable": "Could not reach the cloud service. Check your connection.",
+  "auth.pass_min4": "Password must be at least 4 characters.",
 };
 
 export default enExtra;
