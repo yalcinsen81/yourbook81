@@ -209,6 +209,9 @@ function AppContent() {
       ["--sidebar-bg", theme.sidebarBg],
       ["--desk-bg", theme.deskBg],
       ["--accent", theme.accent],
+      // index.css vurgu kuralları (text-/border-[var(--accent)], odak halkası) bu değişkene bağlı;
+      // tanımsız kalırsa geçersiz sayılır ve vurgu yazıları çevresinden miras alıp koyu kalır.
+      ["--accent-text", theme.accent],
             ["--ink", theme.ink],
       ["--ink-soft", theme.inkSoft],
       ["--border-ink", theme.border],
