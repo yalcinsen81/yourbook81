@@ -626,7 +626,7 @@ function AppContent() {
           aria-label={t("sidebar.hide")}
           title={t("sidebar.hide")}
           className="hidden lg:flex fixed z-30 h-8 w-8 items-center justify-center rounded-full bg-[var(--ink)] text-[var(--paper)] shadow-md transition-colors hover:bg-[var(--accent)]"
-          style={{ top: 21.5, left: sidebarWidth - 85 }}
+          style={{ top: 20, left: sidebarWidth - 85 }}
         >
           <span className="font-mono text-[17px] font-bold leading-none">‹</span>
         </button>
@@ -641,7 +641,7 @@ function AppContent() {
           aria-label={t("sidebar.show")}
           title={t("sidebar.show")}
           className="hidden lg:flex fixed z-30 h-8 w-8 items-center justify-center rounded-full bg-[var(--ink)] text-[var(--paper)] shadow-md transition-colors hover:bg-[var(--accent)]"
-          style={{ top: 21.5, left: 12 }}
+          style={{ top: 20, left: 12 }}
         >
           <span className="font-mono text-[17px] font-bold leading-none">›</span>
         </button>
