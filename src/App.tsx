@@ -732,7 +732,7 @@ function AppContent() {
         {/* MADDE 1: ALT NAV PAYI. Alt nav h-[52px] + py-1 + border ~62px; onceki pb-16
             (64px) sinirdaydi ve safe-area yoktu -> kart altindaki butonlar YARIM
             kaliyordu. Yeni: 52 + 8 nefes + safe-area. Masaustunde alt nav yok -> lg:pb-0. */}
-        <main className="relative flex-1 min-w-0 lg:h-full overflow-x-hidden bg-[var(--app-bg)] pb-[calc(60px+env(safe-area-inset-bottom))] lg:pb-0 lg:overflow-hidden">
+        <main className={`relative flex-1 min-w-0 lg:h-full overflow-x-hidden bg-[var(--app-bg)] pb-[calc(60px+env(safe-area-inset-bottom))] lg:pb-0 lg:overflow-hidden ${isSidebarHidden ? "lg:ms-[52px]" : ""}`}>
           {/* Sayfa kivrimi: masa gecisinde hafif bir kivrim efekti. */}
           {!isReducedMotion && (
           <motion.div
