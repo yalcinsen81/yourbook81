@@ -83,9 +83,9 @@ export function CoverStickerCluster({
       </div>
 
       {/* 9 Rozet Yuvası — Gerçekçi Postit & Organik El Çizimi Defter Koleksiyonu
-          Dar ekranda yatay kaydırılabilir (snap), geniş ekranda 9 kolon grid.
+          Dar ekranda yatay kaydırılabilir (snap), sm ve üstünde 3x3 grid (kart ~380px: 9 sütun rozetleri üst üste bindiriyordu).
           Etiketler kart genişliğinde kelime kaydırmalı (asıla taşmaz). */}
-      <div className="flex gap-2.5 overflow-x-auto pb-3 pt-1 -mx-1 px-1 snap-x snap-mandatory sm:grid sm:grid-cols-3 sm:gap-2 sm:overflow-visible sm:pb-1 sm:mx-0 sm:px-0 lg:grid-cols-9 lg:pe-2">
+      <div className="flex gap-2.5 overflow-x-auto pb-3 pt-1 -mx-1 px-1 snap-x snap-mandatory sm:grid sm:grid-cols-3 sm:justify-items-center sm:gap-x-2 sm:gap-y-3 sm:overflow-visible sm:pb-1 sm:mx-0 sm:px-0">
         {milestones.map((m: MilestoneSticker) => {
           const unlocked = m.unlocked;
           const tilt = m.rotation ?? 0;

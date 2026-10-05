@@ -23,7 +23,8 @@ describe("OnboardingFlow", () => {
 
   it("iki dil için iki seviye sorusu sorar, sonra süreyi ve sonucu kaydeder", () => {
     let done = 0;
-    render(<OnboardingFlow displayName="Ayşe" onDone={() => { done++; }} />);
+    let codes: string[] = [];
+    render(<OnboardingFlow displayName="Ayşe" onDone={(c) => { done++; codes = c; }} />);
     fireEvent.click(screen.getByRole("button", { name: /Almanca/ }));
     fireEvent.click(screen.getByRole("button", { name: /İngilizce/ }));
     fireEvent.click(screen.getByRole("button", { name: "Devam" }));
@@ -36,6 +37,7 @@ describe("OnboardingFlow", () => {
     fireEvent.click(screen.getByRole("button", { name: /15 dk/ }));
     fireEvent.click(screen.getByRole("button", { name: /Ayşe için kapağı aç/ }));
     expect(done).toBe(1);
+    expect(codes).toEqual(["de", "en"]);
     const saved = JSON.parse(localStorage.getItem("yourbook_onboarding_v1")!);
     expect(saved.langs).toEqual(["Almanca", "İngilizce"]);
     expect(saved.levels).toEqual({ Almanca: "B1" });

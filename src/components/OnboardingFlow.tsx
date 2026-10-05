@@ -2,14 +2,15 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { useT } from "../i18n/I18nProvider";
 
-type Props = { displayName?: string; onDone: () => void };
+/** onDone seçilen hedef dillerin KODLARINI (de, en, es, it, fr) verir; çağıran masaları açar. */
+type Props = { displayName?: string; onDone: (langCodes: string[]) => void };
 // Kayıtlı değerler (Türkçe adlar) korunur; yalnızca görünen etiket çevrilir.
-const LANGS: Array<{ id: string; key: string }> = [
-  { id: "Almanca", key: "onb.lang_de" },
-  { id: "İngilizce", key: "onb.lang_en" },
-  { id: "İspanyolca", key: "onb.lang_es" },
-  { id: "İtalyanca", key: "onb.lang_it" },
-  { id: "Fransızca", key: "onb.lang_fr" },
+const LANGS: Array<{ id: string; key: string; code: string }> = [
+  { id: "Almanca", key: "onb.lang_de", code: "de" },
+  { id: "İngilizce", key: "onb.lang_en", code: "en" },
+  { id: "İspanyolca", key: "onb.lang_es", code: "es" },
+  { id: "İtalyanca", key: "onb.lang_it", code: "it" },
+  { id: "Fransızca", key: "onb.lang_fr", code: "fr" },
 ];
 const LEVELS = ["A1", "A2", "B1", "B2", "C1"];
 const MINUTES = [5, 10, 15, 20];
@@ -56,7 +57,7 @@ export function OnboardingFlow({ displayName, onDone }: Props) {
     try {
       localStorage.setItem("yourbook_onboarding_v1", JSON.stringify({ langs, levels, minutes, completedAt: Date.now() }));
     } catch { /* depolama kapalıysa sessizce geç */ }
-    onDone();
+    onDone(langs.map((id) => LANGS.find((l) => l.id === id)?.code).filter((c): c is string => Boolean(c)));
   };
   const next = () => { if (!canContinue) return; if (isLast) finish(); else setStep(step + 1); };
 

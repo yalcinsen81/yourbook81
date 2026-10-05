@@ -215,6 +215,9 @@ interface SuperrSidebarProps {
 // Aktif madde zemininin kayması: yay yerine çok kısa bir tween (seri hissi).
 const PILL_TWEEN = { type: "tween", duration: 0.08, ease: [0.2, 0, 0, 1] } as const;
 
+/** "İngilizce B2-C2" gibi rozetlerden yalnızca seviyeyi (B2-C2) alır; dil adı satırda zaten var. */
+const levelOnly = (badge: string) => badge.match(/[ABC][12](?:\s*[–-]\s*[ABC][12])?/)?.[0] ?? badge;
+
 const SPRING_PILL = {
   type: "spring",
   stiffness: 800,
@@ -773,7 +776,7 @@ export function SuperrSidebar({
                   className="absolute inset-0 rounded-[20px] bg-[var(--ink)] -z-10 border border-[var(--line)] shadow-sm"
                 />
               )}
-              <div className="flex items-center gap-1.5">
+              <div className="flex min-w-0 items-center gap-1.5">
                 <span aria-hidden="true" className={"craft-cover-strip " + (space.coverClass || "")} />
                 <span className="flex w-[22px] flex-shrink-0 items-center justify-center">
                   {(() => {
@@ -781,33 +784,38 @@ export function SuperrSidebar({
                     return <LangIcon size={17} className="text-current" />;
                   })()}
                 </span>
-                <span className="whitespace-nowrap font-geist font-medium text-[13px] leading-none">{space.nameKey ? t(space.nameKey) : space.name}</span>
+                <span className="min-w-0 truncate font-geist font-medium text-[13px] leading-none">{space.nameKey ? t(space.nameKey) : space.name}</span>
               </div>
-              <span className="ms-auto inline-flex min-w-5 h-5 items-center justify-center rounded-full bg-[var(--accent)] px-1.5 font-mono text-[10px] font-bold text-[var(--app-bg)]">
-{space.badgeKey ? t(space.badgeKey) : space.badge}
+              <span className="ms-auto inline-flex min-w-5 h-5 shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-[var(--accent)] px-1.5 font-mono text-[10px] font-bold text-[var(--app-bg)]">
+{levelOnly(space.badgeKey ? t(space.badgeKey) : space.badge)}
               </span>
             </motion.button>
           );
         })}
 
-        {/* + YENİ ÇALIŞMA MASASI — mevcut "+" düğmesinden ayrı, dil seçimli akış */}
-        {false && onCreateLanguageDesk && (
-          <motion.button
-            whileHover={{ x: 3 }}
-            whileTap={{ scale: 0.96 }}
-            onClick={() => {
-              playPopSound();
-              setIsLanguagePickerOpen(true);
-            }}
-            title={t("tip.new_desk")}
-            className="relative flex h-8 w-full min-w-0 items-center gap-2.5 rounded-[20px] box-border border-[1.5px] border-dashed border-[var(--line-strong)] px-3.5 py-1 text-[13px] font-geist font-medium text-[var(--ink)] hover:bg-[color-mix(in_srgb,var(--ink)_6%,transparent)] transition-colors"
-          >
-            <span className="flex w-[22px] flex-shrink-0 items-center justify-center">
-              <Plus size={14} className="text-current" />
-            </span>
-            <span className="font-geist font-medium text-[13px]">{t("sidebar.desk.new")}</span>
-          </motion.button>
-        )}
+        {/* Henüz açılmamış diller: tek tıkla masa ekle (altı dilin hepsi burada görünür) */}
+        {isDesksOpen && onCreateLanguageDesk &&
+          LANGUAGES.filter((l) => !(languageSpaceExists ? languageSpaceExists(l.code) : false)).map((l) => (
+            <motion.button
+              key={"add-" + l.code}
+              type="button"
+              whileHover={{ x: 3 }}
+              whileTap={{ scale: 0.96 }}
+              onClick={() => {
+                playPopSound();
+                onCreateLanguageDesk(l.code);
+                if (isMobileDrawer) onCloseMobileDrawer?.();
+              }}
+              title={t("tip.new_desk")}
+              data-add-desk={l.code}
+              className="relative flex h-8 w-full min-w-0 items-center gap-2.5 rounded-[20px] box-border border border-dashed border-[var(--line-strong)] px-3.5 text-[13px] font-geist font-medium text-[var(--ink-soft)] hover:text-[var(--ink)] hover:bg-[color-mix(in_srgb,var(--ink)_5%,transparent)]"
+            >
+              <span className="flex w-[22px] flex-shrink-0 items-center justify-center">
+                <Plus size={14} className="text-current" />
+              </span>
+              <span className="truncate">{t(l.deskNameKey || l.deskName)}</span>
+            </motion.button>
+          ))}
 
         {/* YouTube Arşivi (Floating Pill) */}
         <motion.button

@@ -1,7 +1,7 @@
 import { NotebookCustomizeModal } from "./components/NotebookCustomizeModal";
 import { TimeLightingOverlay } from "./components/TimeLightingOverlay";
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import { SuperrSidebar, type NavView } from "./components/SuperrSidebar";
 import { SuperrHero } from "./components/SuperrHero";
 import { OnboardingFlow } from "./components/OnboardingFlow";
@@ -77,9 +77,11 @@ function preloadViews() {
 
 export default function App() {
   return (
-    <EngagementProvider>
-      <AppContent />
-    </EngagementProvider>
+    <MotionConfig reducedMotion="user">
+      <EngagementProvider>
+        <AppContent />
+      </EngagementProvider>
+    </MotionConfig>
   );
 }
 
@@ -100,7 +102,7 @@ function AppContent() {
     resetAll,
   } = useDeck();
   const { notes, ringingAlarmNote, dismissAlarm, snoozeAlarm } = useNotes();
-  const { spaces, activeSpace, switchSpace, addLanguageSpace, languageSpaceExists, langDeskCount } = useSpaces();
+  const { spaces, activeSpace, switchSpace, addLanguageSpace, addLanguageSpaces, languageSpaceExists, langDeskCount } = useSpaces();
 
   // Kağıt dokusu ve el yazısı stil state'leri
   const [paperTexture, setPaperTexture] = useState<PaperTextureType>(getSavedPaperTexture);
@@ -1016,7 +1018,7 @@ function AppContent() {
       />
 
       {/* ⭐ 7. Kullanıcı Giriş & Profil Modalı (Vintage Kimlik Kartı) */}
-      {showOnboarding && <OnboardingFlow displayName={currentUser?.displayName} onDone={() => setShowOnboarding(false)} />}
+      {showOnboarding && <OnboardingFlow displayName={currentUser?.displayName} onDone={(codes) => { addLanguageSpaces(codes); setShowOnboarding(false); }} />}
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
