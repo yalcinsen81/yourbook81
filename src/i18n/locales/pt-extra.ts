@@ -1174,5 +1174,6 @@ const ptExtra = {
   "hero.notebook_of": "O Caderno de {name}",
   "hero.notebook_mine": "Meu Caderno",
   "sidebar.appearance": "aparência",
+  "onb.back": "Voltar",
 };
 export default ptExtra;

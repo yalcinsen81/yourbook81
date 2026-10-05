@@ -1174,5 +1174,6 @@ const frExtra = {
   "hero.notebook_of": "Le Cahier de {name}",
   "hero.notebook_mine": "Mon Cahier",
   "sidebar.appearance": "apparence",
+  "onb.back": "Retour",
 };
 export default frExtra;

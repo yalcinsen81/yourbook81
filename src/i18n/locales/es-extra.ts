@@ -1174,5 +1174,6 @@ const esExtra = {
   "hero.notebook_of": "El Cuaderno de {name}",
   "hero.notebook_mine": "Mi Cuaderno",
   "sidebar.appearance": "apariencia",
+  "onb.back": "Atrás",
 };
 export default esExtra;

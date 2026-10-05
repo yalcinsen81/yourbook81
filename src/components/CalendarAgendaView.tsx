@@ -563,7 +563,7 @@ export function CalendarAgendaView({ onOpenJournal }: CalendarAgendaViewProps) {
       </AnimatePresence>
 
       {/* 1. Sol Panel: İnteraktif Aylık Takvim */}
-      <div className="w-full lg:w-[380px] p-4 sm:p-8 border-b-2 lg:border-b-0 lg:border-r-2 border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] flex flex-col justify-between overflow-y-auto flex-shrink-0">
+      <div className="w-full lg:w-[380px] p-4 sm:p-8 border-b-2 lg:border-b-0 lg:border-r-2 border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[color-mix(in_srgb,var(--ink)_6%,transparent)] flex flex-col justify-between overflow-y-auto flex-shrink-0">
         <div>
           <div className="flex items-center justify-between pb-4 border-b-2 border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)]">
             <div>

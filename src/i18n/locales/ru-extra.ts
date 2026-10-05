@@ -1174,5 +1174,6 @@ const ruExtra = {
   "hero.notebook_of": "Тетрадь {name}",
   "hero.notebook_mine": "Моя тетрадь",
   "sidebar.appearance": "оформление",
+  "onb.back": "Назад",
 };
 export default ruExtra;

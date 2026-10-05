@@ -1173,5 +1173,6 @@ const itExtra: Record<string, string> = {
   "hero.notebook_of": "Quaderno di {name}",
   "hero.notebook_mine": "Il mio quaderno",
   "sidebar.appearance": "aspetto",
+  "onb.back": "Indietro",
 };
 export default itExtra;

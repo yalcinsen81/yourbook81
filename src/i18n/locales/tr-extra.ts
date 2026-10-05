@@ -1222,6 +1222,7 @@ const trExtra = {
   "hero.notebook_of": "{name} · Not Defteri",
   "hero.notebook_mine": "Not Defterim",
   "sidebar.appearance": "görünüm",
+  "onb.back": "geri",
 };
 
 export default trExtra;

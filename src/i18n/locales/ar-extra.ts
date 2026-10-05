@@ -1174,5 +1174,6 @@ const arExtra = {
   "hero.notebook_of": "دفتر {name}",
   "hero.notebook_mine": "دفتري",
   "sidebar.appearance": "المظهر",
+  "onb.back": "رجوع",
 };
 export default arExtra;

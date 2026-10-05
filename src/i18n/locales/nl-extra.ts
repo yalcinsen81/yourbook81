@@ -1173,5 +1173,6 @@ const nlExtra: Record<string, string> = {
   "hero.notebook_of": "Schrift van {name}",
   "hero.notebook_mine": "Mijn schrift",
   "sidebar.appearance": "uiterlijk",
+  "onb.back": "Terug",
 };
 export default nlExtra;

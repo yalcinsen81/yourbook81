@@ -281,14 +281,14 @@ export function NotebookCustomizeModal({
                   playPopSound();
                   setActiveTab(tab.id as any);
                 }}
-                className={`flex-1 min-w-[70px] flex items-center justify-center gap-1 rounded-[16px] py-1.5 font-gelica text-[10.5px] font-semibold transition-all ${
+                className={`flex-1 min-w-0 flex items-center justify-center gap-1 whitespace-nowrap rounded-[16px] px-1.5 py-1.5 font-geist text-[11.5px] font-medium transition-all ${
                   activeTab === tab.id
                     ? "bg-[var(--ink)] text-[var(--app-bg)] shadow-xs"
                     : "text-[var(--ink)] hover:text-[var(--accent)]"
                 }`}
               >
                 <span className="shrink-0">{tab.icon}</span>
-                <span>{tab.label}</span>
+                <span className="whitespace-nowrap">{tab.label}</span>
               </button>
             ))}
           </div>

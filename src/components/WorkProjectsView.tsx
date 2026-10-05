@@ -899,7 +899,7 @@ export function WorkProjectsView() {
 
                       key={contact.id}
 
-                      className="hover:bg-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] transition-colors"
+                      className="hover:bg-[color-mix(in_srgb,var(--ink)_6%,transparent)] transition-colors"
 
                     >
 

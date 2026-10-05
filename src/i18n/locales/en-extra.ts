@@ -1222,6 +1222,7 @@ const enExtra: Record<string, string> = {
   "hero.notebook_of": "{name}'s Notebook",
   "hero.notebook_mine": "My Notebook",
   "sidebar.appearance": "appearance",
+  "onb.back": "Back",
 };
 
 export default enExtra;

@@ -1175,5 +1175,6 @@ const deExtra = {
   "hero.notebook_of": "Notizheft von {name}",
   "hero.notebook_mine": "Mein Notizheft",
   "sidebar.appearance": "Darstellung",
+  "onb.back": "Zurück",
 };
 export default deExtra;

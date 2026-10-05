@@ -206,7 +206,7 @@ export function CollectionsView() {
               className="card-superr p-6"
             >
               <div className="flex items-center justify-between pb-3 border-b border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] text-xs">
-                <span className="rounded-[20px] border border-[var(--line)] bg-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] px-2.5 py-0.5 font-geist text-[11px] font-semibold text-[var(--accent)]">
+                <span className="rounded-[20px] border border-[var(--line)] bg-[color-mix(in_srgb,var(--ink)_6%,transparent)] px-2.5 py-0.5 font-geist text-[11px] font-semibold text-[var(--accent)]">
                   {note.category}
                 </span>
                 <span className="font-handwritten text-sm text-[var(--ink-soft)] font-bold">

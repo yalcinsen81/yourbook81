@@ -533,7 +533,7 @@ export function StickyCard({ card, onLearn, onForgot, onUpdateImage, onEdit, onD
       {hasGrammar && (
         <motion.div
           layout
-          className="border-t-2 border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[color-mix(in_srgb,var(--border-ink)_20%,transparent)]"
+          className="border-t-2 border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[color-mix(in_srgb,var(--ink)_6%,transparent)]"
         >
           <motion.button
             whileTap={{ scale: 0.98 }}
