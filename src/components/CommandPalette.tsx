@@ -217,10 +217,10 @@ export function CommandPalette({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: -8 }}
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-lg overflow-hidden rounded-[10px] border border-[#e5e5e5] bg-[#fffdf8] shadow-lg"
+            className="w-full max-w-lg overflow-hidden rounded-[10px] border border-[var(--line)] bg-[var(--paper)] shadow-[var(--shadow-soft)]"
           >
             <div className="flex items-center gap-3 border-b border-[#e5e5e5] px-4 py-3">
-              <Search size={15} className="text-[#8c8c8c]" />
+              <Search size={15} className="text-[var(--ink-soft)]" />
               <input
                 type="text"
                 value={query}
@@ -230,9 +230,9 @@ export function CommandPalette({
                 }}
                 placeholder={t("archive.search_ph")}
                 autoFocus
-                className="w-full font-sans text-xs text-[#0a0a0a] placeholder:text-[#8c8c8c] bg-transparent outline-none"
+                className="w-full font-sans text-xs text-[var(--ink)] placeholder:text-[var(--ink-soft)] bg-transparent outline-none focus-visible:!outline-none"
               />
-              <span className="font-mono text-[10px] text-[#8c8c8c]">ESC</span>
+              <span className="font-mono text-[10px] text-[var(--ink-soft)]">ESC</span>
             </div>
 
             <div className="max-h-72 overflow-y-auto p-2 space-y-1">
@@ -245,7 +245,7 @@ export function CommandPalette({
                     onMouseEnter={() => setActiveIndex(index)}
                     onClick={() => runCommand(cmd)}
                     className={`flex w-full items-center justify-between rounded-[8px] px-3 py-2 text-xs transition-colors ${
-                      isActive ? "bg-[#1e2942] text-[#fffdf8]" : "text-[#0a0a0a] hover:bg-[#1e2942] hover:text-[#fffdf8]"
+                      isActive ? "bg-[var(--ink)] text-[var(--app-bg)]" : "text-[var(--ink)] hover:bg-[color-mix(in_srgb,var(--ink)_8%,transparent)]"
                     }`}
                   >
                     <div className="flex items-center gap-2.5">

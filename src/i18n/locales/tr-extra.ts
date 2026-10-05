@@ -1221,6 +1221,14 @@ const trExtra = {
   "sys.error_retry": "sayfayı yenilemeyi dene.",
   "hero.notebook_of": "{name} · Not Defteri",
   "hero.notebook_mine": "Not Defterim",
+  "sidebar.appearance": "görünüm",
+  "onb.back": "geri",
+  "a11y.prev_month": "önceki ay",
+  "a11y.next_month": "sonraki ay",
+  "a11y.add_task": "görevi ekle",
+  "a11y.toggle_done": "tamamlandı olarak işaretle",
+  "a11y.date": "tarih",
+  "a11y.time": "saat",
 };
 
 export default trExtra;

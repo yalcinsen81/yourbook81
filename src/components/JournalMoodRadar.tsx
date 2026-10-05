@@ -181,7 +181,7 @@ export function JournalMoodRadar({
         </div>
 
         {/* Zaman Aralığı Butonları */}
-        <div className="flex items-center rounded-[20px] border border-[var(--ink)] bg-[var(--app-bg)] p-0.5 shadow-2xs">
+        <div className="flex items-center rounded-[20px] border border-[var(--line)] bg-[var(--app-bg)] p-0.5 shadow-2xs">
           {(
             [
               { id: "7d", label: t("time.last_7") },
@@ -196,7 +196,7 @@ export function JournalMoodRadar({
                 playPopSound();
                 setRange(t.id);
               }}
-              className={`rounded-[18px] px-3 py-1 font-gelica text-xs font-semibold transition-all ${
+              className={`rounded-[18px] px-3 py-1 font-geist text-xs font-semibold transition-all ${
                 range === t.id
                   ? "bg-[var(--ink)] text-[var(--app-bg)] shadow-xs"
                   : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
@@ -215,11 +215,11 @@ export function JournalMoodRadar({
           {/* Radar Kartı */}
           <div className="card-superr p-5 sm:p-6 flex flex-col items-center">
             <div className="w-full flex items-center justify-between pb-3 border-b border-black/5">
-              <span className="font-gelica text-xs font-bold lowercase text-[var(--ink)]">
+              <span className="font-geist text-xs font-bold lowercase text-[var(--ink)]">
                 {t("radar.compass")}
               </span>
               {moodStats.dominantMood && (
-                <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-gelica border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,transparent)] text-[var(--accent)] font-semibold">
+                <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-geist border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,transparent)] text-[var(--accent)] font-semibold">
                   <span>{t("radar.dominant")}</span>
                   <span>{moodLabel(moodStats.dominantMood)}</span>
                 </span>
@@ -314,7 +314,7 @@ export function JournalMoodRadar({
                             x={lx}
                             y={ly + 4}
                             textAnchor="middle"
-                            className={`font-gelica text-[10px] select-none transition-colors ${
+                            className={`font-geist text-[10px] select-none transition-colors ${
                               isHovered
                                 ? "fill-[var(--accent)] font-bold text-[11px]"
                                 : "fill-[var(--ink-soft)]"
@@ -336,7 +336,7 @@ export function JournalMoodRadar({
             {/* Hover Tooltip veya Bilgi Çubuğu */}
             <div className="h-6 flex items-center justify-center text-center">
               {activeMoodHover ? (
-                <div className="flex items-center gap-1.5 font-gelica text-xs font-bold text-[var(--accent)]">
+                <div className="flex items-center gap-1.5 font-geist text-xs font-bold text-[var(--accent)]">
                   <span>{MOOD_META[activeMoodHover]?.icon}</span>
                   <span>{moodLabel(activeMoodHover)}:</span>
                   <span className="font-mono">{moodStats.counts[activeMoodHover] || 0} gün</span>
@@ -360,7 +360,7 @@ export function JournalMoodRadar({
                 return (
                   <div
                     key={mId}
-                    className="flex items-center gap-2 text-xs font-gelica group cursor-pointer"
+                    className="flex items-center gap-2 text-xs font-geist group cursor-pointer"
                     onMouseEnter={() => setActiveMoodHover(mId)}
                     onMouseLeave={() => setActiveMoodHover(null)}
                   >
@@ -419,7 +419,7 @@ export function JournalMoodRadar({
             <h4 className="font-gelica text-sm font-bold text-[var(--ink)]">
               {insight.title}
             </h4>
-            <p className="font-gelica text-xs leading-relaxed text-[var(--ink)] mt-1 opacity-90 italic">
+            <p className="font-geist text-xs leading-relaxed text-[var(--ink)] mt-1 opacity-90 italic">
               "{insight.message}"
             </p>
           </div>
@@ -437,7 +437,7 @@ export function JournalMoodRadar({
                 </span>
                 <button
                   onClick={handleTodayMonth}
-                  className="rounded-full border border-[var(--ink)] px-2 py-0.5 font-handwritten text-[10px] font-bold text-[var(--ink)] hover:bg-[var(--ink)] hover:text-[var(--app-bg)] transition-colors"
+                  className="rounded-full border border-[var(--line)] px-2 py-0.5 font-handwritten text-[10px] font-bold text-[var(--ink)] hover:bg-[var(--ink)] hover:text-[var(--app-bg)] transition-colors"
                 >
                   bu ay
                 </button>
@@ -447,14 +447,14 @@ export function JournalMoodRadar({
                 <button
                   onClick={handlePrevMonth}
                   title={t("time.prev_month")}
-                  className="h-7 w-7 rounded-full border border-[var(--ink)] flex items-center justify-center text-xs hover:bg-[var(--ink)] hover:text-[var(--app-bg)] transition-colors font-mono"
+                  className="h-7 w-7 rounded-full border border-[var(--line)] flex items-center justify-center text-xs hover:bg-[var(--ink)] hover:text-[var(--app-bg)] transition-colors font-mono"
                 >
                   ‹
                 </button>
                 <button
                   onClick={handleNextMonth}
                   title="Sonraki ay"
-                  className="h-7 w-7 rounded-full border border-[var(--ink)] flex items-center justify-center text-xs hover:bg-[var(--ink)] hover:text-[var(--app-bg)] transition-colors font-mono"
+                  className="h-7 w-7 rounded-full border border-[var(--line)] flex items-center justify-center text-xs hover:bg-[var(--ink)] hover:text-[var(--app-bg)] transition-colors font-mono"
                 >
                   ›
                 </button>
@@ -466,7 +466,7 @@ export function JournalMoodRadar({
               {weekdayNames.map((day) => (
                 <div
                   key={day}
-                  className="font-gelica text-[10px] font-bold text-[var(--ink-soft)] uppercase tracking-wider"
+                  className="font-geist text-[10px] font-bold text-[var(--ink-soft)] uppercase tracking-wider"
                 >
                   {day}
                 </div>
@@ -499,7 +499,7 @@ export function JournalMoodRadar({
                         ? "border-2 border-[var(--accent)] shadow-xs"
                         : cell.hasEntry
                         ? "border-[color-mix(in_srgb,var(--border-ink)_25%,transparent)] hover:border-[var(--accent)] hover:-translate-y-0.5 shadow-2xs"
-                        : "border-[color-mix(in_srgb,var(--border-ink)_12%,transparent)] hover:border-[var(--ink)]"
+                        : "border-[color-mix(in_srgb,var(--border-ink)_12%,transparent)] hover:border-[var(--line-strong)]"
                     }`}
                   >
                     {/* Gün Numarası + Bugün Göstergesi (tek turuncu nefes alan nokta) */}
@@ -528,7 +528,7 @@ export function JournalMoodRadar({
                     {cell.hasEntry ? (
                       <div
                         className={`w-full mt-1 flex items-center gap-1 rounded-[8px] border px-1.5 py-0.5 text-[9px] font-gelica ${
-                          moodMeta?.badgeBg || "bg-[var(--app-bg)] border-[var(--border-ink)]"
+                          moodMeta?.badgeBg || "bg-[var(--app-bg)] border-[var(--line-strong)]"
                         }`}
                       >
                         <span className="shrink-0">{moodMeta?.icon}</span>
@@ -550,7 +550,7 @@ export function JournalMoodRadar({
             </div>
 
             {/* Takvim Alt Bilgisi */}
-            <div className="mt-4 pt-3 border-t border-black/5 flex flex-wrap items-center justify-between text-xs font-gelica text-[var(--ink-soft)] gap-2">
+            <div className="mt-4 pt-3 border-t border-black/5 flex flex-wrap items-center justify-between text-xs font-geist text-[var(--ink-soft)] gap-2">
               <div className="flex items-center gap-2">
                 <span className="inline-block h-2 w-2 rounded-full border border-[var(--accent)] bg-[var(--accent)]" />
                 <span className="text-[11px]">{t("radar.calendar_hint")}</span>
@@ -590,7 +590,7 @@ export function JournalMoodRadar({
 
             <div className="rounded-[14px] border border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[var(--paper)] p-3.5 shadow-2xs">
               <span className="font-mono text-xs text-[var(--ink-soft)] block mb-1">{t("radar.stat.peak")}</span>
-              <span className="font-gelica text-xs font-bold text-[var(--accent)] block truncate mt-1">
+              <span className="font-geist text-xs font-bold text-[var(--accent)] block truncate mt-1">
                 {habits.peakHourSlot}
               </span>
               <span className="font-handwritten text-[10px] text-[var(--ink-soft)] italic">

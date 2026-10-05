@@ -62,14 +62,14 @@ export function StudyDesk({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
-      className="relative flex min-h-full w-full flex-col px-6 py-6 pb-[calc(88px+env(safe-area-inset-bottom))] lg:px-10 lg:pb-6 lg:flex-row lg:gap-6"
+      className="relative flex min-h-full w-full flex-col px-6 py-6 pb-[calc(150px+env(safe-area-inset-bottom))] sm:pb-[calc(110px+env(safe-area-inset-bottom))] lg:px-10 lg:pb-6 lg:flex-row lg:gap-6"
     >
       <div className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col lg:mx-auto lg:max-w-[1200px]">
         {/* Baslik */}
         <div className="mb-4">
-          <h2 className="font-gelica text-[22px] font-bold text-[var(--ink)]">
+          <h1 className="font-gelica text-[22px] font-bold text-[var(--ink)]">
             {t(space.nameKey || space.name)}
-          </h2>
+          </h1>
           <p className="font-mono text-[11px] text-[var(--ink-soft)]">
             {t("desk.count_short").replace("{n}", String(deskTotal ?? cards.length))}
           </p>
@@ -132,7 +132,7 @@ export function StudyDesk({
                 </button>
                 <button
                   onClick={onReset}
-                  className="rounded-[12px] border border-[var(--ink)] px-4 py-2 font-gelica text-[12px] font-bold text-[var(--ink)] transition hover:bg-[color-mix(in_srgb,var(--ink)_6%,transparent)]"
+                  className="rounded-[12px] border border-[var(--line)] px-4 py-2 font-gelica text-[12px] font-bold text-[var(--ink)] transition hover:bg-[color-mix(in_srgb,var(--ink)_6%,transparent)]"
                 >
                   {t("desk.reset")}
                 </button>
@@ -152,7 +152,7 @@ export function StudyDesk({
             </button>
             <button
               onClick={onReset}
-              className="rounded-[12px] border border-[var(--ink)] px-4 py-2 font-gelica text-[12px] font-bold text-[var(--ink)] transition hover:bg-[color-mix(in_srgb,var(--ink)_6%,transparent)]"
+              className="rounded-[12px] border border-[var(--line)] px-4 py-2 font-gelica text-[12px] font-bold text-[var(--ink)] transition hover:bg-[color-mix(in_srgb,var(--ink)_6%,transparent)]"
             >
               {t("desk.reset")}
             </button>

@@ -80,7 +80,7 @@ export default function VolumeCompleteBanner({ onVolumeChange }: VolumeCompleteB
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -10, scale: 0.98 }}
           transition={{ type: "spring", stiffness: 280, damping: 26 }}
-          className="mx-auto mb-4 w-full max-w-3xl rounded-[16px] border-[1.5px] border-[var(--ink)] bg-[var(--paper)] p-4 shadow-lg"
+          className="mx-auto mb-4 w-full max-w-3xl rounded-[16px] border border-[var(--line-strong)] bg-[var(--paper)] p-4 shadow-lg"
           role="status"
           aria-live="polite"
         >
@@ -118,7 +118,7 @@ export default function VolumeCompleteBanner({ onVolumeChange }: VolumeCompleteB
                   data-volume-switch="1"
                   onClick={handleSwitch}
                   disabled={switching}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-[var(--ink)] bg-[var(--accent)] px-3.5 py-1.5 font-gelica text-xs font-bold text-white transition hover:brightness-95 disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[var(--line)] bg-[var(--accent)] px-3.5 py-1.5 font-geist text-xs font-bold text-white transition hover:brightness-95 disabled:opacity-50"
                 >
                   <SketchSparkles size={13} strokeWidth={1.8} />
                   {t("volume.start_new")}
@@ -126,7 +126,7 @@ export default function VolumeCompleteBanner({ onVolumeChange }: VolumeCompleteB
                 <button
                   data-volume-dismiss="1"
                   onClick={handleDismiss}
-                  className="rounded-full border border-[var(--ink)] px-3 py-1.5 font-gelica text-xs font-semibold text-[var(--ink)] transition hover:bg-[color-mix(in_srgb,var(--ink)_8%,transparent)]"
+                  className="rounded-full border border-[var(--line)] px-3 py-1.5 font-geist text-xs font-semibold text-[var(--ink)] transition hover:bg-[color-mix(in_srgb,var(--ink)_8%,transparent)]"
                 >
                   {t("volume.later")}
                 </button>

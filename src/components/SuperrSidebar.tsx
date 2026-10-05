@@ -4,7 +4,7 @@ import {
   SketchTranslate,
   SketchDocument,
 } from "./icons/sketchIcons";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, startTransition } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { spaceTopicIcon, DBook as BookOpen, DBriefcase as Briefcase, DCalendar as Calendar, DCalendarDays as CalendarDays, DDownload as Download, DFolder as FolderKanban, DLayers as Layers, DNote as StickyNote, DPlus as Plus, DSearch as Search, DTopicEnglish, DTopicGerman, DUser as User, DVideo as VideoIcon, DVolume as Volume2, DVolumeMute as VolumeX, DX as X, DChevronRight } from "./icons/doodle";
 import { playPopSound } from "../lib/sound";
@@ -104,7 +104,7 @@ function SketchyCheck({ color = "var(--app-bg)" }: { color?: string }) {
 /* Organik el çizimi defter logosu — rozet ikonlarıyla aynı sketch dilinde */
 function SketchyLogo({ size = 40 }: { size?: number }) {
   return (
-    <div className="relative flex h-10 w-10 items-center justify-center rounded-[12px] bg-[var(--accent)] border-2 border-[var(--ink)] shadow-sm flex-shrink-0 rotate-[-2deg]">
+    <div className="relative flex h-10 w-10 items-center justify-center rounded-[12px] bg-[var(--accent)] border border-[var(--line-strong)] shadow-sm flex-shrink-0 rotate-[-2deg]">
       <svg
         width="27"
         height="27"
@@ -212,15 +212,21 @@ interface SuperrSidebarProps {
   languageSpaceExists?: (code: string) => boolean;
 }
 
+// Aktif madde zemininin kayması: yay yerine çok kısa bir tween (seri hissi).
+const PILL_TWEEN = { type: "tween", duration: 0.08, ease: [0.2, 0, 0, 1] } as const;
+
+/** "İngilizce B2-C2" gibi rozetlerden yalnızca seviyeyi (B2-C2) alır; dil adı satırda zaten var. */
+const levelOnly = (badge: string) => badge.match(/[ABC][12](?:\s*[–-]\s*[ABC][12])?/)?.[0] ?? badge;
+
 const SPRING_PILL = {
   type: "spring",
-  stiffness: 500,
-  damping: 34,
+  stiffness: 800,
+  damping: 44,
 } as const;
 
 export function SuperrSidebar({
-  currentView,
-  onSelectView,
+  currentView: propView,
+  onSelectView: onSelectViewProp,
   activeSpace,
   onSelectSpace,
   theme,
@@ -252,6 +258,14 @@ export function SuperrSidebar({
   onCreateLanguageDesk,
   languageSpaceExists,
 }: SuperrSidebarProps) {
+  // Vurgulanan madde ANINDA değişir (yalnızca bu bileşen yeniden çizilir); içerik değişimi ise
+  // düşük öncelikli geçişle yapılır. Ağır bir görünüm çizilirken bile menü tepkisiz kalmaz.
+  const [currentView, setLocalView] = useState<NavView>(propView);
+  useEffect(() => { setLocalView(propView); }, [propView]);
+  const onSelectView = useCallback((v: NavView) => {
+    setLocalView(v);
+    startTransition(() => onSelectViewProp(v));
+  }, [onSelectViewProp]);
   const [isLanguagePickerOpen, setIsLanguagePickerOpen] = useState(false);
   // Sol menude TUM dil masalari TEK satirda toplanir (6+ dil icin olceklenir).
   // Varsayilan: KAPALI (sol menu kisa kalsin). Kullanici acarsa tercihi hatirlanir.
@@ -355,11 +369,11 @@ export function SuperrSidebar({
       }}
       className={`relative z-20 flex h-full ${
         isMobileDrawer ? "w-[285px]" : ""
-      } flex-col border-r-2 border-[var(--ink)] text-[var(--ink)] select-none flex-shrink-0`}
+      } flex-col border-r border-[var(--line)] text-[var(--ink)] select-none flex-shrink-0`}
     >
       {/* Gizle/göster butonu artık App.tsx içinde, panelin DIŞINDA durur (SidebarToggle). */}
       {/* 1. yourbook Markası & Hızlı Ekle (Taktil Yaylar) */}
-      <div className="flex items-center justify-between p-4 border-b-2 border-[var(--ink)] bg-[var(--app-bg)]">
+      <div className="flex items-center justify-between p-4 border-b border-[var(--line)] bg-[var(--app-bg)]">
         <motion.div
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.96 }}
@@ -391,13 +405,6 @@ export function SuperrSidebar({
              <span className="font-gelica text-[21px] font-semibold text-[var(--ink)] leading-none tracking-tight">your</span>
              <span className="font-gelica text-[21px] font-semibold text-[var(--accent)] leading-none tracking-tight">book</span>
             </span>
-            {/* ⭐ Büyütülen Sıcak El Yazısı Başlığı */}
-            <span
-              style={{ fontSize: "12px" }}
-              className="font-handwritten text-[var(--ink-soft)] mt-1 font-bold tracking-normal whitespace-nowrap leading-none"
-            >
-              {t("agenda.title")}
-            </span>
           </div>
         </motion.div>
 
@@ -413,7 +420,7 @@ export function SuperrSidebar({
               if (isMobileDrawer) onCloseMobileDrawer?.();
             }}
             title={t("tip.open_agenda")}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--ink)] text-[var(--app-bg)] border border-[var(--ink)] hover:[background-color:var(--accent)] transition-colors shadow-sm"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--ink)] text-[var(--app-bg)] border border-[var(--line)] hover:[background-color:var(--accent)] transition-colors shadow-sm"
           >
             <Plus size={14} strokeWidth={2.5} />
           </motion.button>
@@ -424,7 +431,7 @@ export function SuperrSidebar({
                 playPopSound();
                 onCloseMobileDrawer?.();
               }}
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--ink)] text-[var(--ink)] hover:bg-black/5"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--line)] text-[var(--ink)] hover:bg-black/5"
               title={t("act.close")}
             >
               <X size={15} />
@@ -446,11 +453,11 @@ export function SuperrSidebar({
           className="flex items-center justify-between w-full px-3 py-2 rounded-[12px] border border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[var(--app-bg)] hover:border-[var(--accent)] transition-colors text-start shadow-xs"
         >
           <div className="flex items-center gap-2.5 min-w-0">
-            <span className="w-7 h-7 rounded-lg border-[1.5px] border-[var(--ink)] bg-[var(--accent)] text-white flex items-center justify-center font-gelica text-xs font-bold flex-shrink-0 shadow-xs">
+            <span className="w-7 h-7 rounded-lg border border-[var(--line-strong)] bg-[var(--accent)] text-white flex items-center justify-center font-geist text-xs font-bold flex-shrink-0 shadow-xs">
               {currentUser ? currentUser.avatarLetter : <User size={13} />}
             </span>
             <div className="flex flex-col min-w-0">
-              <span className="font-gelica text-xs font-semibold text-[var(--ink)] truncate leading-tight">
+              <span className="font-geist text-[13px] font-semibold text-[var(--ink)] truncate leading-tight">
                 {currentUser ? currentUser.displayName : t("auth.sign_in_up")}
               </span>
               <span className="font-geist text-[9.5px] text-[var(--ink-soft)] flex items-center gap-1 mt-0.5">
@@ -468,18 +475,18 @@ export function SuperrSidebar({
       </div>
 
       {/* 2. Komut Paleti & Arama (Turuncu Defter Bandı) */}
-      <div className="p-3 border-b-2 border-[var(--ink)] bg-[var(--accent)] shadow-xs">
+      <div className="p-3 border-b border-[var(--line)] bg-[var(--accent)] shadow-xs">
         <motion.button
           whileHover={{ scale: 1.02, y: -1 }}
           whileTap={{ scale: 0.96 }}
           onClick={onOpenCommandPalette}
-          className="flex w-full items-center justify-between rounded-[20px] border-2 border-[var(--ink)] bg-[var(--app-bg)] px-3.5 py-1.5 text-xs text-[var(--ink)] hover:bg-[var(--paper)] transition-all shadow-[2px_2px_0_0_var(--ink)]"
+          className="flex w-full items-center justify-between rounded-[20px] border border-[var(--line-strong)] bg-[var(--app-bg)] px-3.5 py-1.5 text-xs text-[var(--ink)] hover:bg-[var(--paper)] transition-all shadow-[var(--shadow-soft)]"
         >
           <div className="flex items-center gap-2.5">
             <Search size={14} className="text-[var(--accent)]" />
             <span className="font-geist text-xs font-semibold text-[var(--ink)]">{t("sidebar.search_ph")}</span>
           </div>
-          <span className="font-mono text-[10px] font-bold text-[var(--accent)] bg-[var(--app-bg)] border border-[var(--ink)] px-1.5 py-0.5 rounded-[6px]">
+          <span className="font-mono text-[10px] font-bold text-[var(--accent)] bg-[var(--app-bg)] border border-[var(--line)] px-1.5 py-0.5 rounded-[6px]">
             ⌘K
           </span>
         </motion.button>
@@ -488,7 +495,7 @@ export function SuperrSidebar({
       {/* 3. DEFTER BÖLÜMLERİ (⭐ EMIL KOWALSKI FLOATING PILL INDICATOR) */}
       <div className="relative z-0 flex-1 overflow-y-auto px-3.5 pt-[9px] pb-6 space-y-[3px] scrollbar-none">
         <div className="pb-0">
-        <span className="font-gelica text-xs uppercase tracking-wider text-[var(--ink-soft)] block px-2 mb-1 font-semibold">
+        <span className="font-geist text-[11px] uppercase tracking-[0.08em] text-[var(--ink-soft)] block px-2 mb-1.5 font-semibold">
             {t("sidebar.sections")}
         </span>
         </div>
@@ -501,22 +508,22 @@ export function SuperrSidebar({
             playPopSound();
             onSelectView("hero");
           }}
-          className={`relative flex w-full items-center justify-between rounded-[20px] px-2.5 py-1.5 text-xs font-gelica font-semibold transition-colors z-10 ${
+          className={`relative flex w-full items-center justify-between rounded-[20px] px-2.5 py-1.5 text-[13px] font-geist font-medium !transition-none z-10 ${
             currentView === "hero" ? "text-[var(--app-bg)]" : "text-[var(--ink)] hover:text-[#000000]"
           }`}
         >
           {currentView === "hero" && (
             <motion.div
               layoutId="sidebar-view-indicator"
-              transition={SPRING_PILL}
-              className="absolute inset-0 rounded-[20px] bg-[var(--ink)] -z-10 border border-[var(--ink)] shadow-sm"
+              transition={PILL_TWEEN}
+              className="absolute inset-0 rounded-[20px] bg-[var(--ink)] -z-10 border border-[var(--line)] shadow-sm"
             />
           )}
           <div className="flex min-w-0 items-center gap-2.5 flex-1">
             <span className="flex w-[22px] flex-shrink-0 items-center justify-center">
               <BookOpen size={17} />
             </span>
-            <span className="text-[11.5px] whitespace-nowrap">{t("sidebar.item.cover")}</span>
+            <span className="text-[13px] whitespace-nowrap">{t("sidebar.item.cover")}</span>
           </div>
           <span className="font-handwritten text-[13px] text-[var(--accent)] font-bold"></span>
         </motion.button>
@@ -533,22 +540,22 @@ export function SuperrSidebar({
             playPopSound();
             onSelectView("collections");
           }}
-          className={`relative flex h-[26px] w-full items-center justify-between rounded-[20px] px-3.5 text-xs font-gelica font-semibold transition-colors z-10 ${
+          className={`relative flex h-8 w-full items-center justify-between rounded-[20px] px-3.5 text-[13px] font-geist font-medium !transition-none z-10 ${
             currentView === "collections" ? "text-[var(--app-bg)]" : "text-[var(--ink)] hover:text-[#000000]"
           }`}
         >
           {currentView === "collections" && (
             <motion.div
               layoutId="sidebar-view-indicator"
-              transition={SPRING_PILL}
-              className="absolute inset-0 rounded-[20px] bg-[var(--ink)] -z-10 border border-[var(--ink)] shadow-sm"
+              transition={PILL_TWEEN}
+              className="absolute inset-0 rounded-[20px] bg-[var(--ink)] -z-10 border border-[var(--line)] shadow-sm"
             />
           )}
           <div className="flex items-center gap-2.5">
             <span className="flex w-[22px] flex-shrink-0 items-center justify-center">
               <FolderKanban size={17} />
             </span>
-            <span className="text-[11.5px] whitespace-nowrap">{t("sidebar.item.archive")}</span>
+            <span className="text-[13px] whitespace-nowrap">{t("sidebar.item.archive")}</span>
           </div>
           <span className="inline-flex min-w-5 h-5 items-center justify-center rounded-full bg-[var(--accent)] px-1.5 font-mono text-[10px] font-bold text-[var(--app-bg)]">{notesCount}</span>
         </motion.button>
@@ -565,22 +572,22 @@ export function SuperrSidebar({
             playPopSound();
             onSelectView("daily");
           }}
-          className={`relative flex h-[26px] w-full items-center justify-between rounded-[20px] px-3.5 text-xs font-gelica font-semibold transition-colors z-10 ${
+          className={`relative flex h-8 w-full items-center justify-between rounded-[20px] px-3.5 text-[13px] font-geist font-medium !transition-none z-10 ${
             currentView === "daily" ? "text-[var(--app-bg)]" : "text-[var(--ink)] hover:text-[#000000]"
           }`}
         >
           {currentView === "daily" && (
             <motion.div
               layoutId="sidebar-view-indicator"
-              transition={SPRING_PILL}
-              className="hidden absolute inset-0 rounded-[20px] bg-[var(--ink)] -z-10 border border-[var(--ink)] shadow-sm"
+              transition={PILL_TWEEN}
+              className="absolute inset-0 rounded-[20px] bg-[var(--ink)] -z-10 border border-[var(--line)] shadow-sm"
             />
           )}
           <div className="flex items-center gap-2.5 min-w-0">
             <span className="flex w-[22px] flex-shrink-0 items-center justify-center">
               <CalendarDays size={17} />
             </span>
-            <span className="text-[11.5px] whitespace-nowrap">{t("sidebar.item.journal")}</span>
+            <span className="text-[13px] whitespace-nowrap">{t("sidebar.item.journal")}</span>
           </div>
             <span className="font-handwritten text-[var(--accent)] text-[11px] flex-shrink-0 ms-auto ps-1">{t("time.today")}</span>
         </motion.button>
@@ -597,20 +604,20 @@ export function SuperrSidebar({
             playPopSound();
             onSelectView("journal");
           }}
-          className={`hidden relative flex h-[26px] w-full items-center justify-between rounded-[20px] px-3.5 text-xs font-gelica font-semibold transition-colors z-10 ${
+          className={`relative flex h-8 w-full items-center justify-between rounded-[20px] px-3.5 text-[13px] font-geist font-medium !transition-none z-10 ${
             currentView === "journal" ? "text-[var(--app-bg)]" : "text-[var(--ink)] hover:text-[#000000]"
           }`}
         >
           {currentView === "journal" && (
             <motion.div
               layoutId="sidebar-view-indicator"
-              transition={SPRING_PILL}
-              className="absolute inset-0 rounded-[20px] bg-[var(--ink)] -z-10 border border-[var(--ink)] shadow-sm"
+              transition={PILL_TWEEN}
+              className="absolute inset-0 rounded-[20px] bg-[var(--ink)] -z-10 border border-[var(--line)] shadow-sm"
             />
           )}
           <div className="flex items-center gap-2.5">
             <span className="flex w-[22px] shrink-0 items-center justify-center"><SketchJournalPen size={15} className="shrink-0 text-current" strokeWidth={1.8} /></span>
-            <span className="text-[11.5px] whitespace-nowrap">{t("sidebar.item.dear_journal")}</span>
+            <span className="text-[13px] whitespace-nowrap">{t("sidebar.item.dear_journal")}</span>
           </div>
           <span className="font-handwritten text-[var(--accent)] text-[11px] flex-shrink-0 ms-auto ps-1">{t("sidebar.item.unload")}</span>
         </motion.button>
@@ -627,20 +634,20 @@ export function SuperrSidebar({
             playPopSound();
             onSelectView("notes");
           }}
-          className={`relative flex h-[26px] w-full items-center justify-between rounded-[20px] px-3.5 text-xs font-gelica font-semibold transition border-[var(--ink)] z-10 ${
+          className={`relative flex h-8 w-full items-center justify-between rounded-[20px] px-3.5 text-[13px] font-geist font-medium transition border-[var(--line-strong)] z-10 ${
             currentView === "notes" ? "text-[var(--app-bg)]" : "text-[var(--ink)] hover:text-[#000]"
           }`}
         >
           {currentView === "notes" && (
             <motion.div
               layoutId="sidebar-view-indicator"
-              transition={SPRING_PILL}
-              className="hidden absolute inset-0 rounded-[20px] bg-[var(--ink)] -z-10 border-[var(--ink)] shadow-sm"
+              transition={PILL_TWEEN}
+              className="absolute inset-0 rounded-[20px] bg-[var(--ink)] -z-10 border-[var(--line-strong)] shadow-sm"
             />
           )}
           <div className="flex items-center gap-2.5">
             <span className="flex w-[22px] shrink-0 items-center justify-center"><SketchDocument size={15} className="shrink-0 text-current" strokeWidth={1.8} /></span>
-            <span className="text-[11.5px] whitespace-nowrap">{t("sidebar.item.notes")}</span>
+            <span className="text-[13px] whitespace-nowrap">{t("sidebar.item.notes")}</span>
           </div>
           <span className="font-handwritten text-[var(--accent)] text-[11px] flex-shrink-0 ms-auto ps-1">
             {t("sidebar.item.notes_short")}
@@ -659,22 +666,22 @@ export function SuperrSidebar({
             playPopSound();
             onSelectView("work");
           }}
-          className={`relative flex h-[26px] w-full items-center justify-between rounded-[20px] px-3.5 text-xs font-gelica font-semibold transition-colors z-10 ${
+          className={`relative flex h-8 w-full items-center justify-between rounded-[20px] px-3.5 text-[13px] font-geist font-medium !transition-none z-10 ${
             currentView === "work" ? "text-[var(--app-bg)]" : "text-[var(--ink)] hover:text-[#000000]"
           }`}
         >
           {currentView === "work" && (
             <motion.div
               layoutId="sidebar-view-indicator"
-              transition={SPRING_PILL}
-              className="absolute inset-0 rounded-[20px] bg-[var(--ink)] -z-10 border border-[var(--ink)] shadow-sm"
+              transition={PILL_TWEEN}
+              className="absolute inset-0 rounded-[20px] bg-[var(--ink)] -z-10 border border-[var(--line)] shadow-sm"
             />
           )}
           <div className="flex items-center gap-2.5">
             <span className="flex w-[22px] flex-shrink-0 items-center justify-center">
               <Briefcase size={17} />
             </span>
-            <span className="text-[11.5px] whitespace-nowrap">{t("work.title")}</span>
+            <span className="text-[13px] whitespace-nowrap">{t("work.title")}</span>
           </div>
           {/* ⭐ En Son Notu Anlatan Turuncu El Yazısı Etiket */}
           <span className="font-handwritten text-[var(--accent)] text-[12px] flex-shrink-0 ms-auto ps-1 font-bold">
@@ -694,22 +701,22 @@ export function SuperrSidebar({
             playPopSound();
             onSelectView("calendar");
           }}
-          className={`relative flex h-[26px] w-full items-center justify-between rounded-[20px] px-3.5 text-xs font-gelica font-semibold transition-colors z-10 ${
+          className={`relative flex h-8 w-full items-center justify-between rounded-[20px] px-3.5 text-[13px] font-geist font-medium !transition-none z-10 ${
             currentView === "calendar" ? "text-[var(--app-bg)]" : "text-[var(--ink)] hover:text-[#000000]"
           }`}
         >
           {currentView === "calendar" && (
             <motion.div
               layoutId="sidebar-view-indicator"
-              transition={SPRING_PILL}
-              className="absolute inset-0 rounded-[20px] bg-[var(--ink)] -z-10 border border-[var(--ink)] shadow-sm"
+              transition={PILL_TWEEN}
+              className="absolute inset-0 rounded-[20px] bg-[var(--ink)] -z-10 border border-[var(--line)] shadow-sm"
             />
           )}
           <div className="flex items-center gap-2.5">
             <span className="flex w-[22px] flex-shrink-0 items-center justify-center">
               <Calendar size={17} />
             </span>
-              <span className="text-[11.5px] whitespace-nowrap">{t("sidebar.item.agenda")}</span>
+              <span className="text-[13px] whitespace-nowrap">{t("sidebar.item.agenda")}</span>
           </div>
           <span className="font-handwritten text-[var(--accent)] text-[12px] flex-shrink-0 ms-auto ps-1 font-bold">
             {t("sidebar.item.agenda_short")}
@@ -722,14 +729,14 @@ export function SuperrSidebar({
           whileHover={{ x: 2 }}
           whileTap={{ scale: 0.97 }}
           aria-expanded={isDesksOpen}
-          className="relative flex w-full items-center gap-2 rounded-[20px] px-3.5 py-2 text-xs font-gelica font-semibold text-[var(--ink)] transition-colors hover:bg-[color-mix(in_srgb,var(--ink)_6%,transparent)]"
+          className="relative flex w-full items-center gap-2 rounded-[20px] px-3.5 py-2 text-[13px] font-geist font-medium text-[var(--ink)] transition-colors hover:bg-[color-mix(in_srgb,var(--ink)_6%,transparent)]"
         >
          <span className="flex w-[22px] flex-shrink-0 items-center justify-center">
             <motion.span animate={{ rotate: isDesksOpen ? 90 : 0 }} transition={SPRING_PILL} className="flex">
               <DChevronRight size={14} className="text-current" />
             </motion.span>
          </span>
-         <span className="font-gelica lowercase text-[11px] leading-tight">{t("sidebar.desks_group")}</span>
+         <span className="font-geist font-medium text-[13px] leading-tight">{t("sidebar.desks_group")}</span>
          <span className="font-handwritten text-[10px] text-[var(--accent)] ms-auto ps-1 flex-shrink-0">
             {t("hero.n_lang_desks").replace("{n}", String(LANGUAGES.length))}
          </span>
@@ -758,18 +765,18 @@ export function SuperrSidebar({
                 onSelectSpace(space.id);
                 onSelectView("cards");
               }}
-              className={`relative flex h-[26px] w-full items-center justify-between rounded-[20px] px-3.5 text-xs font-gelica font-semibold transition-colors z-10 ${
+              className={`relative flex h-8 w-full items-center justify-between rounded-[20px] px-3.5 text-[13px] font-geist font-medium !transition-none z-10 ${
                 isSelected ? "text-[var(--app-bg)]" : "text-[var(--ink)] hover:text-[#000000]"
               }`}
             >
               {isSelected && (
                 <motion.div
                   layoutId="sidebar-view-indicator"
-                  transition={SPRING_PILL}
-                  className="absolute inset-0 rounded-[20px] bg-[var(--ink)] -z-10 border border-[var(--ink)] shadow-sm"
+                  transition={PILL_TWEEN}
+                  className="absolute inset-0 rounded-[20px] bg-[var(--ink)] -z-10 border border-[var(--line)] shadow-sm"
                 />
               )}
-              <div className="flex items-center gap-1.5">
+              <div className="flex min-w-0 items-center gap-1.5">
                 <span aria-hidden="true" className={"craft-cover-strip " + (space.coverClass || "")} />
                 <span className="flex w-[22px] flex-shrink-0 items-center justify-center">
                   {(() => {
@@ -777,33 +784,38 @@ export function SuperrSidebar({
                     return <LangIcon size={17} className="text-current" />;
                   })()}
                 </span>
-                <span className="whitespace-nowrap font-gelica lowercase text-[11px] leading-none">{space.nameKey ? t(space.nameKey) : space.name}</span>
+                <span className="min-w-0 truncate font-geist font-medium text-[13px] leading-none">{space.nameKey ? t(space.nameKey) : space.name}</span>
               </div>
-              <span className="ms-auto inline-flex min-w-5 h-5 items-center justify-center rounded-full bg-[var(--accent)] px-1.5 font-mono text-[10px] font-bold text-[var(--app-bg)]">
-{space.badgeKey ? t(space.badgeKey) : space.badge}
+              <span className="ms-auto inline-flex min-w-5 h-5 shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-[var(--accent)] px-1.5 font-mono text-[10px] font-bold text-[var(--app-bg)]">
+{levelOnly(space.badgeKey ? t(space.badgeKey) : space.badge)}
               </span>
             </motion.button>
           );
         })}
 
-        {/* + YENİ ÇALIŞMA MASASI — mevcut "+" düğmesinden ayrı, dil seçimli akış */}
-        {false && onCreateLanguageDesk && (
-          <motion.button
-            whileHover={{ x: 3 }}
-            whileTap={{ scale: 0.96 }}
-            onClick={() => {
-              playPopSound();
-              setIsLanguagePickerOpen(true);
-            }}
-            title={t("tip.new_desk")}
-            className="relative flex h-[26px] w-full min-w-0 items-center gap-2.5 rounded-[20px] box-border border-[1.5px] border-dashed border-[var(--ink)] px-3.5 py-1 text-xs font-gelica font-semibold text-[var(--ink)] hover:bg-[color-mix(in_srgb,var(--ink)_6%,transparent)] transition-colors"
-          >
-            <span className="flex w-[22px] flex-shrink-0 items-center justify-center">
-              <Plus size={14} className="text-current" />
-            </span>
-            <span className="font-gelica lowercase text-[11.5px]">{t("sidebar.desk.new")}</span>
-          </motion.button>
-        )}
+        {/* Henüz açılmamış diller: tek tıkla masa ekle (altı dilin hepsi burada görünür) */}
+        {isDesksOpen && onCreateLanguageDesk &&
+          LANGUAGES.filter((l) => !(languageSpaceExists ? languageSpaceExists(l.code) : false)).map((l) => (
+            <motion.button
+              key={"add-" + l.code}
+              type="button"
+              whileHover={{ x: 3 }}
+              whileTap={{ scale: 0.96 }}
+              onClick={() => {
+                playPopSound();
+                onCreateLanguageDesk(l.code);
+                if (isMobileDrawer) onCloseMobileDrawer?.();
+              }}
+              title={t("tip.new_desk")}
+              data-add-desk={l.code}
+              className="relative flex h-8 w-full min-w-0 items-center gap-2.5 rounded-[20px] box-border border border-dashed border-[var(--line-strong)] px-3.5 text-[13px] font-geist font-medium text-[var(--ink-soft)] hover:text-[var(--ink)] hover:bg-[color-mix(in_srgb,var(--ink)_5%,transparent)]"
+            >
+              <span className="flex w-[22px] flex-shrink-0 items-center justify-center">
+                <Plus size={14} className="text-current" />
+              </span>
+              <span className="truncate">{t(l.deskNameKey || l.deskName)}</span>
+            </motion.button>
+          ))}
 
         {/* YouTube Arşivi (Floating Pill) */}
         <motion.button
@@ -817,79 +829,66 @@ export function SuperrSidebar({
             playPopSound();
             onSelectView("youtube");
           }}
-          className={`relative flex h-[26px] w-full items-center justify-between rounded-[20px] px-3.5 text-xs font-gelica font-semibold transition-colors z-10 ${
+          className={`relative flex h-8 w-full items-center justify-between rounded-[20px] px-3.5 text-[13px] font-geist font-medium !transition-none z-10 ${
             currentView === "youtube" ? "text-[var(--app-bg)]" : "text-[var(--ink)] hover:text-[#000000]"
           }`}
         >
           {currentView === "youtube" && (
             <motion.div
               layoutId="sidebar-view-indicator"
-              transition={SPRING_PILL}
-              className="absolute inset-0 rounded-[20px] bg-[var(--ink)] -z-10 border border-[var(--ink)] shadow-sm"
+              transition={PILL_TWEEN}
+              className="absolute inset-0 rounded-[20px] bg-[var(--ink)] -z-10 border border-[var(--line)] shadow-sm"
             />
           )}
           <div className="flex items-center gap-2.5">
             <span className="flex w-[22px] flex-shrink-0 items-center justify-center">
               <VideoIcon size={17} className="text-current" />
             </span>
-            <span className="font-gelica lowercase text-[11.5px]">{t("sidebar.youtube")}</span>
+            <span className="font-geist font-medium text-[13px]">{t("sidebar.youtube")}</span>
           </div>
           <span className="font-handwritten text-[11px] text-[var(--accent)]">
               0
           </span>
         </motion.button>
 
-        {/* 5. TEMALAR (⭐ EMIL KOWALSKI FLOATING PILL INDICATOR) */}
-        <div className="pb-0">
-          <span className="font-gelica text-xs uppercase tracking-wider text-[var(--ink-soft)] block px-2 mb-1 font-semibold">
+        {/* 5. TEMALAR: başlık altında tek satır renk noktası */}
+        <div className="flex items-center justify-between px-2 pt-1">
+          <span className="font-geist text-[11px] uppercase tracking-[0.08em] text-[var(--ink-soft)] font-semibold">
             {t("sidebar.themes")}
           </span>
+          <span className="truncate ps-2 font-geist text-[11px] text-[var(--ink-soft)]">{t(theme.nameKey)}</span>
         </div>
-
-        {themes.map((th) => {
-          const isSelected = theme.id === th.id;
-          return (
-            <motion.button
-              key={th.id}
-              whileHover={{ x: 3 }}
-              whileTap={{ scale: 0.96 }}
-              onClick={() => {
-                playPopSound();
-                onSelectTheme(th.id);
-              }}
-              title={t(th.descKey)}
-              className={`relative flex h-[26px] w-full items-center justify-between rounded-[20px] px-3.5 text-xs font-gelica font-semibold transition-colors z-10 ${
-                isSelected ? "text-[var(--app-bg)]" : "text-[var(--ink)] hover:text-[#000000]"
-              }`}
-            >
-              {isSelected && (
-                <motion.div
-                  layoutId="sidebar-theme-indicator"
-                  transition={SPRING_PILL}
-                  className="absolute inset-0 rounded-[20px] -z-10 border border-[var(--ink)] shadow-sm"
-                  style={{ backgroundColor: th.accent }}
-                />
-              )}
-              <div className="flex items-center gap-2.5">
-                <span className="w-5 flex items-center justify-center flex-shrink-0">
-                  <ThemeDoodleIcon themeId={th.id} size={15} />
-                </span>
-                <span className="font-gelica font-semibold lowercase whitespace-nowrap text-[11.5px]">{t(th.nameKey)}</span>
-              </div>
-              {isSelected ? (
-                <SketchyCheck color="var(--app-bg)" />
-              ) : (
-                <SketchyColorDot color={th.accent} />
-              )}
-            </motion.button>
-          );
-        })}
+        <div role="radiogroup" aria-label={t("sidebar.themes")} className="flex items-center gap-3 px-2.5 pb-2 pt-1.5">
+          {themes.map((th) => {
+            const isSelected = theme.id === th.id;
+            return (
+              <button
+                key={th.id}
+                type="button"
+                role="radio"
+                aria-checked={isSelected}
+                aria-label={t(th.nameKey)}
+                title={`${t(th.nameKey)} — ${t(th.descKey)}`}
+                onClick={() => {
+                  playPopSound();
+                  onSelectTheme(th.id);
+                }}
+                className={`h-7 w-7 shrink-0 rounded-full border transition-transform duration-100 hover:scale-110 ${
+                  isSelected
+                    ? "border-[var(--ink)] shadow-[0_0_0_2px_var(--paper),0_0_0_3.5px_var(--ink)]"
+                    : "border-[var(--line-strong)]"
+                }`}
+                style={{ background: `linear-gradient(135deg, ${th.appBg} 0 50%, ${th.accent} 50% 100%)` }}
+              />
+            );
+          })}
+        </div>
 
         {/* ARAYÜZ DİLİ — tema seçiciyle aynı görsel dilde, kullanıcı profili alanına yakın */}
                 {/* ARAYÜZ DİLİ ÖNERİSİ — yeni açılan masa ile eşleşen arayüz dili varsa */}
 
 <div className="pb-0">
-          <span className="font-gelica text-xs uppercase tracking-wider text-[var(--ink-soft)] block px-2 mb-1 font-semibold">
+          <span className="font-geist text-[11px] uppercase tracking-[0.08em] text-[var(--ink-soft)] block px-2 mb-1.5 font-semibold">
             {t("ui_language.title")}
           </span>
         </div>
@@ -903,13 +902,13 @@ export function SuperrSidebar({
               setIsUiLangPickerOpen((v) => !v);
             }}
             title={t("ui_language.tip")}
-            className="relative flex h-[26px] w-full items-center justify-between rounded-[20px] px-3.5 text-xs font-gelica font-semibold text-[var(--ink)] hover:text-[#000] transition-colors"
+            className="relative flex h-8 w-full items-center justify-between rounded-[20px] px-3.5 text-[13px] font-geist font-medium text-[var(--ink)] hover:text-[#000] transition-colors"
           >
             <div className="flex items-center gap-2.5">
               <span className="w-5 flex items-center justify-center flex-shrink-0">
                 <SketchTranslate size={15} />
               </span>
-              <span className="font-gelica font-semibold lowercase whitespace-nowrap text-[11.5px]">
+              <span className="font-geist font-medium whitespace-nowrap text-[13px]">
                 {(UI_LANGUAGES.find((l) => l.code === uiLang) || UI_LANGUAGES[0]).label}
               </span>
             </div>
@@ -937,7 +936,7 @@ export function SuperrSidebar({
                         setLanguage(l.code);
                         setIsUiLangPickerOpen(false);
                       }}
-                      className={`flex items-center justify-between rounded-[16px] px-3 py-1 text-[11px] font-gelica font-semibold transition-colors ${
+                      className={`flex items-center justify-between rounded-[16px] px-3 py-1 text-[11px] font-geist font-semibold transition-colors ${
                         active
                           ? "bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] text-[var(--accent)]"
                           : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
@@ -962,7 +961,7 @@ export function SuperrSidebar({
               playPopSound();
               onOpenCustomize();
             }}
-            className="flex w-full items-center justify-between rounded-[20px] box-border border-[1.5px] border-dashed border-[var(--ink)] bg-transparent px-3 py-1.5 font-gelica text-[11px] font-semibold text-[var(--ink)] hover:bg-[color-mix(in_srgb,var(--ink)_6%,transparent)] transition-colors"
+            className="flex w-full items-center justify-between rounded-[20px] box-border border-[1.5px] border-dashed border-[var(--line-strong)] bg-transparent px-3 py-1.5 font-geist text-[11px] font-semibold text-[var(--ink)] hover:bg-[color-mix(in_srgb,var(--ink)_6%,transparent)] transition-colors"
           >
             <span className="flex items-center gap-1.5">
               <SketchPalette size={14} className="shrink-0 text-current" strokeWidth={1.8} />
@@ -974,7 +973,7 @@ export function SuperrSidebar({
       </div>
 
       {/* 4.5. Seri & Seviye Göstergesi */}
-      <div className="relative z-20 shrink-0 isolate px-3 pt-1.5 pb-1 bg-[var(--app-bg)] border-t-2 border-dashed border-[var(--border-ink)]">
+      <div className="relative z-20 shrink-0 isolate px-3 pt-1.5 pb-1 bg-[var(--app-bg)] border-t-2 border-dashed border-[var(--line-strong)]">
         <div className="flex items-center justify-between pb-1">
           <div className="flex items-center gap-2.5">
             {/* v105: seri 0 iken gizle -> '0 XP' ile karismasin */}
@@ -982,7 +981,7 @@ export function SuperrSidebar({
             {/* MADDE 4: TOPLAM XP / gunluk hedef — "86 / 2000 XP" bicimi.
                 Onceden yalnizca totalXp yaziliyordu ve istatistik panelindeki
                 "86" (yuzde) ile karisiyordu. Simdi ikisi AYRI gosterilir. */}
-            <span className="font-gelica text-xs font-bold text-[var(--accent)]" title={t("tip.total_xp")} data-xp-display="1">
+            <span className="font-geist text-xs font-bold text-[var(--accent)]" title={t("tip.total_xp")} data-xp-display="1">
               {totalXp ?? todayXp ?? 0}{" / "}{goalXp ?? 2000}{" XP"}
             </span>
             {/* Gunluk hedef yuzdesi ayri rozet */}
@@ -992,13 +991,13 @@ export function SuperrSidebar({
               </span>
             )}
           </div>
-          <span className="text-[11px] font-gelica font-semibold text-[var(--ink)]/60">
+          <span className="text-[11px] font-geist font-semibold text-[var(--ink)]/60">
             {t("xp.level_word")} {level}
           </span>
         </div>
         <div
           id="xp-bar-anchor"
-          className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--paper)] border-[1.5px] border-[var(--border-ink)]"
+          className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--paper)] border-[1.5px] border-[var(--line-strong)]"
         >
           <motion.div
             className="h-full rounded-full"
@@ -1010,17 +1009,17 @@ export function SuperrSidebar({
       </div>
 
       {/* 5. Alt Bar: Taktil Ses & Yükle & Marka Kapanışı */}
-      <div className="flex items-center justify-between shrink-0 px-3 py-2.5 border-t-2 border-[var(--ink)] bg-[var(--app-bg)]">
+      <div className="flex items-center justify-between shrink-0 px-3 py-2.5 border-t border-[var(--line)] bg-[var(--app-bg)]">
         <div className="flex items-center gap-1.5">
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.92 }}
             onClick={onToggleSound}
             title={isMuted ? t("tip.unmute") : t("tip.mute")}
-            className="flex items-center gap-1.5 rounded-[20px] border-[1.5px] border-[var(--ink)] bg-[var(--app-bg)] px-2.5 py-1 text-xs text-[var(--ink)] hover:bg-[var(--paper)] transition-colors shadow-superrButton"
+            className="flex items-center gap-1.5 rounded-[20px] border border-[var(--line-strong)] bg-[var(--app-bg)] px-2.5 py-1 text-xs text-[var(--ink)] hover:bg-[var(--paper)] transition-colors shadow-superrButton"
           >
             {isMuted ? <VolumeX size={12} /> : <Volume2 size={12} className="text-[var(--accent)]" />}
-            <span className="font-gelica text-xs font-semibold">
+            <span className="font-geist text-xs font-semibold">
               {isMuted ? t("sidebar.muted") : t("sidebar.tactile_sound")}
             </span>
           </motion.button>
@@ -1035,10 +1034,10 @@ export function SuperrSidebar({
                 if (isMobileDrawer) onCloseMobileDrawer?.();
               }}
               title={t("cust.pwa.title")}
-              className="flex items-center gap-1 rounded-[20px] border-[1.5px] border-[var(--ink)] bg-[var(--app-bg)] px-2 py-1 text-xs text-[var(--accent)] hover:bg-[var(--paper)] transition-colors shadow-superrButton"
+              className="flex items-center gap-1 rounded-[20px] border border-[var(--line-strong)] bg-[var(--app-bg)] px-2 py-1 text-xs text-[var(--accent)] hover:bg-[var(--paper)] transition-colors shadow-superrButton"
             >
               <Download size={11} />
-              <span className="font-gelica text-[11px] font-bold">{t("act.upload")}</span>
+              <span className="font-geist text-[11px] font-bold">{t("act.upload")}</span>
             </motion.button>
           )}
         </div>
@@ -1065,7 +1064,7 @@ export function SuperrSidebar({
               exit={{ scale: 0.94, opacity: 0, y: 8 }}
               transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md rounded-[20px] border-2 border-[var(--ink)] bg-[var(--paper)] p-5 shadow-superrCard"
+              className="w-full max-w-md rounded-[20px] border border-[var(--line-strong)] bg-[var(--paper)] p-5 shadow-superrCard"
             >
               <div className="flex items-center justify-between pb-3 border-b border-black/10">
                 <div>
@@ -1115,11 +1114,11 @@ export function SuperrSidebar({
                         <span className="block font-gelica text-sm font-bold text-[var(--ink)]">
                           {t(lang.deskNameKey || lang.deskName)}
                         </span>
-                        <span className="block font-gelica text-[11px] text-[var(--ink-soft)] truncate">
+                        <span className="block font-geist text-[11px] text-[var(--ink-soft)] truncate">
                           {t(lang.descriptionKey || lang.description)}
                         </span>
                       </span>
-                      <span className="font-gelica text-[10px] font-semibold text-[var(--accent)] shrink-0">
+                      <span className="font-geist text-[10px] font-semibold text-[var(--accent)] shrink-0">
                         {alreadyOpen ? t("common.open_state") : t("common.open")}
                       </span>
                     </button>

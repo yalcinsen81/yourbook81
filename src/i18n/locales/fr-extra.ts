@@ -1173,5 +1173,13 @@ const frExtra = {
   "sys.error_retry": "essaie de recharger la page.",
   "hero.notebook_of": "Le Cahier de {name}",
   "hero.notebook_mine": "Mon Cahier",
+  "sidebar.appearance": "apparence",
+  "onb.back": "Retour",
+  "a11y.prev_month": "mois précédent",
+  "a11y.next_month": "mois suivant",
+  "a11y.add_task": "ajouter la tâche",
+  "a11y.toggle_done": "marquer comme terminé",
+  "a11y.date": "date",
+  "a11y.time": "heure",
 };
 export default frExtra;

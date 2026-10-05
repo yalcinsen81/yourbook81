@@ -258,7 +258,7 @@ export function WordStatusPanel({ allCards, queueIds, onReturnToQueue, onAwardXp
           return (
             <div
               key={t.key}
-              className="rounded-[12px] border border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[var(--paper)] shadow-[2px_3px_0_0_color-mix(in_srgb,var(--border-ink)_12%,transparent)] transition-all hover:-translate-y-0.5 hover:shadow-[3px_5px_0_0_color-mix(in_srgb,var(--border-ink)_18%,transparent)]"
+              className="rounded-[12px] border border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[var(--paper)] shadow-[var(--shadow-soft)] transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]"
             >
               <button
                 onClick={() => {
@@ -324,7 +324,7 @@ export function WordStatusPanel({ allCards, queueIds, onReturnToQueue, onAwardXp
             playPaperRustle();
             setIsGameOpen(true);
           }}
-          className="group relative flex w-full items-center justify-between overflow-hidden rounded-[12px] border-2 border-[var(--ink)] bg-[var(--paper)] p-2.5 shadow-[2px_3px_0_0_var(--ink)] transition-all hover:-translate-y-0.5 hover:shadow-[3px_5px_0_0_var(--ink)] active:translate-y-0"
+          className="group relative flex w-full items-center justify-between overflow-hidden rounded-[12px] border border-[var(--line-strong)] bg-[var(--paper)] p-2.5 shadow-[var(--shadow-soft)] transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)] active:translate-y-0"
         >
           <div className="flex items-center gap-2">
             <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--accent)] text-white shadow-xs group-hover:scale-110 transition-transform">
@@ -342,7 +342,7 @@ export function WordStatusPanel({ allCards, queueIds, onReturnToQueue, onAwardXp
             </div>
           </div>
 
-          <span className="rounded-full bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] px-2 py-0.5 font-gelica text-[10px] font-bold text-[var(--accent)]">
+          <span className="rounded-full bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] px-2 py-0.5 font-geist text-[10px] font-bold text-[var(--accent)]">
             <span className="inline-flex items-center gap-1"><span>{t("hunt.play")}</span><SketchBow size={12} strokeWidth={1.8} /></span>
           </span>
         </button>
@@ -365,7 +365,7 @@ export function WordStatusPanel({ allCards, queueIds, onReturnToQueue, onAwardXp
             className="flex h-full w-full flex-col items-center gap-3 rounded-[12px] border border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[var(--paper)] py-4 transition-colors hover:border-[var(--accent)]"
           >
             <ChevronLeft size={14} className="text-[var(--accent)]" />
-            <span className="font-gelica text-[11px] font-semibold text-[var(--ink)] [writing-mode:vertical-rl]">
+            <span className="font-geist text-[11px] font-semibold text-[var(--ink)] [writing-mode:vertical-rl]">
               {t("ws.title")}
             </span>
             <span className="rounded-full border border-[var(--accent)] px-1.5 font-geist text-[9px] text-[var(--accent)]">
@@ -403,10 +403,12 @@ export function WordStatusPanel({ allCards, queueIds, onReturnToQueue, onAwardXp
       {/* ============ MOBİL: altta açılır çekmece ============ */}
       <button
         onClick={() => setMobileOpen(true)}
-        className="fixed bottom-16 sm:bottom-5 end-5 z-30 flex items-center gap-2 rounded-[20px] border border-[var(--ink)] bg-[var(--ink)] px-4 py-2.5 shadow-lg lg:hidden"
+        aria-label={t("ws.title")}
+        title={t("ws.title")}
+        className="fixed bottom-20 sm:bottom-5 end-4 z-30 flex items-center justify-center gap-2 rounded-full sm:rounded-[20px] border border-[var(--line)] bg-[var(--ink)] p-3 sm:px-4 sm:py-2.5 shadow-lg lg:hidden"
       >
         <Sparkle size={13} className="text-[var(--app-bg)]" />
-        <span className="font-gelica text-[12px] font-semibold text-[var(--app-bg)]">
+        <span className="hidden sm:inline font-gelica text-[12px] font-semibold text-[var(--app-bg)]">
           {t("ws.title")}
         </span>
       </button>
@@ -426,7 +428,7 @@ export function WordStatusPanel({ allCards, queueIds, onReturnToQueue, onAwardXp
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ duration: 0.22, ease: [0.2, 0, 0, 1] }}
-              className="absolute inset-x-0 bottom-0 max-h-[75vh] rounded-t-[18px] border-t-2 border-[var(--ink)] bg-[var(--app-bg)] p-4"
+              className="absolute inset-x-0 bottom-0 max-h-[75vh] rounded-t-[18px] border-t border-[var(--line)] bg-[var(--app-bg)] p-4"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="mb-3 flex items-center justify-between">
@@ -463,7 +465,7 @@ export function WordStatusPanel({ allCards, queueIds, onReturnToQueue, onAwardXp
               animate={{ opacity: 1, scale: 1, rotateX: 0, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, rotateX: -10, y: 14 }}
               transition={{ duration: 0.24, ease: [0.34, 1.56, 0.64, 1] }}
-              className="w-full max-w-sm rounded-[16px] border-2 border-[var(--ink)] bg-[var(--paper)] p-5 shadow-2xl [perspective:1000px]"
+              className="w-full max-w-sm rounded-[16px] border border-[var(--line-strong)] bg-[var(--paper)] p-5 shadow-2xl [perspective:1000px]"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="mb-3 flex items-center justify-between">
@@ -521,7 +523,7 @@ export function WordStatusPanel({ allCards, queueIds, onReturnToQueue, onAwardXp
               <div className="mt-4 flex flex-col gap-2">
                 <button
                   onClick={() => setDetailId(null)}
-                  className="w-full rounded-[20px] border border-[var(--ink)] px-4 py-2 font-gelica text-[12px] font-semibold text-[var(--ink)] transition-colors hover:bg-[var(--ink)] hover:text-[var(--paper)]"
+                  className="w-full rounded-[20px] border border-[var(--line)] px-4 py-2 font-gelica text-[12px] font-semibold text-[var(--ink)] transition-colors hover:bg-[var(--ink)] hover:text-[var(--paper)]"
                 >
                   {t("ws.relearn_keep")}
                 </button>

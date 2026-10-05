@@ -36,7 +36,7 @@ export default function LearningStats({ cards, engagement, onClose }: LearningSt
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ duration: 0.18 }}
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-[460px] max-h-[86vh] overflow-y-auto rounded-[20px] border-2 border-[var(--ink)] bg-[var(--app-bg)] p-5 shadow-xl"
+        className="w-full max-w-[460px] max-h-[86vh] overflow-y-auto rounded-[20px] border border-[var(--line-strong)] bg-[var(--app-bg)] p-5 shadow-xl"
       >
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>

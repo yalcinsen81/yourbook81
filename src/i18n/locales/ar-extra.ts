@@ -1173,5 +1173,13 @@ const arExtra = {
   "sys.error_retry": "حاول إعادة تحميل الصفحة.",
   "hero.notebook_of": "دفتر {name}",
   "hero.notebook_mine": "دفتري",
+  "sidebar.appearance": "المظهر",
+  "onb.back": "رجوع",
+  "a11y.prev_month": "الشهر السابق",
+  "a11y.next_month": "الشهر التالي",
+  "a11y.add_task": "إضافة المهمة",
+  "a11y.toggle_done": "وضع علامة كمكتمل",
+  "a11y.date": "التاريخ",
+  "a11y.time": "الوقت",
 };
 export default arExtra;

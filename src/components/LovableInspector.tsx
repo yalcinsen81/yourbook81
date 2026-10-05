@@ -462,7 +462,7 @@ Kopyala-yapıştır talimatı: ${what}`;
           className={`flex items-center gap-2 rounded-[10px] px-3.5 py-1.5 font-sans text-xs font-semibold shadow-lg transition-all ${
             isActive
               ? "bg-[var(--ink)] text-[var(--paper)] ring-2 ring-[var(--accent)]"
-              : "border border-[var(--ink)] bg-[var(--paper)] text-[var(--ink)] hover:bg-[var(--ink)] hover:text-[var(--paper)]"
+              : "border border-[var(--line)] bg-[var(--paper)] text-[var(--ink)] hover:bg-[var(--ink)] hover:text-[var(--paper)]"
           }`}
         >
           <Crosshair
@@ -554,9 +554,9 @@ Kopyala-yapıştır talimatı: ${what}`;
               initial={{ opacity: 0, scale: 0.94, y: 16 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.94 }}
-              className="w-full max-w-xl overflow-hidden rounded-[12px] border-[var(--ink)] bg-[var(--paper)] p-6 shadow-2xl"
+              className="w-full max-w-xl overflow-hidden rounded-[12px] border-[var(--line-strong)] bg-[var(--paper)] p-6 shadow-2xl"
             >
-              <div className="flex items-start justify-between pb-3 border-b border-[var(--ink)]">
+              <div className="flex items-start justify-between pb-3 border-b border-[var(--line-strong)]">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--ink)] text-[var(--paper)]">
                     <Wand2 size={15} />
@@ -591,7 +591,7 @@ Kopyala-yapıştır talimatı: ${what}`;
                 <span className="block mb-1.5 font-mono text-[10px] font-semibold uppercase text-[var(--ink-soft)]">
                   Seçilen {selected.length === 1 ? "öğe" : `öğeler (${selected.length})`}:
                 </span>
-                <ul className="max-h-44 overflow-y-auto rounded-[10px] border-[var(--ink)]">
+                <ul className="max-h-44 overflow-y-auto rounded-[10px] border-[var(--line-strong)]">
                   {selected.map((s, i) => (
                     <li
                       key={s.key}
@@ -653,7 +653,7 @@ Kopyala-yapıştır talimatı: ${what}`;
                           prev ? `${prev}, ${preset.toLowerCase()}` : preset,
                         );
                       }}
-                      className="rounded-[8px] border-[var(--ink)] px-2.5 py-1 text-[11px] text-[var(--ink)] transition-colors hover:bg-[var(--ink)] hover:text-[var(--paper)]"
+                      className="rounded-[8px] border-[var(--line-strong)] px-2.5 py-1 text-[11px] text-[var(--ink)] transition-colors hover:bg-[var(--ink)] hover:text-[var(--paper)]"
                     >
                       + {preset}
                     </button>
@@ -673,11 +673,11 @@ Kopyala-yapıştır talimatı: ${what}`;
                   placeholder="Örn: bu panellerin genişliğini eşitle, arasına 16px boşluk koy, başlıkları aynı boyuta getir..."
                   rows={3}
                   autoFocus
-                  className="w-full rounded-[10px] border-[var(--ink)] bg-[var(--paper)] p-3 font-sans text-xs leading-relaxed text-[var(--ink)] outline-none placeholder:text-[var(--ink-soft)] focus:border-[var(--accent)]"
+                  className="w-full rounded-[10px] border-[var(--line-strong)] bg-[var(--paper)] p-3 font-sans text-xs leading-relaxed text-[var(--ink)] outline-none placeholder:text-[var(--ink-soft)] focus:border-[var(--accent)]"
                 />
               </div>
 
-              <div className="mt-4 flex items-center justify-between border-t border-[var(--ink)] pt-3">
+              <div className="mt-4 flex items-center justify-between border-t border-[var(--line-strong)] pt-3">
                 <span className="font-sans text-[11px] text-[var(--ink-soft)]">
                   {selected.length > 1
                     ? `${selected.length} öğe tek talimatta kopyalanır.`

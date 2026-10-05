@@ -163,6 +163,7 @@ export function NotesView({ onSendToJournal }: NotesViewProps) {
       data-lovable-file="src/components/NotesView.tsx"
       data-lovable-desc="Notlar listesi ve görsel yükleme alanı"
     >
+      <h1 className="sr-only">{t("sidebar.item.notes")}</h1>
       <input
         ref={fileInputRef}
         type="file"
@@ -188,7 +189,7 @@ export function NotesView({ onSendToJournal }: NotesViewProps) {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={t("notes.search_ph")}
-              className="w-full rounded-[20px] border-[1.5px] border-[var(--ink)] bg-[var(--app-bg)] py-2 ps-9 pe-7 text-xs text-[var(--ink)] placeholder:text-[var(--ink-soft)] outline-none focus:border-[var(--accent)] shadow-superrButton"
+              className="w-full rounded-[20px] border border-[var(--line-strong)] bg-[var(--app-bg)] py-2 ps-9 pe-7 text-xs text-[var(--ink)] placeholder:text-[var(--ink-soft)] outline-none focus:border-[var(--accent)] shadow-superrButton"
             />
             {searchQuery && (
               <button
@@ -224,10 +225,10 @@ export function NotesView({ onSendToJournal }: NotesViewProps) {
                   playPopSound();
                   setActiveCategory(cat.id);
                 }}
-                className={`flex items-center gap-1.5 rounded-[20px] px-3 py-1 text-xs font-gelica font-semibold transition-all ${
+                className={`flex items-center gap-1.5 rounded-[20px] px-3 py-1 text-xs font-geist font-semibold transition-all ${
                   isActive
-                    ? "bg-[var(--ink)] text-[var(--app-bg)] shadow-sm border border-[var(--ink)]"
-                    : "border border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[var(--app-bg)] text-[var(--ink)] hover:border-[var(--ink)]"
+                    ? "bg-[var(--ink)] text-[var(--app-bg)] shadow-sm border border-[var(--line)]"
+                    : "border border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[var(--app-bg)] text-[var(--ink)] hover:border-[var(--line-strong)]"
                 }`}
               >
                 <span>{cat.label}</span>
@@ -269,7 +270,7 @@ export function NotesView({ onSendToJournal }: NotesViewProps) {
 
               {/* Yüklenen Fotoğraf */}
               {newImageUrl && (
-                <div className="relative mt-1 max-h-40 overflow-hidden rounded-[8px] border-2 border-[var(--ink)]">
+                <div className="relative mt-1 max-h-40 overflow-hidden rounded-[8px] border border-[var(--line-strong)]">
                   <img src={newImageUrl} alt={t("notes.uploaded")} className="w-full h-36 object-cover" />
                   <button
                     type="button"
@@ -292,10 +293,10 @@ export function NotesView({ onSendToJournal }: NotesViewProps) {
                         type="button"
                         key={cKey}
                         onClick={() => setNewCategory(cKey)}
-                        className={`rounded-[20px] border px-2.5 py-1 text-[11px] font-gelica transition-all ${
+                        className={`rounded-[20px] border px-2.5 py-1 text-[11px] font-geist transition-all ${
                           isSelected
-                            ? "bg-[var(--accent)] text-white border-[var(--ink)] font-semibold"
-                            : "border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[var(--app-bg)] text-[var(--ink)] hover:border-[var(--ink)]"
+                            ? "bg-[var(--accent)] text-white border-[var(--line-strong)] font-semibold"
+                            : "border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[var(--app-bg)] text-[var(--ink)] hover:border-[var(--line-strong)]"
                         }`}
                       >
                         {t(cat.nameKey || cat.name)}
@@ -345,7 +346,7 @@ export function NotesView({ onSendToJournal }: NotesViewProps) {
                 className="card-superr p-6"
               >
                 <div className="flex items-center justify-between pb-3 border-b-2 border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)]">
-                  <span className="rounded-[20px] border border-[var(--ink)] bg-[var(--paper)] px-2.5 py-0.5 font-gelica text-[11px] font-semibold text-[var(--ink)]">
+                  <span className="rounded-[20px] border border-[var(--line)] bg-[var(--paper)] px-2.5 py-0.5 font-geist text-[11px] font-semibold text-[var(--ink)]">
                     {CATEGORY_MAP[note.category] ? t(CATEGORY_MAP[note.category].nameKey) : note.category}
                   </span>
 
@@ -409,7 +410,7 @@ export function NotesView({ onSendToJournal }: NotesViewProps) {
                 </h4>
 
                 {note.imageUrl && (
-                  <div className="relative mt-3 overflow-hidden rounded-[8px] border border-[var(--ink)] max-h-48 group/img">
+                  <div className="relative mt-3 overflow-hidden rounded-[8px] border border-[var(--line)] max-h-48 group/img">
                     <img src={note.imageUrl} alt={note.title} className="w-full h-44 object-cover" />
                     <button
                       onClick={() => updateNote(note.id, { imageUrl: undefined })}

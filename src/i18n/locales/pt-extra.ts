@@ -1173,5 +1173,13 @@ const ptExtra = {
   "sys.error_retry": "tente recarregar a página.",
   "hero.notebook_of": "O Caderno de {name}",
   "hero.notebook_mine": "Meu Caderno",
+  "sidebar.appearance": "aparência",
+  "onb.back": "Voltar",
+  "a11y.prev_month": "mês anterior",
+  "a11y.next_month": "mês seguinte",
+  "a11y.add_task": "adicionar tarefa",
+  "a11y.toggle_done": "marcar como concluído",
+  "a11y.date": "data",
+  "a11y.time": "hora",
 };
 export default ptExtra;

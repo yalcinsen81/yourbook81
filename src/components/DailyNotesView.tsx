@@ -139,20 +139,20 @@ export function DailyNotesView({ onOpenJournal }: DailyNotesViewProps = {}) {
           <span className="font-handwritten text-[var(--accent)] text-sm font-bold">
             {t("daily.sub")}
           </span>
-          <span className="rounded-[20px] border border-[var(--ink)] bg-[var(--paper)] px-3 py-1 font-gelica text-xs text-[var(--ink)] font-semibold">
+          <span className="rounded-[20px] border border-[var(--line)] bg-[var(--paper)] px-3 py-1 font-geist text-xs text-[var(--ink)] font-semibold">
             {t("daily.done_of", { done: completedCount, total: tasks.length })}
           </span>
         </div>
 
-        <h2 className="font-gelica text-[38px] sm:text-[46px] font-semibold lowercase text-[var(--ink)] leading-tight">
+        <h1 className="font-gelica text-[38px] sm:text-[46px] font-semibold lowercase text-[var(--ink)] leading-tight">
           {todayDateStr}.
-        </h2>
+        </h1>
       </div>
 
       {/* 2. Serbest Düşünce Alanı (Card-Superr + kağıt greni) */}
       <div className="paper-grain mt-6 card-superr p-6 relative">
         <div className="flex items-center justify-between pb-2">
-          <span className="font-gelica text-xs font-semibold lowercase text-[var(--accent)]">
+          <span className="font-geist text-xs font-semibold lowercase text-[var(--accent)]">
             {t("daily.focus")}
           </span>
           <span className="font-geist text-xs text-[var(--ink-soft)]">{t("daily.autosave")}</span>
@@ -187,10 +187,11 @@ export function DailyNotesView({ onOpenJournal }: DailyNotesViewProps = {}) {
             value={newTaskInput}
             onChange={(e) => setNewTaskInput(e.target.value)}
             placeholder={t("daily.task_ph")}
-            className="w-full rounded-[20px] border-[1.5px] border-[var(--ink)] bg-[var(--app-bg)] px-4 py-2.5 pe-12 font-geist text-xs text-[var(--ink)] placeholder:text-[var(--ink-soft)] outline-none focus:border-[var(--accent)] shadow-superrButton"
+            className="w-full rounded-[20px] border border-[var(--line-strong)] bg-[var(--app-bg)] px-4 py-2.5 pe-12 font-geist text-xs text-[var(--ink)] placeholder:text-[var(--ink-soft)] outline-none focus:border-[var(--accent)] shadow-superrButton"
           />
           <button
             type="submit"
+            aria-label={t("a11y.add_task")}
             className="absolute end-2 flex h-8 w-8 items-center justify-center rounded-[20px] bg-[var(--ink)] text-[var(--app-bg)] hover:bg-[var(--accent)]"
           >
             <Plus size={14} />
@@ -205,7 +206,7 @@ export function DailyNotesView({ onOpenJournal }: DailyNotesViewProps = {}) {
               .map((task) => (
               <div
                 key={task.id}
-                className={`group flex items-center justify-between rounded-[20px] border-[1.5px] border-[var(--ink)] p-3.5 transition-colors ${
+                className={`group flex items-center justify-between rounded-[20px] border border-[var(--line-strong)] p-3.5 transition-colors ${
                   task.isDone
                     ? "bg-[var(--paper)] opacity-70"
                     : "bg-[var(--app-bg)] hover:border-[var(--accent)]"
@@ -215,7 +216,7 @@ export function DailyNotesView({ onOpenJournal }: DailyNotesViewProps = {}) {
                   onClick={() => handleToggleTask(task.id)}
                   className="flex items-center gap-3 flex-1 cursor-pointer select-none"
                 >
-                  <button type="button" className="flex items-center justify-center">
+                  <button type="button" aria-label={t("a11y.toggle_done")} aria-pressed={task.isDone} className="flex items-center justify-center">
                     <motion.span
                       key={task.isDone ? "done" : "undone"}
                       initial={false}
@@ -261,6 +262,7 @@ export function DailyNotesView({ onOpenJournal }: DailyNotesViewProps = {}) {
 
                 <button
                   onClick={() => handleDeleteTask(task.id)}
+                  aria-label={t("act.delete")}
                   /* MADDE 3: mobilde (hover yok) HER ZAMAN gorunur; masaustunde hover davranisi kalir. */
                   className="opacity-100 lg:opacity-0 lg:group-hover:opacity-100 p-1 text-[var(--ink-soft)] hover:text-red-600 transition-opacity"
                 >

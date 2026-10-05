@@ -46,7 +46,7 @@ export function InstallPwaModal({
             exit={{ opacity: 0, scale: 0.96, y: 10 }}
             transition={{ type: "spring", stiffness: 400, damping: 28 }}
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md bg-[var(--paper)] border-2 border-[var(--ink)] rounded-[16px] shadow-superrCard overflow-hidden"
+            className="w-full max-w-md bg-[var(--paper)] border border-[var(--line-strong)] rounded-[16px] shadow-superrCard overflow-hidden"
           >
             {/* Üst Başlık Bandı */}
             <div className="bg-[var(--ink)] text-[var(--app-bg)] px-5 py-3 flex items-center justify-between">
@@ -70,7 +70,7 @@ export function InstallPwaModal({
                 <img
                   src="/icon-192.png"
                   alt="yourbook"
-                  className="w-14 h-14 rounded-[12px] border-2 border-[var(--ink)] shadow-sm bg-[var(--accent)]"
+                  className="w-14 h-14 rounded-[12px] border border-[var(--line-strong)] shadow-sm bg-[var(--accent)]"
                 />
                 <div>
                   <h3 className="font-gelica text-xl font-bold text-[var(--ink)] leading-tight">
@@ -87,7 +87,7 @@ export function InstallPwaModal({
 
               {isInstalled ? (
                 /* 1. Zaten Yüklü Durum */
-                <div className="bg-[color-mix(in_srgb,var(--accent)_12%,var(--paper))] p-4 rounded-[12px] border border-[var(--ink)] flex items-center gap-3 text-xs font-gelica">
+                <div className="bg-[color-mix(in_srgb,var(--accent)_12%,var(--paper))] p-4 rounded-[12px] border border-[var(--line)] flex items-center gap-3 text-xs font-geist">
                   <span className="p-1.5 rounded-full bg-[#22c55e] text-white">
                     <Check size={14} strokeWidth={2.6} />
                   </span>
@@ -102,8 +102,8 @@ export function InstallPwaModal({
                 </div>
               ) : isIOS ? (
                 /* 2. iOS Safari Özel Yönergesi */
-                <div className="space-y-3 bg-[var(--app-bg)] p-4 rounded-[12px] border border-[var(--ink)] text-xs font-geist">
-                  <span className="font-gelica text-xs font-bold text-[var(--ink)] block">
+                <div className="space-y-3 bg-[var(--app-bg)] p-4 rounded-[12px] border border-[var(--line)] text-xs font-geist">
+                  <span className="font-geist text-xs font-bold text-[var(--ink)] block">
                     {t("pwa.ios_steps_title")}
                   </span>
                   <div className="space-y-2 text-[var(--ink-soft)]">
@@ -130,7 +130,7 @@ export function InstallPwaModal({
               ) : (
                 /* 3. Chrome / Edge / Windows / Mac / Android Tek Tıkla Yükleme */
                 <div className="space-y-3">
-                  <div className="bg-[var(--app-bg)] p-3.5 rounded-[12px] border border-[var(--ink)] text-xs font-geist text-[var(--ink-soft)] leading-relaxed">
+                  <div className="bg-[var(--app-bg)] p-3.5 rounded-[12px] border border-[var(--line)] text-xs font-geist text-[var(--ink-soft)] leading-relaxed">
                     {t("pwa.install_local")}
                   </div>
 
@@ -149,7 +149,7 @@ export function InstallPwaModal({
               <div className="pt-2 flex justify-end">
                 <button
                   onClick={onClose}
-                  className="font-gelica text-xs text-[var(--ink-soft)] hover:text-[var(--ink)] px-3 py-1"
+                  className="font-geist text-xs text-[var(--ink-soft)] hover:text-[var(--ink)] px-3 py-1"
                 >
                   kapat
                 </button>

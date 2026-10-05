@@ -1173,5 +1173,13 @@ const esExtra = {
   "sys.error_retry": "prueba a recargar la página.",
   "hero.notebook_of": "El Cuaderno de {name}",
   "hero.notebook_mine": "Mi Cuaderno",
+  "sidebar.appearance": "apariencia",
+  "onb.back": "Atrás",
+  "a11y.prev_month": "mes anterior",
+  "a11y.next_month": "mes siguiente",
+  "a11y.add_task": "añadir tarea",
+  "a11y.toggle_done": "marcar como hecho",
+  "a11y.date": "fecha",
+  "a11y.time": "hora",
 };
 export default esExtra;

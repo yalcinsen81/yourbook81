@@ -213,6 +213,22 @@ export function useSpaces() {
     return space;
   };
 
+  /**
+   * Birden çok dil için masa açar (örn. karşılama akışı). Var olanları atlar, aktif masayı değiştirmez.
+   * Tek durum güncellemesi yapar: art arda addLanguageSpace çağrıları bayat durum yüzünden birbirini ezerdi.
+   */
+  const addLanguageSpaces = (codes: string[]) => {
+    const fresh = [...new Set(codes)]
+      .filter((c) => !spaces.some((s) => s.languageCode === c))
+      .map((c) => getLanguageByCode(c))
+      .filter((d): d is LanguageDef => Boolean(d))
+      .map(createLanguageSpace);
+    if (fresh.length === 0) return;
+    const next = [...customSpaces, ...fresh];
+    setCustomSpaces(next);
+    saveCustomSpaces(next);
+  };
+
   const removeSpace = (spaceId: string) => {
     if (CRAFT_SPACES.some((s) => s.id === spaceId)) return;
     const next = customSpaces.filter((s) => s.id !== spaceId);
@@ -233,6 +249,7 @@ export function useSpaces() {
     switchSpace,
     addSpace,
     addLanguageSpace,
+    addLanguageSpaces,
     languageSpaceExists,
     removeSpace,
   };

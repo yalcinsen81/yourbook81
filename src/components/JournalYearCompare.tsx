@@ -75,7 +75,7 @@ export default function JournalYearCompare({ entries, onSelectYear, activeYear }
         className="flex w-full items-center justify-between gap-2"
         aria-expanded={open}
       >
-        <span className="font-gelica text-xs font-bold lowercase text-[var(--ink)]">
+        <span className="font-geist text-xs font-bold lowercase text-[var(--ink)]">
           {t("year.compare_title")}
         </span>
         <span className="font-mono text-[10px] text-[var(--ink-soft)]">

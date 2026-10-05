@@ -1221,6 +1221,14 @@ const enExtra: Record<string, string> = {
   "sys.error_retry": "try reloading the page.",
   "hero.notebook_of": "{name}'s Notebook",
   "hero.notebook_mine": "My Notebook",
+  "sidebar.appearance": "appearance",
+  "onb.back": "Back",
+  "a11y.prev_month": "previous month",
+  "a11y.next_month": "next month",
+  "a11y.add_task": "add task",
+  "a11y.toggle_done": "mark as done",
+  "a11y.date": "date",
+  "a11y.time": "time",
 };
 
 export default enExtra;

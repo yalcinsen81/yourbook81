@@ -47,7 +47,7 @@ export function Tooltip({ label, children, side = "top", maxWidth = 180 }: Toolt
           >
             <div
               style={{ maxWidth }}
-              className="rounded-[16px] border-2 border-[var(--ink)] bg-[var(--paper)] px-3 py-1.5 text-center font-gelica text-[11px] font-semibold lowercase text-[var(--ink)] shadow-superrButton"
+              className="rounded-[16px] border border-[var(--line-strong)] bg-[var(--paper)] px-3 py-1.5 text-center font-geist text-[11px] font-semibold lowercase text-[var(--ink)] shadow-superrButton"
             >
               {label}
             </div>

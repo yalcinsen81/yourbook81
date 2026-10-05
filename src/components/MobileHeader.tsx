@@ -36,7 +36,7 @@ export function MobileHeader({
 }: MobileHeaderProps) {
   const { t } = useT();
   return (
-    <header className="lg:hidden sticky top-0 z-30 flex items-center justify-between px-3.5 py-2.5 bg-[var(--paper)] border-b-2 border-[var(--ink)] shadow-xs">
+    <header className="lg:hidden sticky top-0 z-30 flex items-center justify-between px-3.5 py-2.5 bg-[var(--paper)] border-b border-[var(--line)] shadow-xs">
       {/* Sol: Menü Çekmecesi Düğmesi & Logo */}
       <div className="flex items-center gap-2">
         <button
@@ -44,7 +44,7 @@ export function MobileHeader({
             playPopSound();
             onOpenMenu();
           }}
-          className="p-1.5 rounded-[8px] border-[1.5px] border-[var(--ink)] bg-[var(--app-bg)] text-[var(--ink)] hover:bg-[var(--paper)] shadow-sm flex items-center justify-center"
+          className="p-1.5 rounded-[8px] border border-[var(--line-strong)] bg-[var(--app-bg)] text-[var(--ink)] hover:bg-[var(--paper)] shadow-sm flex items-center justify-center"
           title={t("tip.open_menu")}
         >
           {/* Organik El Çizimi Hamburger İkonu */}
@@ -56,7 +56,7 @@ export function MobileHeader({
         </button>
 
         {/* Marka: LTR icerik -> RTL sayfada bidi izolasyonu sart (yoksa "bookyour" olur) */}
-        <span dir="ltr" className="inline-flex items-baseline">
+        <span dir="ltr" className={"items-baseline " + (showDeskSwitcher ? "hidden sm:inline-flex" : "inline-flex")}>
          <span className="font-gelica text-[18px] font-semibold text-[var(--ink)] leading-none">your</span>
          <span className="font-gelica text-[18px] font-semibold text-[var(--accent)] leading-none">book</span>
         </span>
@@ -65,7 +65,7 @@ export function MobileHeader({
       {/* v-mobile: hizli masa degistirici SADECE ilgili masa ekranindayken gorunur. */}
       {/* (Global header'da yer kaplamaz; dil masasi disinda gosterilmez.) */}
       {showDeskSwitcher && (
-        <div className="flex items-center gap-1 bg-[var(--app-bg)] p-0.5 rounded-[20px] border border-[var(--ink)]">
+        <div className="flex items-center gap-1 bg-[var(--app-bg)] p-0.5 rounded-[20px] border border-[var(--line)]">
           {spaces
             .filter((s) => Boolean(s.languageCode) || s.id === "space-de" || s.id === "space-en")
             .map((sp) => {
@@ -77,7 +77,7 @@ export function MobileHeader({
                 <button
                   key={sp.id}
                   onClick={() => { playPopSound(); onSwitchSpace(sp.id); }}
-                  className={"flex items-center gap-1.5 px-2.5 py-0.5 rounded-[16px] text-[11px] font-gelica font-semibold transition-all " + (isActive ? "bg-[var(--ink)] text-[var(--app-bg)] shadow-xs" : "text-[var(--ink-soft)] hover:text-[var(--ink)]")}
+                  className={"flex items-center gap-1.5 px-2.5 py-0.5 rounded-[16px] text-[11px] font-geist font-semibold transition-all " + (isActive ? "bg-[var(--ink)] text-[var(--app-bg)] shadow-xs" : "text-[var(--ink-soft)] hover:text-[var(--ink)]")}
                 >
                   {(() => { const LangIcon = spaceTopicIcon(sp.targetLang); return <LangIcon size={12} className={isActive ? "text-[var(--accent)]" : ""} />; })()}
                   <span>{tag}</span>
@@ -96,7 +96,7 @@ export function MobileHeader({
               playPopSound();
               onOpenInstall();
             }}
-            className="w-7 h-7 rounded-full border-[1.5px] border-[var(--ink)] bg-[var(--app-bg)] flex items-center justify-center text-xs shadow-xs text-[var(--accent)]"
+            className="w-7 h-7 rounded-full border border-[var(--line-strong)] bg-[var(--app-bg)] flex items-center justify-center text-xs shadow-xs text-[var(--accent)]"
             title={t("cust.pwa.title")}
           >
             <Download size={13} />
@@ -111,7 +111,7 @@ export function MobileHeader({
             const nextIdx = (idx + 1) % themes.length;
             onSelectTheme(themes[nextIdx].id);
           }}
-          className="w-7 h-7 rounded-full border-[1.5px] border-[var(--ink)] bg-[var(--app-bg)] flex items-center justify-center shadow-xs"
+          className="w-7 h-7 rounded-full border border-[var(--line-strong)] bg-[var(--app-bg)] flex items-center justify-center shadow-xs"
           title={t("mobile.theme_switch").replace("{name}", t(theme.nameKey))}
         >
           {/* v-mobile: tema rengini GORUNUR goster. Ikon bos gelirse daire bos kalmasin. */}
@@ -128,10 +128,10 @@ export function MobileHeader({
             playPopSound();
             onOpenAuth();
           }}
-          className="flex items-center gap-1.5 p-0.5 rounded-full border-[1.5px] border-[var(--ink)] bg-[var(--app-bg)] shadow-xs"
+          className="flex items-center gap-1.5 p-0.5 rounded-full border border-[var(--line-strong)] bg-[var(--app-bg)] shadow-xs"
           title={t("tip.identity")}
         >
-          <span className="w-6 h-6 rounded-full border border-[var(--ink)] bg-[var(--accent)] text-white flex items-center justify-center font-gelica text-[11px] font-bold">
+          <span className="w-6 h-6 rounded-full border border-[var(--line)] bg-[var(--accent)] text-white flex items-center justify-center font-geist text-[11px] font-bold">
             {currentUser ? currentUser.avatarLetter : <User size={12} />}
           </span>
         </motion.button>

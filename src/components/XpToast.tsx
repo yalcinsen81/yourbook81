@@ -46,13 +46,13 @@ export function XpToast({ toast, onDone }: XpToastProps) {
           transition={{ duration: 0.36, ease: [0.22, 1, 0.36, 1] }}
           className="fixed end-6 top-20 z-[999] pointer-events-none"
         >
-          <div className="flex items-center gap-3 px-5 py-3.5 bg-[var(--paper)] border-2 border-[var(--ink)] rounded-[16px] shadow-superrCard">
+          <div className="flex items-center gap-3 px-5 py-3.5 bg-[var(--paper)] border border-[var(--line-strong)] rounded-[16px] shadow-superrCard">
             {toast.levelUp ? (
               <motion.div
                 initial={{ scale: 0, rotate: -12 }}
                 animate={{ scale: [0, 1.2, 1], rotate: 0 }}
                 transition={{ duration: 0.45, ease: "easeOut" }}
-                className="relative flex h-12 w-12 items-center justify-center rounded-full border-2 border-[var(--ink)] shadow-superrCard overflow-hidden"
+                className="relative flex h-12 w-12 items-center justify-center rounded-full border border-[var(--line-strong)] shadow-superrCard overflow-hidden"
                 style={{ background: "var(--accent)" }}
               >
                 {/* Parıltı süpürmesi */}
@@ -145,7 +145,7 @@ export function FloatingXp({ amount, startX, startY, onComplete }: FloatingXpPro
       onAnimationComplete={onComplete}
       className="pointer-events-none fixed top-0 start-0 z-50 flex items-center gap-1.5 -translate-x-1/2 -translate-y-1/2"
     >
-      <span className="flex items-center gap-1 rounded-full border-[1.5px] border-[var(--ink)] bg-[var(--accent)] px-3 py-1 font-gelica text-sm font-bold text-white shadow-lg">
+      <span className="flex items-center gap-1 rounded-full border border-[var(--line-strong)] bg-[var(--accent)] px-3 py-1 font-gelica text-sm font-bold text-white shadow-lg">
         <svg width={13} height={13} viewBox="0 0 24 24" fill="currentColor" className="text-white"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
         +{amount} XP
       </span>

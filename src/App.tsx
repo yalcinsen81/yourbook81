@@ -1,7 +1,7 @@
 import { NotebookCustomizeModal } from "./components/NotebookCustomizeModal";
 import { TimeLightingOverlay } from "./components/TimeLightingOverlay";
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import { SuperrSidebar, type NavView } from "./components/SuperrSidebar";
 import { SuperrHero } from "./components/SuperrHero";
 import { OnboardingFlow } from "./components/OnboardingFlow";
@@ -14,8 +14,8 @@ import { buildDeskCounters } from "./lib/counters";
 import { useNotes } from "./lib/notes";
 import { useSpaces } from "./lib/spaces";
 import { languageCodeFromSpaceId, getLanguageByTag } from "./lib/languages";
-import { isSoundMuted, toggleSound, playPaperRustle, playSuccessSound, playPopSound } from "./lib/sound";
-import { useTheme } from "./lib/themes";
+import { isSoundMuted, toggleSound, playPaperRustle, playSuccessSound, playPopSound, warmUpAudio } from "./lib/sound";
+import { useTheme, applyThemeVars } from "./lib/themes";
 import { useEngagement, EngagementProvider } from "./components/EngagementSystem";
 import { XpToast, FloatingXp, type XpToastData } from "./components/XpToast";
 import { Confetti } from "./components/Confetti";
@@ -51,20 +51,37 @@ import {
   useSidebarWidth,
 } from "./lib/useSidebarVisibility";
 // Agir görünümler ilk açılışta yüklenmez; ilk ziyarette parça olarak getirilir.
-const StudyDesk = lazy(() => import("./components/StudyDesk").then((m) => ({ default: m.StudyDesk })));
-const NotesView = lazy(() => import("./components/NotesView").then((m) => ({ default: m.NotesView })));
-const DailyNotesView = lazy(() => import("./components/DailyNotesView").then((m) => ({ default: m.DailyNotesView })));
-const JournalView = lazy(() => import("./components/JournalView").then((m) => ({ default: m.JournalView })));
-const CollectionsView = lazy(() => import("./components/CollectionsView").then((m) => ({ default: m.CollectionsView })));
-const WorkProjectsView = lazy(() => import("./components/WorkProjectsView").then((m) => ({ default: m.WorkProjectsView })));
-const YouTubeLinksView = lazy(() => import("./components/YouTubeLinksView").then((m) => ({ default: m.YouTubeLinksView })));
-const CalendarAgendaView = lazy(() => import("./components/CalendarAgendaView").then((m) => ({ default: m.CalendarAgendaView })));
+const VIEW_LOADERS = {
+  StudyDesk: () => import("./components/StudyDesk").then((m) => ({ default: m.StudyDesk })),
+  NotesView: () => import("./components/NotesView").then((m) => ({ default: m.NotesView })),
+  DailyNotesView: () => import("./components/DailyNotesView").then((m) => ({ default: m.DailyNotesView })),
+  JournalView: () => import("./components/JournalView").then((m) => ({ default: m.JournalView })),
+  CollectionsView: () => import("./components/CollectionsView").then((m) => ({ default: m.CollectionsView })),
+  WorkProjectsView: () => import("./components/WorkProjectsView").then((m) => ({ default: m.WorkProjectsView })),
+  YouTubeLinksView: () => import("./components/YouTubeLinksView").then((m) => ({ default: m.YouTubeLinksView })),
+  CalendarAgendaView: () => import("./components/CalendarAgendaView").then((m) => ({ default: m.CalendarAgendaView })),
+};
+const StudyDesk = lazy(VIEW_LOADERS.StudyDesk);
+const NotesView = lazy(VIEW_LOADERS.NotesView);
+const DailyNotesView = lazy(VIEW_LOADERS.DailyNotesView);
+const JournalView = lazy(VIEW_LOADERS.JournalView);
+const CollectionsView = lazy(VIEW_LOADERS.CollectionsView);
+const WorkProjectsView = lazy(VIEW_LOADERS.WorkProjectsView);
+const YouTubeLinksView = lazy(VIEW_LOADERS.YouTubeLinksView);
+const CalendarAgendaView = lazy(VIEW_LOADERS.CalendarAgendaView);
+
+/** Tüm görünüm parçalarını önceden indirir (import() önbelleğe alındığı için tekrar çağırmak ücretsizdir). */
+function preloadViews() {
+  for (const load of Object.values(VIEW_LOADERS)) void load().catch(() => {});
+}
 
 export default function App() {
   return (
-    <EngagementProvider>
-      <AppContent />
-    </EngagementProvider>
+    <MotionConfig reducedMotion="user">
+      <EngagementProvider>
+        <AppContent />
+      </EngagementProvider>
+    </MotionConfig>
   );
 }
 
@@ -85,7 +102,7 @@ function AppContent() {
     resetAll,
   } = useDeck();
   const { notes, ringingAlarmNote, dismissAlarm, snoozeAlarm } = useNotes();
-  const { spaces, activeSpace, switchSpace, addLanguageSpace, languageSpaceExists, langDeskCount } = useSpaces();
+  const { spaces, activeSpace, switchSpace, addLanguageSpace, addLanguageSpaces, languageSpaceExists, langDeskCount } = useSpaces();
 
   // Kağıt dokusu ve el yazısı stil state'leri
   const [paperTexture, setPaperTexture] = useState<PaperTextureType>(getSavedPaperTexture);
@@ -121,7 +138,6 @@ function AppContent() {
 
   // v-perf: tema crossfade SADECE tema degisiminde olsun (opt-in transition sinifi).
   const prevThemeBgRef = useRef<string | null>(null);
-  const themeSwitchTimerRef = useRef<number | undefined>(undefined);
 
   // Superr Defter Bölümleri:
   // hero | collections (Tüm Notlar) | daily (Günlük Notlar) | work (İş ve Projeler) | calendar (Takvim ve Ajanda) | cards (Masalar: DE / EN)
@@ -196,63 +212,9 @@ function AppContent() {
 
   // ⭐ TÜM CİHAZLARDA (LAPTOP, CEP TELEFONU, TABLET) RENK & TEMA BÜTÜNLÜĞÜ
   useEffect(() => {
-    if (typeof document === "undefined") return;
-    const root = document.documentElement;
-    // v-perf: TEMA DEGISKENLERI - TEK SENKRON BLOG.
-    // DIKKAT: cssText KULLANILMAZ! Aksi halde <html> uzerindeki
-    // --font-handwritten (kullanicinin el yazisi fontu) SILINIRDI.
-    // setProperty yalnizca tema degiskenlerine dokunur - font korunur.
-    const themeVars: Array<[string, string]> = [
-      ["--app-bg", theme.appBg],
-      ["--paper", theme.paper || theme.panelBg],
-      ["--panel-bg", theme.panelBg],
-      ["--sidebar-bg", theme.sidebarBg],
-      ["--desk-bg", theme.deskBg],
-      ["--accent", theme.accent],
-      // index.css vurgu kuralları (text-/border-[var(--accent)], odak halkası) bu değişkene bağlı;
-      // tanımsız kalırsa geçersiz sayılır ve vurgu yazıları çevresinden miras alıp koyu kalır.
-      ["--accent-text", theme.accent],
-            ["--ink", theme.ink],
-      ["--ink-soft", theme.inkSoft],
-      ["--border-ink", theme.border],
-      ["--paper-grain-opacity", theme.grainOpacity || "0.16"],
-      ["--paper-secondary", theme.paperSecondary || theme.panelBg],
-      ["--shadow-color", theme.shadowColor || theme.ink],
-      ["--accent-ink", theme.accentInk || theme.appBg],
-      ["--color-success", theme.success || "#287a45"],
-      ["--color-danger", theme.danger || "#b42318"],
-      ["--color-warning", theme.warning || "#9a6700"],
-      ["--article-masc", theme.articleMasc || "#2563a8"],
-      ["--article-fem", theme.articleFem || "#b4234d"],
-      ["--article-neut", theme.articleNeut || "#287a45"],
-      ["--modal-overlay", theme.overlay || "rgba(0,0,0,0.35)"],
-    ];
-    for (let i = 0; i < themeVars.length; i++) {
-      root.style.setProperty(themeVars[i][0], themeVars[i][1]);
-    }
-
-    // v-perf: crossfade yalnizca TEMA degisiminde. Sinifi ekle -> 200ms sonra kaldir.
-    // (Dil degisimi ve diger islemler artik transition yuku tasimaz.)
-    if (prevThemeBgRef.current !== null && prevThemeBgRef.current !== theme.appBg) {
-      root.classList.add("theme-switching");
-      window.clearTimeout(themeSwitchTimerRef.current);
-      themeSwitchTimerRef.current = window.setTimeout(() => {
-        root.classList.remove("theme-switching");
-      }, 200);
-    }
+    // İlk yükleme ve dış değişiklikler (senkron vb.). switchTheme değişkenleri zaten yazmıştır; tekrar yazmak zararsız.
+    applyThemeVars(theme, prevThemeBgRef.current !== null && prevThemeBgRef.current !== theme.appBg);
     prevThemeBgRef.current = theme.appBg;
-
-    // Meta tema rengi: YALNIZCA gercekten degistiyse yaz
-    // (gereksiz DOM mutasyonu + layout tetiklemesi onlenir).
-    let metaThemeColor = document.querySelector("meta[name='theme-color']");
-    if (!metaThemeColor) {
-      metaThemeColor = document.createElement("meta");
-      metaThemeColor.setAttribute("name", "theme-color");
-      document.head.appendChild(metaThemeColor);
-    }
-    if (metaThemeColor.getAttribute("content") !== theme.appBg) {
-      metaThemeColor.setAttribute("content", theme.appBg);
-    }
   }, [theme]);
 
   // XP değişince toast göster; seviye atlarsa kutlama versiyonu
@@ -395,6 +357,23 @@ function AppContent() {
     }
   }, [ringingAlarmNote]);
 
+  // Ses bağlamını ilk dokunuşta (tıklamadan önce) hazırla: kullanıcı jesti gerektirir, gecikme yaratmaz.
+  useEffect(() => {
+    window.addEventListener("pointerdown", warmUpAudio, { once: true, capture: true });
+    return () => window.removeEventListener("pointerdown", warmUpAudio, { capture: true });
+  }, []);
+
+  // Görünüm parçalarını ilk boyamadan sonra arka planda indir: ilk tıklamada bekleme olmasın.
+  useEffect(() => {
+    const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number; cancelIdleCallback?: (id: number) => void };
+    if (w.requestIdleCallback) {
+      const id = w.requestIdleCallback(preloadViews, { timeout: 1500 });
+      return () => w.cancelIdleCallback?.(id);
+    }
+    const id = window.setTimeout(preloadViews, 600);
+    return () => window.clearTimeout(id);
+  }, []);
+
   // Bildirimdeki "ertele" aksiyonu: SW mesajı veya /?snooze=kind:id:dk parametresi
   useEffect(() => {
     const apply = (snooze: { kind: string; id: string } | undefined, minutes: number) => {
@@ -527,8 +506,8 @@ function AppContent() {
 
   const handleSelectView = (view: NavView) => {
     if (view !== currentView) {
-      playPaperRustle();
       setCurrentView(view);
+      playPaperRustle();
     }
   };
 
@@ -547,8 +526,8 @@ function AppContent() {
         initial: { opacity: 0, x: 6 },
         animate: { opacity: 1, x: 0 },
         // exit cok kisa + popLayout: gecis boyunca EKRAN BOS KALMAZ.
-        exit: { opacity: 0, x: -6, transition: { duration: 0.07 } },
-        transition: { duration: 0.09, ease: [0.25, 0.1, 0.25, 1] as [number, number, number, number] },
+        exit: { opacity: 0, transition: { duration: 0 } },
+        transition: { duration: 0.06, ease: [0.25, 0.1, 0.25, 1] as [number, number, number, number] },
       };
   return (
     <div
@@ -646,8 +625,8 @@ function AppContent() {
           data-sidebar-toggle="1"
           aria-label={t("sidebar.hide")}
           title={t("sidebar.hide")}
-          className="hidden lg:flex fixed z-[70] h-8 w-8 items-center justify-center rounded-full bg-[var(--ink)] text-[var(--paper)] shadow-md transition-colors hover:bg-[var(--accent)]"
-          style={{ top: 21.5, left: sidebarWidth - 85 }}
+          className="hidden lg:flex fixed z-30 h-8 w-8 items-center justify-center rounded-full bg-[var(--ink)] text-[var(--paper)] shadow-md transition-colors hover:bg-[var(--accent)]"
+          style={{ top: 20, left: sidebarWidth - 85 }}
         >
           <span className="font-mono text-[17px] font-bold leading-none">‹</span>
         </button>
@@ -661,8 +640,8 @@ function AppContent() {
           data-sidebar-toggle="1"
           aria-label={t("sidebar.show")}
           title={t("sidebar.show")}
-          className="hidden lg:flex fixed z-[70] h-8 w-8 items-center justify-center rounded-full bg-[var(--ink)] text-[var(--paper)] shadow-md transition-colors hover:bg-[var(--accent)]"
-          style={{ top: 21.5, left: 12 }}
+          className="hidden lg:flex fixed z-30 h-8 w-8 items-center justify-center rounded-full bg-[var(--ink)] text-[var(--paper)] shadow-md transition-colors hover:bg-[var(--accent)]"
+          style={{ top: 20, left: 12 }}
         >
           <span className="font-mono text-[17px] font-bold leading-none">›</span>
         </button>
@@ -753,7 +732,7 @@ function AppContent() {
         {/* MADDE 1: ALT NAV PAYI. Alt nav h-[52px] + py-1 + border ~62px; onceki pb-16
             (64px) sinirdaydi ve safe-area yoktu -> kart altindaki butonlar YARIM
             kaliyordu. Yeni: 52 + 8 nefes + safe-area. Masaustunde alt nav yok -> lg:pb-0. */}
-        <main className="relative flex-1 min-w-0 lg:h-full overflow-x-hidden bg-[var(--app-bg)] pb-[calc(60px+env(safe-area-inset-bottom))] lg:pb-0 lg:overflow-hidden">
+        <main className={`relative flex-1 min-w-0 lg:h-full overflow-x-hidden bg-[var(--app-bg)] pb-[calc(60px+env(safe-area-inset-bottom))] lg:pb-0 lg:overflow-hidden ${isSidebarHidden ? "lg:ms-[52px]" : ""}`}>
           {/* Sayfa kivrimi: masa gecisinde hafif bir kivrim efekti. */}
           {!isReducedMotion && (
           <motion.div
@@ -1039,7 +1018,7 @@ function AppContent() {
       />
 
       {/* ⭐ 7. Kullanıcı Giriş & Profil Modalı (Vintage Kimlik Kartı) */}
-      {showOnboarding && <OnboardingFlow displayName={currentUser?.displayName} onDone={() => setShowOnboarding(false)} />}
+      {showOnboarding && <OnboardingFlow displayName={currentUser?.displayName} onDone={(codes) => { addLanguageSpaces(codes); setShowOnboarding(false); }} />}
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}

@@ -45,9 +45,9 @@ export function CoverStickerCluster({
   const unlockedCount = milestones.filter((m) => m.unlocked).length;
 
   return (
-    <div className="relative mt-3 pt-4 border-t border-[color-mix(in_srgb,var(--border-ink)_18%,transparent)]">
+    <div className="relative mt-2 pt-3 border-t border-[color-mix(in_srgb,var(--border-ink)_18%,transparent)]">
       {/* Üst Başlık & Rozet Sayacı */}
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5">
           <span className="font-handwritten text-xs font-bold text-[var(--accent)]">
             {t("cover.badges.title")}
@@ -64,7 +64,7 @@ export function CoverStickerCluster({
               onOpenVolumes();
             }}
             title={t("cover.volumes.tip")}
-            className="rounded-full border-[var(--ink)] bg-[var(--paper)] px-2.5 py-0.5 font-gelica text-[10px] font-semibold text-[var(--ink)] hover:bg-[var(--ink)] hover:text-white active:scale-95 transition-all shadow-2xs"
+            className="rounded-full border-[var(--line-strong)] bg-[var(--paper)] px-2.5 py-0.5 font-geist text-[10px] font-semibold text-[var(--ink)] hover:bg-[var(--ink)] hover:text-white active:scale-95 transition-all shadow-2xs"
           >
             {t("cover.badges.volume")} 0{currentVolume}
           </button>
@@ -74,7 +74,7 @@ export function CoverStickerCluster({
               onOpenCustomize();
             }}
             title={t("cover.customize.tip")}
-            className="flex items-center gap-1 rounded-full border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,transparent)] px-2.5 py-0.5 font-gelica text-[10px] font-bold text-[var(--accent)] hover:scale-105 active:scale-95 transition-all shadow-2xs"
+            className="flex items-center gap-1 rounded-full border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,transparent)] px-2.5 py-0.5 font-geist text-[10px] font-bold text-[var(--accent)] hover:scale-105 active:scale-95 transition-all shadow-2xs"
           >
             <SketchPalette size={13} strokeWidth={1.8} className="shrink-0" />
             <span>{t("cover.customize")}</span>
@@ -83,9 +83,9 @@ export function CoverStickerCluster({
       </div>
 
       {/* 9 Rozet Yuvası — Gerçekçi Postit & Organik El Çizimi Defter Koleksiyonu
-          Dar ekranda yatay kaydırılabilir (snap), geniş ekranda 9 kolon grid.
+          Dar ekranda yatay kaydırılabilir (snap), sm ve üstünde 3x3 grid (kart ~380px: 9 sütun rozetleri üst üste bindiriyordu).
           Etiketler kart genişliğinde kelime kaydırmalı (asıla taşmaz). */}
-      <div className="flex gap-2.5 overflow-x-auto pb-3 pt-1 -mx-1 px-1 snap-x snap-mandatory sm:grid sm:grid-cols-3 sm:gap-2 sm:overflow-visible sm:pb-1 sm:mx-0 sm:px-0 lg:grid-cols-9 lg:pe-2">
+      <div className="flex gap-2.5 overflow-x-auto pb-3 pt-1 -mx-1 px-1 snap-x snap-mandatory sm:grid sm:grid-cols-5 sm:gap-1.5 sm:overflow-visible sm:pb-1 sm:mx-0 sm:px-0">
         {milestones.map((m: MilestoneSticker) => {
           const unlocked = m.unlocked;
           const tilt = m.rotation ?? 0;
@@ -112,7 +112,7 @@ export function CoverStickerCluster({
                 if (unlocked) playPenScratch();
               }}
               style={{ transformOrigin: "center" }}
-              className={`postit-card group relative shrink-0 w-[78px] min-h-[88px] snap-start flex-col items-center justify-start gap-1 rounded-[3px] px-1.5 pt-2 pb-1.5 cursor-pointer select-none border ${m.badgeBg} ${
+              className={`postit-card group relative shrink-0 w-[78px] min-h-[88px] sm:w-full sm:min-h-[66px] snap-start flex-col items-center justify-start gap-1 rounded-[3px] px-1.5 pt-2 pb-1.5 cursor-pointer select-none border ${m.badgeBg} ${
                 unlocked ? "" : "postit-locked"
               }`}
             >
@@ -169,20 +169,6 @@ export function CoverStickerCluster({
           );
         })}
       </div>
-
-      {/* Mürekkep Damgası (Vintage Ink Stamp) */}
-      {stampConfig && activeStamp !== "none" && (
-        <div className="mt-2.5 flex justify-end">
-          <div className={`ink-stamp-box rotate-[-4deg] ${stampConfig.color}`}>
-            <span className="font-mono text-[9px] font-extrabold tracking-wider">
-              {t(stampConfig.titleKey)}
-            </span>
-            <span className="font-handwritten text-[8.5px] font-semibold opacity-90">
-              {t(stampConfig.subtitleKey)}
-            </span>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

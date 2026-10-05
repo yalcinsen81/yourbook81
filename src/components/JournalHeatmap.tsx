@@ -92,7 +92,7 @@ export default function JournalHeatmap({ entries, onSelectDay, year: yearProp, o
     >
       <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
         <div className="flex items-center gap-2">
-          <span className="font-gelica text-xs font-bold lowercase text-[var(--ink)]">{t("heat.title")}</span>
+          <span className="font-geist text-xs font-bold lowercase text-[var(--ink)]">{t("heat.title")}</span>
           <span className="font-mono text-[10px] text-[var(--ink-soft)]">
             {map.activeDays} {t("heat.active_days")} · {map.totalEntries} {t("heat.entries")}
           </span>
@@ -106,7 +106,7 @@ export default function JournalHeatmap({ entries, onSelectDay, year: yearProp, o
                 className={`rounded-full px-2 py-0.5 font-mono text-[10px] transition ${
                   y === year
                     ? "bg-[var(--ink)] text-white"
-                    : "border border-[var(--ink)] text-[var(--ink)] hover:bg-[color-mix(in_srgb,var(--ink)_8%,transparent)]"
+                    : "border border-[var(--line)] text-[var(--ink)] hover:bg-[color-mix(in_srgb,var(--ink)_8%,transparent)]"
                 }`}
               >
                 {y}
@@ -129,7 +129,7 @@ export default function JournalHeatmap({ entries, onSelectDay, year: yearProp, o
               className={`rounded-full px-2 py-0.5 font-mono text-[10px] transition ${
                 overlayYear != null
                   ? "bg-[var(--accent)] text-white"
-                  : "border border-dashed border-[var(--ink)] text-[var(--ink)] hover:bg-[color-mix(in_srgb,var(--ink)_8%,transparent)]"
+                  : "border border-dashed border-[var(--line-strong)] text-[var(--ink)] hover:bg-[color-mix(in_srgb,var(--ink)_8%,transparent)]"
               }`}
             >
               {t("heat.overlay")}
@@ -263,7 +263,7 @@ export default function JournalHeatmap({ entries, onSelectDay, year: yearProp, o
 
         {/* Tooltip */}
         {hover && (
-          <div className="pointer-events-none absolute start-0 -top-1 rounded-md border border-[var(--ink)] bg-[var(--paper)] px-2 py-1 font-mono text-[10px] text-[var(--ink)] shadow-md whitespace-nowrap">
+          <div className="pointer-events-none absolute start-0 -top-1 rounded-md border border-[var(--line)] bg-[var(--paper)] px-2 py-1 font-mono text-[10px] text-[var(--ink)] shadow-md whitespace-nowrap">
             {tooltipText(hover)}
           </div>
         )}

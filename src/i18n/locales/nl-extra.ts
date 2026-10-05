@@ -1172,5 +1172,13 @@ const nlExtra: Record<string, string> = {
   "sys.error_retry": "probeer de pagina te herladen.",
   "hero.notebook_of": "Schrift van {name}",
   "hero.notebook_mine": "Mijn schrift",
+  "sidebar.appearance": "uiterlijk",
+  "onb.back": "Terug",
+  "a11y.prev_month": "vorige maand",
+  "a11y.next_month": "volgende maand",
+  "a11y.add_task": "taak toevoegen",
+  "a11y.toggle_done": "markeren als voltooid",
+  "a11y.date": "datum",
+  "a11y.time": "tijd",
 };
 export default nlExtra;

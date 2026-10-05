@@ -45,7 +45,7 @@ export default function JournalMoodTrend({ entries, referenceDate }: JournalMood
   return (
     <div className="mt-4 pt-4 border-t border-black/5 w-full">
       <div className="flex items-center justify-between mb-2">
-        <span className="font-gelica text-xs font-bold lowercase text-[var(--ink)]">
+        <span className="font-geist text-xs font-bold lowercase text-[var(--ink)]">
           {t("trend.title")}
         </span>
         {hasAny && avg !== null && (
@@ -114,7 +114,7 @@ export default function JournalMoodTrend({ entries, referenceDate }: JournalMood
 
         {!hasAny && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="font-gelica text-[11px] text-[var(--ink-soft)] opacity-70">
+            <span className="font-geist text-[11px] text-[var(--ink-soft)] opacity-70">
               {referenceDate ? t("trend.empty_period") : t("trend.empty")}
             </span>
           </div>

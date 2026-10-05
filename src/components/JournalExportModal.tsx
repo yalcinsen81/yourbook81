@@ -149,7 +149,7 @@ export function JournalExportModal({
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.94, opacity: 0, y: 12 }}
           transition={{ duration: 0.22, ease: [0.34, 1.56, 0.64, 1] }}
-          className="relative w-full max-w-md rounded-[20px] border-2 border-[var(--ink)] bg-[var(--paper)] p-5 sm:p-6 shadow-2xl"
+          className="relative w-full max-w-md rounded-[20px] border border-[var(--line-strong)] bg-[var(--paper)] p-5 sm:p-6 shadow-2xl"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -193,7 +193,7 @@ export function JournalExportModal({
                     playPopSound();
                     setRange(tab.id as any);
                   }}
-                  className={`py-1.5 text-center rounded-[10px] font-gelica text-[11px] font-bold transition-all ${
+                  className={`py-1.5 text-center rounded-[10px] font-geist text-[11px] font-bold transition-all ${
                     range === tab.id
                       ? "bg-[var(--ink)] text-[var(--app-bg)] shadow-xs"
                       : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
@@ -221,7 +221,7 @@ export function JournalExportModal({
                     playPopSound();
                     setTocGrouping(tab.id as "month" | "week");
                   }}
-                  className={`py-1.5 text-center rounded-[10px] font-gelica text-[11px] font-bold transition-all ${
+                  className={`py-1.5 text-center rounded-[10px] font-geist text-[11px] font-bold transition-all ${
                     tocGrouping === tab.id
                       ? "bg-[var(--ink)] text-[var(--app-bg)] shadow-xs"
                       : "text-[var(--ink-soft)] hover:text-[var(--ink)]"
@@ -237,7 +237,7 @@ export function JournalExportModal({
           <div className="space-y-3 mb-4">
             <div className="relative rounded-[16px] border-2 border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_6%,transparent)] p-4 shadow-xs">
               <div className="flex items-center justify-between mb-1.5">
-                <span className="font-gelica text-xs font-bold text-[var(--accent)] flex items-center gap-1.5">
+                <span className="font-geist text-xs font-bold text-[var(--accent)] flex items-center gap-1.5">
                   {t("export.rich_pdf")}
                 </span>
                 <span className="rounded-full bg-[var(--accent)] text-white text-[9.5px] px-2 py-0.5 font-bold font-mono">
@@ -264,7 +264,7 @@ export function JournalExportModal({
               <button
                 onClick={handlePrintPdf}
                 disabled={filteredEntries.length === 0 || isExporting}
-                className="w-full py-2.5 rounded-[12px] bg-[var(--accent)] text-white font-gelica text-xs font-bold shadow-sm hover:opacity-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full py-2.5 rounded-[12px] bg-[var(--accent)] text-white font-geist text-xs font-bold shadow-sm hover:opacity-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg>
                 <span>
@@ -278,10 +278,10 @@ export function JournalExportModal({
               <button
                 onClick={handleDownloadTxt}
                 disabled={filteredEntries.length === 0}
-                className="p-3 rounded-[14px] border border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[var(--app-bg)] text-start hover:border-[var(--ink)] transition-all flex flex-col justify-between disabled:opacity-50"
+                className="p-3 rounded-[14px] border border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[var(--app-bg)] text-start hover:border-[var(--line-strong)] transition-all flex flex-col justify-between disabled:opacity-50"
               >
                 <div>
-                  <span className="font-gelica text-xs font-bold text-[var(--ink)] block">
+                  <span className="font-geist text-xs font-bold text-[var(--ink)] block">
                     {t("export.plain_txt")}
                   </span>
                   <span className="font-geist text-[10px] text-[var(--ink-soft)] block mt-0.5">
@@ -296,10 +296,10 @@ export function JournalExportModal({
               <button
                 onClick={handleDownloadJson}
                 disabled={filteredEntries.length === 0}
-                className="p-3 rounded-[14px] border border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[var(--app-bg)] text-start hover:border-[var(--ink)] transition-all flex flex-col justify-between disabled:opacity-50"
+                className="p-3 rounded-[14px] border border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[var(--app-bg)] text-start hover:border-[var(--line-strong)] transition-all flex flex-col justify-between disabled:opacity-50"
               >
                 <div>
-                  <span className="font-gelica text-xs font-bold text-[var(--ink)] block">
+                  <span className="font-geist text-xs font-bold text-[var(--ink)] block">
                     {t("export.json_backup")}
                   </span>
                   <span className="font-geist text-[10px] text-[var(--ink-soft)] block mt-0.5">
@@ -317,7 +317,7 @@ export function JournalExportModal({
           <div className="pt-2 flex justify-end">
             <button
               onClick={onClose}
-              className="font-gelica text-xs text-[var(--ink-soft)] hover:text-[var(--ink)] transition-colors"
+              className="font-geist text-xs text-[var(--ink-soft)] hover:text-[var(--ink)] transition-colors"
             >
               Kapat
             </button>

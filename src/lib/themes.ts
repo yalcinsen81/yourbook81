@@ -75,6 +75,61 @@ export const SUPERR_THEMES: SuperrTheme[] = [
 
 const STORAGE_KEY_THEME = "superr_theme_v1";
 
+/**
+ * Tema renk değişkenlerini <html> üzerine yazar.
+ * `instant` true ise o kare için tüm geçişler kapatılır: tema değişimi React yeniden çizimini
+ * beklemeden ve çapraz geçiş olmadan anında görünür.
+ */
+export function applyThemeVars(theme: SuperrTheme, instant = false) {
+  if (typeof document === "undefined") return;
+  const root = document.documentElement;
+  if (instant) {
+    root.classList.add("theme-instant");
+    requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove("theme-instant")));
+  }
+    const themeVars: Array<[string, string]> = [
+      ["--app-bg", theme.appBg],
+      ["--paper", theme.paper || theme.panelBg],
+      ["--panel-bg", theme.panelBg],
+      ["--sidebar-bg", theme.sidebarBg],
+      ["--desk-bg", theme.deskBg],
+      ["--accent", theme.accent],
+      // index.css vurgu kuralları (text-/border-[var(--accent)], odak halkası) bu değişkene bağlı;
+      // tanımsız kalırsa geçersiz sayılır ve vurgu yazıları çevresinden miras alıp koyu kalır.
+      ["--accent-text", theme.accent],
+            ["--ink", theme.ink],
+      ["--ink-soft", theme.inkSoft],
+      ["--border-ink", theme.border],
+      ["--paper-grain-opacity", theme.grainOpacity || "0.16"],
+      ["--paper-secondary", theme.paperSecondary || theme.panelBg],
+      ["--shadow-color", theme.shadowColor || theme.ink],
+      ["--accent-ink", theme.accentInk || theme.appBg],
+      ["--color-success", theme.success || "#287a45"],
+      ["--color-danger", theme.danger || "#b42318"],
+      ["--color-warning", theme.warning || "#9a6700"],
+      ["--article-masc", theme.articleMasc || "#2563a8"],
+      ["--article-fem", theme.articleFem || "#b4234d"],
+      ["--article-neut", theme.articleNeut || "#287a45"],
+      ["--modal-overlay", theme.overlay || "rgba(0,0,0,0.35)"],
+    ];
+    for (let i = 0; i < themeVars.length; i++) {
+      root.style.setProperty(themeVars[i][0], themeVars[i][1]);
+    }
+
+
+    // Meta tema rengi: YALNIZCA gercekten degistiyse yaz
+    // (gereksiz DOM mutasyonu + layout tetiklemesi onlenir).
+    let metaThemeColor = document.querySelector("meta[name='theme-color']");
+    if (!metaThemeColor) {
+      metaThemeColor = document.createElement("meta");
+      metaThemeColor.setAttribute("name", "theme-color");
+      document.head.appendChild(metaThemeColor);
+    }
+    if (metaThemeColor.getAttribute("content") !== theme.appBg) {
+      metaThemeColor.setAttribute("content", theme.appBg);
+    }
+}
+
 export function useTheme() {
   const [themeId, setThemeId] = useState<string>(() => {
     try {
@@ -92,6 +147,8 @@ export function useTheme() {
 
   // v-perf: useCallback ile sabitle (her render'da yeni fonksiyon uretilmesin).
   const switchTheme = useCallback((id: string) => {
+    const next = SUPERR_THEMES.find((x) => x.id === id);
+    if (next) applyThemeVars(next, true); // önce DOM: renkler React'i beklemeden değişir
     setThemeId(id);
     try {
       localStorage.setItem(STORAGE_KEY_THEME, id);

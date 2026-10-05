@@ -155,11 +155,11 @@ export function SuperrHero({
           NOT: Çizginin kalınlığı/rengi bilinçli olarak DEĞİŞTİRİLMEDİ (kullanıcı tercihi). */}
       <div className="relative flex items-center justify-between pb-[21px] border-b border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)]">
         <div className="flex items-center gap-2">
-          <span className="font-gelica text-sm text-[var(--accent)] font-semibold">
-            yourbook v01.0
+          <span className="font-gelica text-sm text-[var(--accent)] font-semibold whitespace-nowrap">
+            yourbook v{__APP_VERSION__}
           </span>
-          <span className="text-[#bebcbb]">/</span>
-          <span className="font-geist text-xs text-[var(--ink-soft)]">
+          <span className="hidden md:inline text-[#bebcbb]">/</span>
+          <span className="hidden md:inline font-geist text-xs text-[var(--ink-soft)]">
             {t("hero.caption")}
           </span>
         </div>
@@ -170,11 +170,12 @@ export function SuperrHero({
               playPopSound();
               setIsGiftModalOpen(true);
             }}
-            className="flex items-center gap-1.5 rounded-full border-2 border-[var(--ink)] bg-[var(--accent)] px-3 py-1 font-gelica text-[14px] font-bold text-white hover:scale-105 transition-transform shadow-2xs"
+            className="flex items-center justify-center gap-1.5 rounded-full border border-[var(--line-strong)] bg-[var(--accent)] px-3 py-1 font-gelica text-[14px] font-bold text-white whitespace-nowrap hover:scale-105 transition-transform shadow-2xs"
             title={t("cover.gift.tip")}
+            aria-label={t("cover.gift")}
           >
             <SketchGift size={15} className="shrink-0 text-white" strokeWidth={1.8} />
-            <span>{t("cover.gift")}</span>
+            <span className="hidden sm:inline">{t("cover.gift")}</span>
           </button>
           <StarSticker />
           <HeartSticker />
@@ -182,7 +183,7 @@ export function SuperrHero({
       </div>
 
       {/* 2. Hero İki Sütunlu Yerleşim */}
-      <div className="mt-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+      <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-x-8 gap-y-6 items-start">
         {/* Sol Sütun: Lowercase 84px Display Headline & Handwritten Caption */}
         <div className="lg:col-span-6 xl:col-span-7 flex flex-col items-start">
           {/* Kişisel Açılış Ritüeli Karşılama Kartı */}
@@ -192,8 +193,8 @@ export function SuperrHero({
           {/* Handwritten Annotation — görece konteyner: kıvrık ok "defter" kelimesini işaret eder */}
           <div className="relative flex items-center gap-3.5 mb-2">
             <span
-              style={{ fontSize: "clamp(30px, 3.4vw, 53px)" }}
-              className="font-handwritten text-[var(--accent)] rotate-[-2deg] flex items-center gap-5 leading-none"
+              style={{ fontSize: "clamp(27px, 2.8vw, 42.5px)" }}
+              className="font-handwritten text-[var(--accent)] flex items-center gap-5 leading-none lg:whitespace-nowrap"
             >
               <span>{t("cover.greeting")}</span>
               {/* Gülen yüz + ok = TEK PARÇA: dikey grup, font ne olursa olsun birlikte hareket eder */}
@@ -245,7 +246,7 @@ export function SuperrHero({
           {/* Display Headline: Gelica 600, ALL LOWERCASE, Vintage Ink with slight texture feel */}
           <h1
             id="hero-headline"
-            className="font-gelica text-[32px] min-[641px]:text-[40px] font-semibold text-[var(--ink)] leading-[1.14] sm:leading-[1.1] tracking-normal text-start"
+            className="font-gelica text-[34px] min-[641px]:text-[46px] font-semibold text-[var(--ink)] leading-[1.14] sm:leading-[1.1] tracking-normal text-start"
             style={{
               textShadow: "0.5px 0.5px 1px color-mix(in srgb, var(--ink) 18%, transparent)",
               opacity: 0.94,
@@ -268,7 +269,7 @@ export function SuperrHero({
           {/* Cocoa Ink Body Paragraph */}
           
           {/* Kapak: bugün bekleyen tekrar kuyruğu */}
-          <div data-hero-review-queue="1" className="mt-5 flex w-full items-center justify-between gap-3 rounded-[14px] border-[1px] border-[var(--ink)] bg-[color-mix(in_srgb,var(--paper)_72%,transparent)] px-3 py-2">
+          <div data-hero-review-queue="1" className="mt-5 flex w-full items-center justify-between gap-3 rounded-[14px] border-[1px] border-[var(--line-strong)] bg-[color-mix(in_srgb,var(--paper)_72%,transparent)] px-3 py-2">
             <span className="min-w-0 truncate font-gelica text-[13px] text-[var(--ink)]">
               {dueCards > 0 ? t("hero.today_due").replace("{n}", String(dueCards)) : t("hero.today_done")}
             </span>
@@ -315,7 +316,7 @@ export function SuperrHero({
           </div>
 
           {/* Pre-order Info Block */}
-          <span className="mt-3 font-gelica text-xs text-[var(--ink-soft)]">
+          <span className="mt-3 font-geist text-xs text-[var(--ink-soft)]">
             {t("hero.sub")}
           </span>
 
@@ -323,7 +324,7 @@ export function SuperrHero({
 
         {/* Sağ Sütun: Tilted Product Notebook + Name Label Sticker + 2D Sticker Cluster */}
         <div className="lg:col-span-6 xl:col-span-5 relative flex items-center justify-center p-4">
-          <div className="relative w-full max-w-[380px] p-6 bg-[var(--paper)] border border-[var(--ink)] rounded-[16px] shadow-superrCard rotate-[2deg] transition-transform hover:rotate-0">
+          <div className="relative w-full max-w-[380px] p-5 bg-[var(--paper)] border border-[var(--line)] rounded-[16px] shadow-superrCard">
             {/* Üstte Dağılmış Fiziksel Stickerlar */}
             <div className="absolute -top-2 -start-2 z-20">
               <LightningSticker />
@@ -342,16 +343,16 @@ export function SuperrHero({
                 deskNames={activeDeskNames}
               />
 
-            <div className="space-y-3 pt-2">
+            <div className="space-y-2 pt-1">
               {/* 6 Dil Masası — tüm dillerin tek özeti */}
               <div
                 onClick={() => {
                   playPopSound();
                   onGoToCards("space-all");
                 }}
-                className="border p-3.5 bg-[var(--app-bg)] border-[var(--ink)] rounded-[10px] cursor-pointer hover:border-[var(--accent)] hover:shadow-2xs transition-all"
+                className="border p-3.5 bg-[var(--app-bg)] border-[var(--line-strong)] rounded-[10px] cursor-pointer hover:border-[var(--accent)] hover:shadow-2xs transition-all"
               >
-                <div className="flex items-center justify-between font-gelica text-xs text-[var(--ink)] font-semibold pb-1">
+                <div className="flex items-center justify-between font-geist text-xs text-[var(--ink)] font-semibold pb-1">
                   <div className="flex items-center gap-1.5">
                     <DTopicGerman size={15} className="text-[var(--accent)]" />
                     <span>{activeDeskLabel}</span>
@@ -369,10 +370,10 @@ export function SuperrHero({
             </div>
 
             {/* Günlük Hedef ve Seviye İlerlemesi (Engagement) */}
-            <div className="mt-4 pt-3 border-t border-dashed border-[color-mix(in_srgb,var(--border-ink)_30%,transparent)]">
+            <div className="mt-3 pt-2 border-t border-dashed border-[color-mix(in_srgb,var(--border-ink)_30%,transparent)]">
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-1.5">
-                  <span className="font-gelica text-xs font-semibold text-[var(--ink)]">
+                  <span className="font-geist text-xs font-semibold text-[var(--ink)]">
                     {t("xp.daily_goal")}
                   </span>
                   <Tooltip
@@ -387,7 +388,7 @@ export function SuperrHero({
                 </div>
                 <div className="flex items-center gap-2">
                   <StreakFlame streak={engagement.streak} />
-                  <span className="font-gelica text-[11px] font-semibold text-[var(--ink-soft)]">
+                  <span className="font-geist text-[11px] font-semibold text-[var(--ink-soft)]">
                     {engagement.xp ?? 0} / {goalXp ?? engagement.goal} XP
                   </span>
                 </div>
@@ -433,15 +434,15 @@ export function SuperrHero({
               </div>
 
               {/* ⭐ HAFTALIK RİTİM VE BEKLEYEN KART ÖZETİ (Motivasyon Göstergesi) */}
-              <div className="mt-3.5 pt-2.5 border-t border-[color-mix(in_srgb,var(--border-ink)_18%,transparent)]">
-                <div className="flex items-center justify-between text-[11px] font-gelica pb-1.5">
+              <div className="mt-3 pt-2 border-t border-[color-mix(in_srgb,var(--border-ink)_18%,transparent)]">
+                <div className="flex items-center justify-between text-[11px] font-geist pb-1.5">
                   <span className="text-[var(--ink-soft)] font-medium">{t("hero.weekly_rhythm")}:</span>
                   <span className="font-handwritten text-[var(--accent)] text-xs font-bold">
                     {dueCardsCount > 0 ? t("desk.count_short", { n: dueCardsCount }) : t("hero.desks_done")}
                   </span>
                 </div>
 
-          <div className="border flex items-center justify-between gap-1 bg-[var(--app-bg)] p-1.5 rounded-[8px] border-[var(--ink)]">
+          <div className="border flex items-center justify-between gap-1 bg-[var(--app-bg)] p-1.5 rounded-[8px] border-[var(--line-strong)]">
                   {weekDays.map((d) => (
                     <div key={d.name} className="flex flex-col items-center gap-1 flex-1">
                       <span className={`text-[9px] font-mono ${d.isToday ? "text-[var(--accent)] font-bold" : "text-[var(--ink-soft)]"}`}>
@@ -450,10 +451,10 @@ export function SuperrHero({
                       <div
                         className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] border transition-all ${
                           d.isPastActive
-                            ? "bg-[var(--accent)] border-[var(--ink)] text-[var(--app-bg)] font-bold shadow-xs"
+                            ? "bg-[var(--accent)] border-[var(--line-strong)] text-[var(--app-bg)] font-bold shadow-xs"
                             : d.isToday
                             ? todayXp > 0
-                              ? "bg-[#22c55e] border-[var(--ink)] text-white font-bold"
+                              ? "bg-[#22c55e] border-[var(--line-strong)] text-white font-bold"
                               : "border-[1.5px] border-dashed border-[var(--accent)] text-[var(--accent)]"
                             : "border border-[color-mix(in_srgb,var(--border-ink)_25%,transparent)] bg-[var(--paper)] text-[var(--ink-soft)] opacity-40"
                         }`}
@@ -476,7 +477,7 @@ export function SuperrHero({
         </div>
       </div>
       {/* 3. 3'lü Defter Kartları (12px Card Radius, 1.5px Charcoal Border) */}
-      <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
         <div
           onClick={() => {
             playPopSound();
@@ -560,7 +561,7 @@ export function SuperrHero({
               playPopSound();
               onGoToCards("space-all");
             }}
-            className="rounded-[20px] border-2 border-[var(--ink)] bg-[var(--app-bg)] text-[var(--ink)] px-5 py-2 font-gelica text-xs font-semibold shadow-sm hover:bg-[var(--paper)] transition-all"
+            className="rounded-[20px] border border-[var(--line-strong)] bg-[var(--app-bg)] text-[var(--ink)] px-5 py-2 font-geist text-xs font-semibold shadow-sm hover:bg-[var(--paper)] transition-all"
           >
             <span>{t("hero.btn_desks").replace("{n}", String(deskCount))}</span>
           </button>
@@ -569,7 +570,7 @@ export function SuperrHero({
               playPopSound();
               onGoToCards("space-work");
             }}
-            className="rounded-[20px] border-2 border-[var(--ink)] bg-[var(--app-bg)] text-[var(--ink)] px-5 py-2 font-gelica text-xs font-semibold shadow-sm hover:bg-[var(--paper)] transition-all"
+            className="rounded-[20px] border border-[var(--line-strong)] bg-[var(--app-bg)] text-[var(--ink)] px-5 py-2 font-geist text-xs font-semibold shadow-sm hover:bg-[var(--paper)] transition-all"
           >
             <span>{t("hero.btn_work")}</span>
           </button>
@@ -578,7 +579,7 @@ export function SuperrHero({
               playPopSound();
               onGoToDaily();
             }}
-            className="rounded-[20px] border-2 border-[var(--ink)] bg-[var(--app-bg)] text-[var(--ink)] px-5 py-2 font-gelica text-xs font-semibold shadow-sm hover:bg-[var(--paper)] transition-all"
+            className="rounded-[20px] border border-[var(--line-strong)] bg-[var(--app-bg)] text-[var(--ink)] px-5 py-2 font-geist text-xs font-semibold shadow-sm hover:bg-[var(--paper)] transition-all"
           >
             <span>{t("hero.btn_calendar")}</span>
           </button>
@@ -587,7 +588,7 @@ export function SuperrHero({
               playPopSound();
               onGoToNotes();
             }}
-            className="rounded-[20px] border-2 border-[var(--ink)] bg-[var(--app-bg)] text-[var(--ink)] px-5 py-2 font-gelica text-xs font-semibold shadow-sm hover:bg-[var(--paper)] transition-all"
+            className="rounded-[20px] border border-[var(--line-strong)] bg-[var(--app-bg)] text-[var(--ink)] px-5 py-2 font-geist text-xs font-semibold shadow-sm hover:bg-[var(--paper)] transition-all"
           >
             <span>{t("hero.btn_daily")}</span>
           </button>

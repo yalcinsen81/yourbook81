@@ -475,11 +475,11 @@ export function WorkProjectsView() {
 
             </span>
 
-            <h2 className="font-gelica text-[32px] sm:text-[38px] font-semibold lowercase text-[var(--ink)] leading-tight">
+            <h1 className="font-gelica text-[32px] sm:text-[38px] font-semibold lowercase text-[var(--ink)] leading-tight">
 
               {t("wp.title")}
 
-            </h2>
+            </h1>
 
           </div>
 
@@ -497,7 +497,7 @@ export function WorkProjectsView() {
 
               placeholder={t("wp.search_ph")}
 
-              className="w-full rounded-[20px] border-2 border-[var(--ink)] bg-[var(--paper)] py-2 ps-9 pe-3 font-geist text-xs font-medium text-[var(--ink)] placeholder:text-[var(--ink-soft)] outline-none focus:border-[var(--accent)] shadow-[3px_3px_0px_0px_var(--ink)] transition-all"
+              className="w-full rounded-[20px] border border-[var(--line-strong)] bg-[var(--paper)] py-2 ps-9 pe-3 font-geist text-xs font-medium text-[var(--ink)] placeholder:text-[var(--ink-soft)] outline-none focus:border-[var(--accent)] shadow-[var(--shadow-soft)] transition-all"
 
             />
 
@@ -687,7 +687,7 @@ export function WorkProjectsView() {
 
             >
 
-              <span className="font-gelica text-xs font-semibold text-[var(--ink)]">
+              <span className="font-geist text-xs font-semibold text-[var(--ink)]">
 
                 {t("work.contact_add", { n: contacts.length + 1 })}
 
@@ -707,7 +707,7 @@ export function WorkProjectsView() {
 
                   required
 
-                  className="rounded-[8px] border-[1.5px] border-[var(--ink)] bg-[var(--app-bg)] p-2 outline-none"
+                  className="rounded-[8px] border border-[var(--line-strong)] bg-[var(--app-bg)] p-2 outline-none"
 
                 />
 
@@ -721,7 +721,7 @@ export function WorkProjectsView() {
 
                   placeholder={t("wp.ph.profession")}
 
-                  className="rounded-[8px] border-[1.5px] border-[var(--ink)] bg-[var(--app-bg)] p-2 outline-none"
+                  className="rounded-[8px] border border-[var(--line-strong)] bg-[var(--app-bg)] p-2 outline-none"
 
                 />
 
@@ -735,7 +735,7 @@ export function WorkProjectsView() {
 
                   placeholder={t("wp.ph.address")}
 
-                  className="rounded-[8px] border-[1.5px] border-[var(--ink)] bg-[var(--app-bg)] p-2 outline-none"
+                  className="rounded-[8px] border border-[var(--line-strong)] bg-[var(--app-bg)] p-2 outline-none"
 
                 />
 
@@ -749,7 +749,7 @@ export function WorkProjectsView() {
 
                   placeholder={t("wp.ph.phone")}
 
-                  className="rounded-[8px] border-[1.5px] border-[var(--ink)] bg-[var(--app-bg)] p-2 outline-none"
+                  className="rounded-[8px] border border-[var(--line-strong)] bg-[var(--app-bg)] p-2 outline-none"
 
                 />
 
@@ -763,7 +763,7 @@ export function WorkProjectsView() {
 
                   placeholder={t("wp.ph.email")}
 
-                  className="rounded-[8px] border-[1.5px] border-[var(--ink)] bg-[var(--app-bg)] p-2 outline-none"
+                  className="rounded-[8px] border border-[var(--line-strong)] bg-[var(--app-bg)] p-2 outline-none"
 
                 />
 
@@ -777,7 +777,7 @@ export function WorkProjectsView() {
 
                   placeholder={t("wp.ph.web")}
 
-                  className="rounded-[8px] border-[1.5px] border-[var(--ink)] bg-[var(--app-bg)] p-2 outline-none"
+                  className="rounded-[8px] border border-[var(--line-strong)] bg-[var(--app-bg)] p-2 outline-none"
 
                 />
 
@@ -793,7 +793,7 @@ export function WorkProjectsView() {
 
                 placeholder={t("wp.ph.note_special")}
 
-                className="w-full rounded-[8px] border-[1.5px] border-[var(--ink)] bg-[var(--app-bg)] p-2 text-xs outline-none"
+                className="w-full rounded-[8px] border border-[var(--line-strong)] bg-[var(--app-bg)] p-2 text-xs outline-none"
 
               />
 
@@ -841,7 +841,7 @@ export function WorkProjectsView() {
 
               >
 
-                <span className="font-handwritten text-[13px] font-bold text-[var(--accent)] bg-[var(--app-bg)] border-[1.5px] border-[var(--ink)] px-2.5 py-0.5 rounded-full shadow-sm animate-pulse whitespace-nowrap">
+                <span className="font-handwritten text-[13px] font-bold text-[var(--accent)] bg-[var(--app-bg)] border border-[var(--line-strong)] px-2.5 py-0.5 rounded-full shadow-sm animate-pulse whitespace-nowrap">
 
                   {t("work.scroll")}
 
@@ -857,7 +857,7 @@ export function WorkProjectsView() {
 
               onScroll={checkTableScroll}
 
-              className="overflow-x-auto border-2 border-[var(--ink)] rounded-[12px] bg-[var(--app-bg)] shadow-superrCard scrollbar-thin"
+              className="overflow-x-auto border border-[var(--line-strong)] rounded-[12px] bg-[var(--app-bg)] shadow-superrCard scrollbar-thin"
 
             >
 
@@ -865,7 +865,7 @@ export function WorkProjectsView() {
 
               <thead>
 
-                <tr className="bg-[var(--paper)] border-b-2 border-[var(--ink)] text-[var(--ink)] font-gelica font-bold">
+                <tr className="bg-[var(--paper)] border-b border-[var(--line)] text-[var(--ink)] font-gelica font-bold">
 
                   <th className="py-3 px-3 w-12 text-center">#</th>
 
@@ -899,7 +899,7 @@ export function WorkProjectsView() {
 
                       key={contact.id}
 
-                      className="hover:bg-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] transition-colors"
+                      className="hover:bg-[color-mix(in_srgb,var(--ink)_6%,transparent)] transition-colors"
 
                     >
 
@@ -1123,7 +1123,7 @@ export function WorkProjectsView() {
 
                 autoFocus
 
-                className="w-full rounded-[8px] border-[1.5px] border-[var(--ink)] bg-[var(--app-bg)] p-2.5 font-gelica text-base font-semibold text-[var(--ink)] outline-none"
+                className="w-full rounded-[8px] border border-[var(--line-strong)] bg-[var(--app-bg)] p-2.5 font-gelica text-base font-semibold text-[var(--ink)] outline-none"
 
               />
 
@@ -1137,7 +1137,7 @@ export function WorkProjectsView() {
 
                 placeholder={t("wp.ph.body")}
 
-                className="w-full rounded-[8px] border-[1.5px] border-[var(--ink)] bg-[var(--app-bg)] p-2.5 font-geist text-xs text-[var(--ink)] outline-none leading-relaxed"
+                className="w-full rounded-[8px] border border-[var(--line-strong)] bg-[var(--app-bg)] p-2.5 font-geist text-xs text-[var(--ink)] outline-none leading-relaxed"
 
               />
 
@@ -1185,7 +1185,7 @@ export function WorkProjectsView() {
 
                       <div className="flex items-center justify-between pb-2 border-b border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)]">
 
-                        <span className="font-gelica text-xs font-semibold text-[var(--accent)] uppercase flex items-center gap-1.5">
+                        <span className="font-geist text-xs font-semibold text-[var(--accent)] uppercase flex items-center gap-1.5">
 
                           <DEdit size={13} />
 
@@ -1199,7 +1199,7 @@ export function WorkProjectsView() {
 
                           onClick={handleCancelEdit}
 
-                          className="text-xs font-gelica text-[var(--ink-soft)] hover:text-[var(--ink)] flex items-center gap-1"
+                          className="text-xs font-geist text-[var(--ink-soft)] hover:text-[var(--ink)] flex items-center gap-1"
 
                         >
 
@@ -1225,7 +1225,7 @@ export function WorkProjectsView() {
 
                         autoFocus
 
-                        className="w-full rounded-[8px] border-[1.5px] border-[var(--ink)] bg-[var(--app-bg)] p-2 font-gelica text-sm font-semibold text-[var(--ink)] outline-none"
+                        className="w-full rounded-[8px] border border-[var(--line-strong)] bg-[var(--app-bg)] p-2 font-gelica text-sm font-semibold text-[var(--ink)] outline-none"
 
                       />
 
@@ -1239,7 +1239,7 @@ export function WorkProjectsView() {
 
                         placeholder={t("wp.ph.body")}
 
-                        className="w-full rounded-[8px] border-[1.5px] border-[var(--ink)] bg-[var(--app-bg)] p-2.5 font-geist text-xs text-[var(--ink)] outline-none leading-relaxed"
+                        className="w-full rounded-[8px] border border-[var(--line-strong)] bg-[var(--app-bg)] p-2.5 font-geist text-xs text-[var(--ink)] outline-none leading-relaxed"
 
                       />
 
@@ -1293,7 +1293,7 @@ export function WorkProjectsView() {
 
                     <div className="flex items-center justify-between pb-2 border-b border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)]">
 
-                      <span className="font-gelica text-xs font-semibold text-[var(--accent)] uppercase">
+                      <span className="font-geist text-xs font-semibold text-[var(--accent)] uppercase">
 
                         {activeTab}
 
@@ -1387,7 +1387,7 @@ export function WorkProjectsView() {
                     type="button"
                     data-clear-search="1"
                     onClick={() => setSearch("")}
-                    className="mt-3 rounded-[20px] border-[1.5px] border-[var(--ink)] bg-[var(--app-bg)] px-3.5 py-1.5 font-gelica text-xs font-semibold text-[var(--ink)] transition-colors hover:bg-[var(--paper)]"
+                    className="mt-3 rounded-[20px] border border-[var(--line-strong)] bg-[var(--app-bg)] px-3.5 py-1.5 font-geist text-xs font-semibold text-[var(--ink)] transition-colors hover:bg-[var(--paper)]"
                   >
                     {t("search.clear")}
                   </button>

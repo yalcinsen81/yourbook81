@@ -19,7 +19,7 @@ export function LightningSticker({ className = "" }: { className?: string }) {
         transition: { duration: 0.4 },
       }}
       transition={SPRING}
-      className={`inline-flex items-center justify-center p-2 rounded-xl bg-[#3b82f6] border-2 border-[var(--ink)] text-white shadow-sm rotate-[8deg] select-none ${className}`}
+      className={`inline-flex items-center justify-center p-2 rounded-xl bg-[#3b82f6] border border-[var(--line-strong)] text-white shadow-sm rotate-[8deg] select-none ${className}`}
     >
       <svg width="20" height="20" viewBox="0 0 24 24" fill="#ffffff" stroke="var(--ink)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
@@ -38,7 +38,7 @@ export function HeartSticker({ className = "" }: { className?: string }) {
         transition: { duration: 0.4 },
       }}
       transition={SPRING}
-      className={`inline-flex items-center justify-center p-2 rounded-xl bg-[#ff66cf] border-2 border-[var(--ink)] text-white shadow-sm -rotate-[10deg] select-none ${className}`}
+      className={`inline-flex items-center justify-center p-2 rounded-xl bg-[#ff66cf] border border-[var(--line-strong)] text-white shadow-sm -rotate-[10deg] select-none ${className}`}
     >
       <svg width="20" height="20" viewBox="0 0 24 24" fill="#ffffff" stroke="var(--ink)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
@@ -57,7 +57,7 @@ export function StarSticker({ className = "" }: { className?: string }) {
         transition: { duration: 0.4 },
       }}
       transition={SPRING}
-      className={`inline-flex items-center justify-center p-2 rounded-xl bg-[var(--accent)] border-2 border-[var(--ink)] text-white shadow-sm rotate-[12deg] select-none ${className}`}
+      className={`inline-flex items-center justify-center p-2 rounded-xl bg-[var(--accent)] border border-[var(--line-strong)] text-white shadow-sm rotate-[12deg] select-none ${className}`}
     >
       <svg width="20" height="20" viewBox="0 0 24 24" fill="#ffffff" stroke="var(--ink)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
@@ -76,7 +76,7 @@ export function SproutSticker({ className = "" }: { className?: string }) {
         transition: { duration: 0.4 },
       }}
       transition={SPRING}
-      className={`inline-flex items-center justify-center p-2 rounded-xl bg-[#22c55e] border-2 border-[var(--ink)] text-white shadow-sm -rotate-[6deg] select-none ${className}`}
+      className={`inline-flex items-center justify-center p-2 rounded-xl bg-[#22c55e] border border-[var(--line-strong)] text-white shadow-sm -rotate-[6deg] select-none ${className}`}
     >
       <svg width="20" height="20" viewBox="0 0 24 24" fill="#ffffff" stroke="var(--ink)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M7 20h10" />
@@ -169,14 +169,14 @@ export function NameLabelSticker({
       onClick={onClick}
       whileHover={{ rotate: 0, scale: 1.02, y: -2 }}
       transition={SPRING}
-      className={`notebook-aged age-tier-${ageTier} inline-block border-2 border-[var(--ink)] bg-[var(--app-bg)] rounded-[8px] p-3 shadow-sm rotate-[-3deg] select-none ${className}`}
+      className={`notebook-aged age-tier-${ageTier} inline-block border border-[var(--line-strong)] bg-[var(--app-bg)] rounded-[8px] p-3 shadow-sm rotate-[-1deg] select-none ${className}`}
     >
       {/* Fiziksel yıpranma katmanları (dekoratif, pointer-events yok) */}
       <span className="age-layer age-corners" aria-hidden="true" />
       <span className="age-layer age-edges" aria-hidden="true" />
       <span className="age-layer age-stain" aria-hidden="true" />
 
-      <div className="relative z-10 flex items-center justify-between border-b border-[var(--ink)] pb-1.5 mb-1.5 font-gelica text-xs text-[var(--ink)] font-semibold">
+      <div className="relative z-10 flex items-center justify-between border-b border-[var(--line-strong)] pb-1.5 mb-1.5 font-geist text-xs text-[var(--ink)] font-semibold">
         <span>{t("cover.notebook_no")} 0{volume}</span>
         <span className="text-[var(--accent)]">{t("cover.super")}</span>
       </div>

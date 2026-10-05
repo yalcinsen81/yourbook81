@@ -295,13 +295,13 @@ export function YouTubeLinksView() {
       {confirmDeleteId && <div role="dialog" aria-modal="true" aria-labelledby="youtube-delete-title" className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"><div className="rounded-xl bg-[var(--paper)] p-5"><h2 id="youtube-delete-title">{t("yt.delete_title")}</h2><div className="mt-3 flex gap-2"><button type="button" onClick={() => setConfirmDeleteId(null)}>{t("act.cancel")}</button><button type="button" onClick={() => { handleDeleteVideo(confirmDeleteId); setConfirmDeleteId(null); }}>{t("yt.delete_yes")}</button></div></div></div>}
       {lastDeleted && (
         <div className="pointer-events-auto fixed bottom-6 left-1/2 z-50 -translate-x-1/2 animate-in fade-in slide-in-from-bottom-2 duration-200">
-          <div className="flex items-center gap-3 rounded-[14px] border border-[var(--ink)] bg-[var(--ink)] px-4 py-2.5 shadow-lg">
+          <div className="flex items-center gap-3 rounded-[14px] border border-[var(--line)] bg-[var(--ink)] px-4 py-2.5 shadow-lg">
             <span className="font-geist text-xs text-[var(--app-bg)]">
               {t("yt.deleted_toast").replace("{title}", lastDeleted.video.title.slice(0, 32))}
             </span>
             <button
               onClick={handleUndoDelete}
-              className="rounded-[20px] border border-[var(--app-bg)] px-3 py-1 font-gelica text-[11px] font-bold text-[var(--app-bg)] transition-colors hover:bg-[var(--app-bg)] hover:text-[var(--ink)]"
+              className="rounded-[20px] border border-[var(--app-bg)] px-3 py-1 font-geist text-[11px] font-bold text-[var(--app-bg)] transition-colors hover:bg-[var(--app-bg)] hover:text-[var(--ink)]"
             >
               geri al
             </button>
@@ -316,9 +316,9 @@ export function YouTubeLinksView() {
             <span className="font-handwritten text-[var(--accent)] text-base block font-bold">
               {t("yt.sub")}
             </span>
-            <h2 className="font-gelica text-[36px] sm:text-[42px] font-semibold lowercase text-[var(--ink)] leading-tight">
+            <h1 className="font-gelica text-[36px] sm:text-[42px] font-semibold lowercase text-[var(--ink)] leading-tight">
               {t("yt.section")}
-            </h2>
+            </h1>
           </div>
 
           <div className="flex items-center gap-2">
@@ -349,12 +349,12 @@ export function YouTubeLinksView() {
                       playPopSound();
                       setActiveStatus("all");
                     }}
-                    className={`rounded-[20px] px-3.5 py-1 text-xs font-gelica font-semibold transition-all ${
+                    className={`rounded-[20px] px-3.5 py-1 text-xs font-geist font-semibold transition-all ${
                       totalCount === 0
                         ? "opacity-40 cursor-not-allowed border border-[color-mix(in_srgb,var(--border-ink)_15%,transparent)] bg-[var(--app-bg)] text-[var(--ink-soft)]"
                         : activeStatus === "all"
-                        ? "bg-[var(--ink)] text-[var(--app-bg)] border border-[var(--ink)]"
-                        : "border border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[var(--app-bg)] text-[var(--ink)] hover:border-[var(--ink)]"
+                        ? "bg-[var(--ink)] text-[var(--app-bg)] border border-[var(--line)]"
+                        : "border border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[var(--app-bg)] text-[var(--ink)] hover:border-[var(--line-strong)]"
                     }`}
                   >
                     {t("yt.filter_all").replace("{n}", String(totalCount))}
@@ -367,12 +367,12 @@ export function YouTubeLinksView() {
                       playPopSound();
                       setActiveStatus("to_watch");
                     }}
-                    className={`rounded-[20px] px-3 py-1 text-xs font-gelica font-semibold transition-all ${
+                    className={`rounded-[20px] px-3 py-1 text-xs font-geist font-semibold transition-all ${
                       toWatchCount === 0
                         ? "opacity-40 cursor-not-allowed border border-[color-mix(in_srgb,var(--border-ink)_15%,transparent)] bg-[var(--app-bg)] text-[var(--ink-soft)]"
                         : activeStatus === "to_watch"
-                        ? "bg-[var(--accent)] text-[var(--app-bg)] border border-[var(--ink)]"
-                        : "border border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[var(--app-bg)] text-[var(--ink)] hover:border-[var(--ink)]"
+                        ? "bg-[var(--accent)] text-[var(--app-bg)] border border-[var(--line)]"
+                        : "border border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[var(--app-bg)] text-[var(--ink)] hover:border-[var(--line-strong)]"
                     }`}
                   >
                     <span className="inline-flex items-center gap-1.5"><SketchClock size={13} strokeWidth={1.8} className="shrink-0" /><span>{t("yt.to_watch")} ({toWatchCount})</span></span>
@@ -385,12 +385,12 @@ export function YouTubeLinksView() {
                       playPopSound();
                       setActiveStatus("watched");
                     }}
-                    className={`rounded-[20px] px-3 py-1 text-xs font-gelica font-semibold transition-all ${
+                    className={`rounded-[20px] px-3 py-1 text-xs font-geist font-semibold transition-all ${
                       watchedCount === 0
                         ? "opacity-40 cursor-not-allowed border border-[color-mix(in_srgb,var(--border-ink)_15%,transparent)] bg-[var(--app-bg)] text-[var(--ink-soft)]"
                         : activeStatus === "watched"
-                        ? "bg-[#22c55e] text-[var(--app-bg)] border border-[var(--ink)]"
-                        : "border border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[var(--app-bg)] text-[var(--ink)] hover:border-[var(--ink)]"
+                        ? "bg-[#22c55e] text-[var(--app-bg)] border border-[var(--line)]"
+                        : "border border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[var(--app-bg)] text-[var(--ink)] hover:border-[var(--line-strong)]"
                     }`}
                   >
                     <span className="inline-flex items-center gap-1.5"><SketchCheckedBox size={13} strokeWidth={1.8} className="shrink-0" /><span>{t("yt.status_watched")} ({watchedCount})</span></span>
@@ -407,7 +407,7 @@ export function YouTubeLinksView() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t("yt.search_ph")}
-              className="w-full rounded-[20px] border-2 border-[var(--ink)] bg-[var(--paper)] py-2 ps-9 pe-3 font-geist text-xs font-medium text-[var(--ink)] placeholder:text-[var(--ink-soft)] outline-none focus:border-[var(--accent)] shadow-[3px_3px_0_0_var(--ink)] transition-all"
+              className="w-full rounded-[20px] border border-[var(--line-strong)] bg-[var(--paper)] py-2 ps-9 pe-3 font-geist text-xs font-medium text-[var(--ink)] placeholder:text-[var(--ink-soft)] outline-none focus:border-[var(--accent)] shadow-[var(--shadow-soft)] transition-all"
             />
           </div>
         </div>
@@ -427,12 +427,12 @@ export function YouTubeLinksView() {
                 playPopSound();
                 setActiveCat("all");
               }}
-              className={`rounded-[20px] px-3 py-1 text-xs font-gelica font-semibold transition-all ${
+              className={`rounded-[20px] px-3 py-1 text-xs font-geist font-semibold transition-all ${
                 videos.length === 0
                   ? "opacity-40 cursor-not-allowed border border-[color-mix(in_srgb,var(--border-ink)_15%,transparent)] bg-[var(--app-bg)] text-[var(--ink-soft)]"
                   : activeCat === "all"
-                  ? "bg-[var(--ink)] text-[var(--app-bg)] border border-[var(--ink)] shadow-sm"
-                  : "border border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[var(--app-bg)] text-[var(--ink)] hover:border-[var(--ink)]"
+                  ? "bg-[var(--ink)] text-[var(--app-bg)] border border-[var(--line)] shadow-sm"
+                  : "border border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[var(--app-bg)] text-[var(--ink)] hover:border-[var(--line-strong)]"
               }`}
             >
               {t("yt.topics_all").replace("{n}", String(videos.length))}
@@ -452,12 +452,12 @@ export function YouTubeLinksView() {
                     playPopSound();
                     setActiveCat(catKey as VideoCategory);
                   }}
-                  className={`rounded-[20px] px-3 py-1 text-xs font-gelica font-semibold transition-all flex items-center gap-1.5 ${
+                  className={`rounded-[20px] px-3 py-1 text-xs font-geist font-semibold transition-all flex items-center gap-1.5 ${
                     isDisabled
                       ? "opacity-40 cursor-not-allowed border border-[color-mix(in_srgb,var(--border-ink)_15%,transparent)] bg-[var(--app-bg)] text-[var(--ink-soft)]"
                       : isSelected
-                      ? "bg-[var(--accent)] text-[var(--app-bg)] border border-[var(--ink)] shadow-sm"
-                      : "border border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[var(--app-bg)] text-[var(--ink)] hover:border-[var(--ink)]"
+                      ? "bg-[var(--accent)] text-[var(--app-bg)] border border-[var(--line)] shadow-sm"
+                      : "border border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[var(--app-bg)] text-[var(--ink)] hover:border-[var(--line-strong)]"
                   }`}
                 >
                   <CatIcon size={14} />
@@ -475,7 +475,7 @@ export function YouTubeLinksView() {
               playPopSound();
               setGroupByTopic((prev) => !prev);
             }}
-            className={`flex items-center gap-1.5 rounded-[20px] px-3 py-1 text-xs font-gelica font-semibold border-[1.5px] border-[var(--ink)] transition-all ${
+            className={`flex items-center gap-1.5 rounded-[20px] px-3 py-1 text-xs font-geist font-semibold border border-[var(--line-strong)] transition-all ${
               groupByTopic
                 ? "bg-[var(--ink)] text-[var(--app-bg)] shadow-sm"
                 : "bg-[var(--app-bg)] text-[var(--ink)] hover:bg-[var(--paper)]"
@@ -496,9 +496,9 @@ export function YouTubeLinksView() {
             exit={{ opacity: 0, maxHeight: 0, overflow: "hidden" }}
             transition={{ duration: 0.22, ease: "easeOut" }}
             onSubmit={handleAddVideo}
-            className="my-5 p-5 card-superr border-2 border-[var(--ink)] bg-[var(--paper)] flex flex-col gap-3.5 shadow-superrCard"
+            className="my-5 p-5 card-superr border border-[var(--line-strong)] bg-[var(--paper)] flex flex-col gap-3.5 shadow-superrCard"
           >
-            <span className="font-gelica text-xs font-semibold text-[var(--ink)]">
+            <span className="font-geist text-xs font-semibold text-[var(--ink)]">
               {t("yt.add_ph")}
             </span>
 
@@ -506,7 +506,7 @@ export function YouTubeLinksView() {
               <button
                 type="button"
                 onClick={handleClipboardPasteButton}
-                className="rounded-[20px] border-2 border-[var(--ink)] bg-[var(--app-bg)] px-3 py-1 font-gelica text-[11px] font-semibold text-[var(--ink)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-all shadow-sm"
+                className="rounded-[20px] border border-[var(--line-strong)] bg-[var(--app-bg)] px-3 py-1 font-geist text-[11px] font-semibold text-[var(--ink)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-all shadow-sm"
               >
                 {t("yt.paste")}
               </button>
@@ -524,13 +524,13 @@ export function YouTubeLinksView() {
                 onPaste={handleUrlPaste}
                 placeholder={t("yt.link_ph")}
                 required
-                className="flex-1 rounded-[10px] border-2 border-[var(--ink)] bg-[var(--app-bg)] p-2.5 font-mono text-xs text-[var(--ink)] outline-none focus:border-[var(--accent)] shadow-sm"
+                className="flex-1 rounded-[10px] border border-[var(--line-strong)] bg-[var(--app-bg)] p-2.5 font-mono text-xs text-[var(--ink)] outline-none focus:border-[var(--accent)] shadow-sm"
               />
 
               <select
                 value={inputCategory}
                 onChange={(e) => setInputCategory(e.target.value as any)}
-                className="rounded-[10px] border-2 border-[var(--ink)] bg-[var(--app-bg)] px-3 py-2 font-gelica text-xs font-semibold text-[var(--ink)] outline-none shadow-sm"
+                className="rounded-[10px] border border-[var(--line-strong)] bg-[var(--app-bg)] px-3 py-2 font-geist text-xs font-semibold text-[var(--ink)] outline-none shadow-sm"
               >
                 {Object.entries(VIDEO_CATEGORIES).map(([key, info]) => (
                   <option key={key} value={key}>
@@ -571,7 +571,7 @@ export function YouTubeLinksView() {
                 value={inputTitle}
                 onChange={(e) => handleTitleChange(e.target.value)}
                 placeholder={t("yt.video_title_ph")}
-                className="rounded-[10px] border-[1.5px] border-[var(--ink)] bg-[var(--app-bg)] p-2.5 font-geist text-xs text-[var(--ink)] outline-none"
+                className="rounded-[10px] border border-[var(--line-strong)] bg-[var(--app-bg)] p-2.5 font-geist text-xs text-[var(--ink)] outline-none"
               />
 
               <input
@@ -579,7 +579,7 @@ export function YouTubeLinksView() {
                 value={inputChannel}
                 onChange={(e) => setInputChannel(e.target.value)}
                 placeholder={t("yt.channel_ph")}
-                className="rounded-[10px] border-2 border-[var(--ink)] bg-[var(--app-bg)] p-2.5 font-geist text-xs text-[var(--ink)] outline-none shadow-sm"
+                className="rounded-[10px] border border-[var(--line-strong)] bg-[var(--app-bg)] p-2.5 font-geist text-xs text-[var(--ink)] outline-none shadow-sm"
               />
             </div>
 
@@ -588,7 +588,7 @@ export function YouTubeLinksView() {
               value={inputNotes}
               onChange={(e) => setInputNotes(e.target.value)}
               placeholder={t("yt.notes_ph")}
-              className="w-full rounded-[10px] border-2 border-[var(--ink)] bg-[var(--app-bg)] p-2.5 font-geist text-xs text-[var(--ink)] outline-none leading-relaxed shadow-sm"
+              className="w-full rounded-[10px] border border-[var(--line-strong)] bg-[var(--app-bg)] p-2.5 font-geist text-xs text-[var(--ink)] outline-none leading-relaxed shadow-sm"
             />
 
             <div className="flex justify-end gap-2 pt-1">
@@ -621,7 +621,7 @@ export function YouTubeLinksView() {
                   type="button"
                   data-clear-search="1"
                   onClick={() => setSearch("")}
-                  className="mt-3 rounded-[20px] border-[1.5px] border-[var(--ink)] bg-[var(--app-bg)] px-3.5 py-1.5 font-gelica text-xs font-semibold text-[var(--ink)] transition-colors hover:bg-[var(--paper)]"
+                  className="mt-3 rounded-[20px] border border-[var(--line-strong)] bg-[var(--app-bg)] px-3.5 py-1.5 font-geist text-xs font-semibold text-[var(--ink)] transition-colors hover:bg-[var(--paper)]"
                 >
                   {t("search.clear")}
                 </button>
@@ -637,7 +637,7 @@ export function YouTubeLinksView() {
             return (
               <div key={catKey} className="flex flex-col gap-3">
                 <div className="flex items-center gap-2 pb-2 border-b-2 border-dashed border-[color-mix(in_srgb,var(--border-ink)_25%,transparent)]">
-                  <span className="p-1 rounded-[6px] border border-[var(--ink)] bg-[var(--paper)]">
+                  <span className="p-1 rounded-[6px] border border-[var(--line)] bg-[var(--paper)]">
                     <CatIcon size={16} />
                   </span>
                   <h3 className="font-gelica text-lg font-bold text-[var(--ink)]">
@@ -706,10 +706,10 @@ export function YouTubeLinksView() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.94 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-3xl overflow-hidden rounded-[16px] border-2 border-[var(--ink)] bg-[var(--app-bg)] shadow-2xl"
+              className="w-full max-w-3xl overflow-hidden rounded-[16px] border border-[var(--line-strong)] bg-[var(--app-bg)] shadow-2xl"
             >
               {/* Modal Başlık */}
-              <div className="flex items-center justify-between p-4 border-b-2 border-[var(--ink)] bg-[var(--paper)]">
+              <div className="flex items-center justify-between p-4 border-b border-[var(--line)] bg-[var(--paper)]">
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-xs font-bold text-[var(--accent)]">#{playingVideo.order}</span>
                   <h3 className="font-gelica text-lg font-semibold lowercase text-[var(--ink)] line-clamp-1">
@@ -737,8 +737,8 @@ export function YouTubeLinksView() {
               </div>
 
               {/* Video Altı Notlar */}
-              <div className="p-4 border-t-2 border-[var(--ink)] bg-[var(--app-bg)]">
-                <span className="font-gelica text-xs font-semibold text-[var(--ink)] block mb-1">
+              <div className="p-4 border-t border-[var(--line)] bg-[var(--app-bg)]">
+                <span className="font-geist text-xs font-semibold text-[var(--ink)] block mb-1">
                   {t("yt.notes_extracted")}
                 </span>
                 <p className="font-geist text-xs text-[var(--ink-soft)] leading-relaxed whitespace-pre-line">
@@ -781,14 +781,14 @@ function VideoCardItem({
     >
       <div>
         {/* Otomatik YouTube Video Kapağı & Oynat Rozeti */}
-        <div className="relative aspect-video w-full bg-[var(--ink)] overflow-hidden border-b-2 border-[var(--ink)]">
+        <div className="relative aspect-video w-full bg-[var(--ink)] overflow-hidden border-b border-[var(--line)]">
           <img
             src={video.thumbnailUrl}
             alt={video.title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
           <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--accent)] text-white border-2 border-[var(--ink)] shadow-lg group-hover:scale-110 transition-transform">
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--accent)] text-white border border-[var(--line-strong)] shadow-lg group-hover:scale-110 transition-transform">
               <Play size={18} className="fill-current ms-0.5" />
             </div>
           </div>
@@ -804,7 +804,7 @@ function VideoCardItem({
             onClick={(e) => e.stopPropagation()}
             onChange={(e) => onCategoryChange(e.target.value as VideoCategory)}
             title={t("yt.change_category")}
-            className="absolute top-2 end-2 rounded-[20px] bg-[var(--app-bg)] border-[1.5px] border-[var(--ink)] px-2.5 py-0.5 font-gelica text-[10px] font-semibold text-[var(--ink)] shadow-sm outline-none cursor-pointer hover:border-[var(--accent)]"
+            className="absolute top-2 end-2 rounded-[20px] bg-[var(--app-bg)] border border-[var(--line-strong)] px-2.5 py-0.5 font-geist text-[10px] font-semibold text-[var(--ink)] shadow-sm outline-none cursor-pointer hover:border-[var(--accent)]"
           >
             {Object.entries(VIDEO_CATEGORIES).map(([cKey, cInfo]) => (
               <option key={cKey} value={cKey}>
@@ -842,10 +842,10 @@ function VideoCardItem({
               onStatusChange("to_watch", e);
             }}
             title={t("yt.watch_later")}
-            className={`rounded-[20px] px-3 py-1 font-gelica text-[10px] font-semibold transition-all ${
+            className={`rounded-[20px] px-3 py-1 font-geist text-[10px] font-semibold transition-all ${
               video.status !== "watched"
-                ? "bg-[var(--accent)] text-white border border-[var(--ink)] shadow-sm"
-                : "border border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] text-[var(--ink-soft)] hover:border-[var(--ink)]"
+                ? "bg-[var(--accent)] text-white border border-[var(--line)] shadow-sm"
+                : "border border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] text-[var(--ink-soft)] hover:border-[var(--line-strong)]"
             }`}
           >
             <span className="inline-flex items-center gap-1"><SketchClock size={12} strokeWidth={1.8} /> {t("yt.to_watch")}</span>
@@ -857,10 +857,10 @@ function VideoCardItem({
               onStatusChange("watched", e);
             }}
             title={t("yt.watched")}
-            className={`rounded-[20px] px-3 py-1 font-gelica text-[10px] font-semibold transition-all ${
+            className={`rounded-[20px] px-3 py-1 font-geist text-[10px] font-semibold transition-all ${
               video.status === "watched"
-                ? "bg-[#22c55e] text-white border border-[var(--ink)] shadow-sm"
-                : "border border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] text-[var(--ink-soft)] hover:border-[var(--ink)]"
+                ? "bg-[#22c55e] text-white border border-[var(--line)] shadow-sm"
+                : "border border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] text-[var(--ink-soft)] hover:border-[var(--line-strong)]"
             }`}
           >
             <span className="inline-flex items-center gap-1"><SketchCheckedBox size={12} strokeWidth={1.8} /> {t("yt.status_watched")}</span>

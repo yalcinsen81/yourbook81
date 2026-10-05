@@ -253,7 +253,7 @@ export function StickyCard({ card, onLearn, onForgot, onUpdateImage, onEdit, onD
         transition: { duration: 0.32, ease: [0.34, 1.56, 0.64, 1] },
       }}
       transition={SPRING}
-      className={`group relative w-full max-w-[430px] cursor-grab active:cursor-grabbing select-none overflow-hidden rounded-[12px] border-2 border-[var(--ink)] bg-[var(--app-bg)] p-0 shadow-superrCard transition-all ${className}`}
+      className={`group relative w-full max-w-[430px] cursor-grab active:cursor-grabbing select-none overflow-hidden rounded-[12px] border border-[var(--line-strong)] bg-[var(--app-bg)] p-0 shadow-superrCard transition-all ${className}`}
     >
       {/* Konfeti Parçacık Patlaması */}
       {showConfetti && <Confetti trigger={1} />}
@@ -282,7 +282,7 @@ export function StickyCard({ card, onLearn, onForgot, onUpdateImage, onEdit, onD
                   +{XP_FOR_LEARN} XP {t("praise.2")}
                 </span>
               </div>
-              <span className="font-gelica text-[11px] font-semibold text-[var(--ink)] uppercase tracking-wider mt-0.5">
+              <span className="font-geist text-[11px] font-semibold text-[var(--ink)] uppercase tracking-wider mt-0.5">
                 {t("cards.sealed")}
               </span>
             </div>
@@ -308,11 +308,11 @@ export function StickyCard({ card, onLearn, onForgot, onUpdateImage, onEdit, onD
       />
 
       {/* 1. Üst Bar: 20px Pill Rozet & Taktil Butonlar */}
-      <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b-2 border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)]">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 sm:px-6 pt-5 pb-3 border-b-2 border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)]">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           <motion.span
             whileHover={{ scale: 1.05 }}
-            className="inline-flex items-center gap-1.5 rounded-[20px] border-[1.5px] border-[var(--ink)] bg-[var(--paper)] px-3 py-1 font-gelica text-xs font-semibold text-[var(--ink)]"
+            className="inline-flex items-center gap-1.5 rounded-[20px] border border-[var(--line-strong)] bg-[var(--paper)] px-3 py-1 font-geist text-xs font-semibold text-[var(--ink)]"
           >
             <span>
               {card.article
@@ -351,7 +351,7 @@ export function StickyCard({ card, onLearn, onForgot, onUpdateImage, onEdit, onD
                 data-card-edit="1"
                 aria-label={t("card.edit")}
                 title={t("card.edit")}
-                className="flex h-8 w-8 items-center justify-center rounded-[20px] border-[1.5px] border-[var(--ink)] bg-[var(--app-bg)] text-[var(--ink)] hover:bg-[var(--paper)] transition-colors shadow-superrButton"
+                className="flex h-8 w-8 items-center justify-center rounded-[20px] border border-[var(--line-strong)] bg-[var(--app-bg)] text-[var(--ink)] hover:bg-[var(--paper)] transition-colors shadow-superrButton"
               >
                 <Pencil size={14} />
               </motion.button>
@@ -373,7 +373,7 @@ export function StickyCard({ card, onLearn, onForgot, onUpdateImage, onEdit, onD
                 data-card-delete="1"
                 aria-label={t("card.delete")}
                 title={t("card.delete")}
-                className="flex h-8 w-8 items-center justify-center rounded-[20px] border-[1.5px] border-[var(--ink)] bg-[var(--app-bg)] text-[var(--ink)] hover:bg-red-50 hover:text-red-600 transition-colors shadow-superrButton"
+                className="flex h-8 w-8 items-center justify-center rounded-[20px] border border-[var(--line-strong)] bg-[var(--app-bg)] text-[var(--ink)] hover:bg-red-50 hover:text-red-600 transition-colors shadow-superrButton"
               >
                 <Trash2 size={14} />
               </motion.button>
@@ -382,6 +382,7 @@ export function StickyCard({ card, onLearn, onForgot, onUpdateImage, onEdit, onD
 
           <Tooltip label={card.imageUrl ? t("notes.photo_change") : t("notes.photo_upload")} side="top">
             <motion.button
+              aria-label={card.imageUrl ? t("notes.photo_change") : t("notes.photo_upload")}
               whileHover={{ scale: 1.10 }}
               whileTap={{ scale: 0.90 }}
               transition={SPRING}
@@ -390,7 +391,7 @@ export function StickyCard({ card, onLearn, onForgot, onUpdateImage, onEdit, onD
                 playPopSound();
                 fileInputRef.current?.click();
               }}
-            className="flex h-8 w-8 items-center justify-center rounded-[20px] border-[1.5px] border-[var(--ink)] bg-[var(--app-bg)] text-[var(--ink)] hover:bg-[var(--paper)] transition-colors shadow-superrButton"
+            className="flex h-8 w-8 items-center justify-center rounded-[20px] border border-[var(--line-strong)] bg-[var(--app-bg)] text-[var(--ink)] hover:bg-[var(--paper)] transition-colors shadow-superrButton"
             >
               <ImageIcon size={14} />
             </motion.button>
@@ -399,6 +400,7 @@ export function StickyCard({ card, onLearn, onForgot, onUpdateImage, onEdit, onD
           <div className="relative">
             <Tooltip label={t("card.listen")} side="top">
               <motion.button
+                aria-label={t("card.listen")}
                 whileHover={{ scale: 1.10, rotate: 6 }}
                 animate={speaking ? { scale: [1, 1.18, 1] } : { scale: 1 }}
                 transition={speaking ? { duration: 1, repeat: Infinity } : SPRING}
@@ -419,7 +421,7 @@ export function StickyCard({ card, onLearn, onForgot, onUpdateImage, onEdit, onD
                 }}
                 data-speak-btn="1"
                 data-speaking={speaking ? "1" : "0"}
-                className={`flex h-8 w-8 items-center justify-center rounded-[20px] border-[1.5px] border-[var(--ink)] transition-colors shadow-superrButton ${
+                className={`flex h-8 w-8 items-center justify-center rounded-[20px] border border-[var(--line-strong)] transition-colors shadow-superrButton ${
                   speaking ? "bg-[var(--accent)] text-white" : "bg-[var(--app-bg)] text-[var(--ink)] hover:bg-[var(--paper)]"
                 }`}
               >
@@ -437,7 +439,7 @@ export function StickyCard({ card, onLearn, onForgot, onUpdateImage, onEdit, onD
               aria-expanded={speakMenuOpen}
               title={t("card.speak_menu")}
               data-speak-menu-toggle="1"
-              className="absolute -end-1.5 -bottom-1 flex h-4 w-4 items-center justify-center rounded-full border-[1.2px] border-[var(--ink)] bg-[var(--app-bg)] text-[var(--ink)] shadow-superrButton"
+              className="absolute -end-2 -bottom-1.5 flex h-5 w-5 !min-h-0 !min-w-0 items-center justify-center rounded-full border-[1.2px] border-[var(--line-strong)] bg-[var(--app-bg)] text-[var(--ink)] shadow-superrButton"
             >
               <ChevronDown size={9} />
             </button>
@@ -458,7 +460,7 @@ export function StickyCard({ card, onLearn, onForgot, onUpdateImage, onEdit, onD
                     exit={{ opacity: 0, y: -4, scale: 0.96 }}
                     transition={{ duration: 0.14 }}
                     data-speak-menu="1"
-                    className="absolute end-0 top-9 z-50 w-[168px] overflow-hidden rounded-[12px] border-[1.5px] border-[var(--ink)] bg-[var(--app-bg)] shadow-lg"
+                    className="absolute end-0 top-9 z-50 w-[168px] overflow-hidden rounded-[12px] border border-[var(--line-strong)] bg-[var(--app-bg)] shadow-lg"
                   >
                     {[
                       { key: "card.listen_normal", rate: 0.92 },
@@ -495,7 +497,7 @@ export function StickyCard({ card, onLearn, onForgot, onUpdateImage, onEdit, onD
       {/* 2. Kart Gövdesi: Lowercase Gelica Başlık & Aktif Hatırlama */}
       <div className="px-6 pt-5 pb-6">
         {card.imageUrl && !imgFailed && (
-          <div className="relative mb-5 overflow-hidden rounded-[8px] border-[1.5px] border-[var(--ink)] group/photo max-h-48">
+          <div className="relative mb-5 overflow-hidden rounded-[8px] border border-[var(--line-strong)] group/photo max-h-48">
             <img
               src={card.imageUrl}
               alt={card.word}
@@ -524,8 +526,8 @@ export function StickyCard({ card, onLearn, onForgot, onUpdateImage, onEdit, onD
         </div>
         {/* Kağıt kart flip: blur yerine kısa 3D Y dönüşü. */}
         <motion.div onClick={toggleRecall} className="group/recall relative mt-5 cursor-pointer [perspective:1000px]" animate={{ rotateY: isReducedMotion || !isTranslationRevealed ? 0 : 180 }} transition={{ duration: isReducedMotion ? 0 : 0.24, ease: [0.23, 1, 0.32, 1] }} style={{ transformStyle: "preserve-3d" }} aria-label={t("cards.meaning")}>
-          <div className="relative min-h-[118px] rounded-[14px] border-2 border-[var(--ink)] bg-[var(--paper)] p-4 shadow-superrCard [backface-visibility:hidden] [transform:rotateY(0deg)]"><div className="flex items-center justify-between pb-2 text-xs font-gelica text-[var(--ink-soft)]"><span className="font-semibold text-[var(--ink)]">{t("cards.meaning")}</span><EyeOff size={12} /></div><p className="font-mono text-xs text-[var(--ink-soft)]">{t("sticky.hidden")}</p></div>
-          <div className="absolute inset-0 min-h-[118px] rounded-[14px] border-2 border-[var(--ink)] bg-[var(--paper)] p-4 shadow-superrCard [backface-visibility:hidden] [transform:rotateY(180deg)]"><div className="flex items-center justify-between pb-2 text-xs font-gelica text-[var(--ink-soft)]"><span className="font-semibold text-[var(--ink)]">{t("cards.meaning")}</span><Eye size={12} /></div><p className="font-gelica text-[19px] font-medium leading-[1.4] text-[var(--ink)]">{card.translation}</p>{card.note && <p className="mt-2 font-geist text-xs text-[var(--ink-soft)]">• {noteLabel(card.note)}</p>}</div>
+          <div className="relative min-h-[118px] rounded-[14px] border border-[var(--line-strong)] bg-[var(--paper)] p-4 shadow-superrCard [backface-visibility:hidden] [transform:rotateY(0deg)]"><div className="flex items-center justify-between pb-2 text-xs font-geist text-[var(--ink-soft)]"><span className="font-semibold text-[var(--ink)]">{t("cards.meaning")}</span><EyeOff size={12} /></div><p className="font-mono text-xs text-[var(--ink-soft)]">{t("sticky.hidden")}</p></div>
+          <div className="absolute inset-0 min-h-[118px] rounded-[14px] border border-[var(--line-strong)] bg-[var(--paper)] p-4 shadow-superrCard [backface-visibility:hidden] [transform:rotateY(180deg)]"><div className="flex items-center justify-between pb-2 text-xs font-geist text-[var(--ink-soft)]"><span className="font-semibold text-[var(--ink)]">{t("cards.meaning")}</span><Eye size={12} /></div><p className="font-gelica text-[19px] font-medium leading-[1.4] text-[var(--ink)]">{card.translation}</p>{card.note && <p className="mt-2 font-geist text-xs text-[var(--ink-soft)]">• {noteLabel(card.note)}</p>}</div>
         </motion.div>
       </div>
 
@@ -533,7 +535,7 @@ export function StickyCard({ card, onLearn, onForgot, onUpdateImage, onEdit, onD
       {hasGrammar && (
         <motion.div
           layout
-          className="border-t-2 border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[color-mix(in_srgb,var(--border-ink)_20%,transparent)]"
+          className="border-t-2 border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] bg-[color-mix(in_srgb,var(--ink)_6%,transparent)]"
         >
           <motion.button
             whileTap={{ scale: 0.98 }}
@@ -541,7 +543,7 @@ export function StickyCard({ card, onLearn, onForgot, onUpdateImage, onEdit, onD
               playPopSound();
               setDrawerOpen((prev) => !prev);
             }}
-            className="flex w-full items-center justify-between px-6 py-2.5 text-xs font-gelica font-semibold text-[var(--ink)] hover:text-[var(--accent)] transition-colors"
+            className="flex w-full items-center justify-between px-6 py-2.5 text-xs font-geist font-semibold text-[var(--ink)] hover:text-[var(--accent)] transition-colors"
           >
             <span className="flex items-center gap-2">
               <BookOpen size={13} className="text-[var(--accent)]" />
@@ -562,7 +564,7 @@ export function StickyCard({ card, onLearn, onForgot, onUpdateImage, onEdit, onD
                 transition={SPRING}
                 className="overflow-hidden px-6 pb-4 pt-1"
               >
-                <div className="divide-y divide-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] rounded-[8px] border border-[var(--ink)] bg-[var(--app-bg)]">
+                <div className="divide-y divide-[color-mix(in_srgb,var(--border-ink)_20%,transparent)] rounded-[8px] border border-[var(--line)] bg-[var(--app-bg)]">
                   {card.grammar?.map((item, idx) => (
                     <div key={idx} className="flex items-baseline justify-between px-3.5 py-2 text-xs font-geist">
                       <span className="text-[11px] font-semibold text-[var(--ink-soft)]">
@@ -589,7 +591,7 @@ export function StickyCard({ card, onLearn, onForgot, onUpdateImage, onEdit, onD
           {/* MADDE 5: metin BASILAN BUTONA gore dogru araligi gosterir.
               "hatırlayamadım" -> aralik sifirlanir (1 gun) -> "yarın masaya döner"
               "öğrendim"       -> bir sonraki (daha uzun) kademe gosterilir. */}
-          <span className="font-gelica text-[11px] sm:text-xs font-semibold text-[var(--ink)]" data-srs-return="1">
+          <span className="font-geist text-[11px] sm:text-xs font-semibold text-[var(--ink)]" data-srs-return="1">
             {forgotPressed
               ? t("card.srs_return_forgot")
               : (() => {
@@ -659,28 +661,28 @@ export function StickyCard({ card, onLearn, onForgot, onUpdateImage, onEdit, onD
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.96 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-sm rounded-[16px] border-2 border-[var(--ink)] bg-[var(--paper)] p-5 shadow-superrCard"
+              className="w-full max-w-sm rounded-[16px] border border-[var(--line-strong)] bg-[var(--paper)] p-5 shadow-superrCard"
             >
               <h3 className="font-gelica text-lg font-semibold text-[var(--ink)]">
                 {t("card.edit_title")}
               </h3>
               <div className="mt-4 space-y-2.5">
                 <label className="block text-xs font-semibold text-[var(--ink-soft)]">{t("field.word")}</label>
-                <input value={editWord} onChange={(e) => setEditWord(e.target.value)} data-edit-word="1" aria-label={t("field.word")} className="w-full rounded-[10px] border-[var(--ink)] bg-[var(--app-bg)] px-3 py-2 font-gelica text-sm text-[var(--ink)]" />
+                <input value={editWord} onChange={(e) => setEditWord(e.target.value)} data-edit-word="1" aria-label={t("field.word")} className="w-full rounded-[10px] border-[var(--line-strong)] bg-[var(--app-bg)] px-3 py-2 font-gelica text-sm text-[var(--ink)]" />
                 <label className="block text-xs font-semibold text-[var(--ink-soft)]">{t("field.word_type")}</label>
-                <select value={editPos} onChange={(e) => setEditPos(e.target.value)} data-edit-pos="1" className="w-full rounded-[10px] border-[var(--ink)] bg-[var(--app-bg)] px-3 py-2 font-gelica text-sm text-[var(--ink)]">
+                <select value={editPos} onChange={(e) => setEditPos(e.target.value)} data-edit-pos="1" className="w-full rounded-[10px] border-[var(--line-strong)] bg-[var(--app-bg)] px-3 py-2 font-gelica text-sm text-[var(--ink)]">
                   <option value="">—</option><option value="noun">{t("pos.noun")}</option><option value="verb">{t("pos.verb")}</option><option value="adjective">{t("pos.adj")}</option><option value="adverb">{t("pos.adv")}</option>
                 </select>
                 {editPos === "noun" && ["DE","IT","ES","FR"].includes(card.lang) && <>
                   <label className="block text-xs font-semibold text-[var(--ink-soft)]">{t("field.artikel")}</label>
-                  <select value={editArticle} onChange={(e) => setEditArticle(e.target.value)} data-edit-article="1" className="w-full rounded-[10px] border-[var(--ink)] bg-[var(--app-bg)] px-3 py-2 font-gelica text-sm text-[var(--ink)]">
+                  <select value={editArticle} onChange={(e) => setEditArticle(e.target.value)} data-edit-article="1" className="w-full rounded-[10px] border-[var(--line-strong)] bg-[var(--app-bg)] px-3 py-2 font-gelica text-sm text-[var(--ink)]">
                     <option value="">—</option>{({DE:["der","die","das"],IT:["il","lo","la"],ES:["el","la"],FR:["le","la"]}[card.lang] || []).map((a) => <option key={a} value={a}>{a}</option>)}
                   </select>
                 </>}
                 <label className="block text-xs font-semibold text-[var(--ink-soft)]">{t("cards.meaning")}</label>
-                <input value={editTrans} onChange={(e) => setEditTrans(e.target.value)} data-edit-trans="1" aria-label={t("cards.meaning")} className="w-full rounded-[10px] border-[var(--ink)] bg-[var(--app-bg)] px-3 py-2 font-gelica text-sm text-[var(--ink)]" />
+                <input value={editTrans} onChange={(e) => setEditTrans(e.target.value)} data-edit-trans="1" aria-label={t("cards.meaning")} className="w-full rounded-[10px] border-[var(--line-strong)] bg-[var(--app-bg)] px-3 py-2 font-gelica text-sm text-[var(--ink)]" />
                 <label className="block text-xs font-semibold text-[var(--ink-soft)]">{t("field.note")}</label>
-                <input value={editNote} onChange={(e) => setEditNote(e.target.value)} data-edit-note="1" aria-label={t("field.note")} className="w-full rounded-[10px] border-[var(--ink)] bg-[var(--app-bg)] px-3 py-2 font-geist text-xs text-[var(--ink)]" />
+                <input value={editNote} onChange={(e) => setEditNote(e.target.value)} data-edit-note="1" aria-label={t("field.note")} className="w-full rounded-[10px] border-[var(--line-strong)] bg-[var(--app-bg)] px-3 py-2 font-geist text-xs text-[var(--ink)]" />
               </div>
               <div className="mt-5 flex justify-end gap-2">
                 <button onClick={() => setEditOpen(false)} className="btn-pill-superr text-xs">
@@ -724,7 +726,7 @@ export function StickyCard({ card, onLearn, onForgot, onUpdateImage, onEdit, onD
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.96 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-xs rounded-[16px] border-2 border-[var(--ink)] bg-[var(--paper)] p-5 text-center shadow-superrCard"
+              className="w-full max-w-xs rounded-[16px] border border-[var(--line-strong)] bg-[var(--paper)] p-5 text-center shadow-superrCard"
             >
               <p className="font-gelica text-[15px] font-semibold text-[var(--ink)]" data-delete-question="1">
                 {t("card.delete_confirm").replace("{word}", card.word)}
