@@ -183,7 +183,7 @@ export function SuperrHero({
       </div>
 
       {/* 2. Hero İki Sütunlu Yerleşim */}
-      <div className="mt-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+      <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-x-8 gap-y-6 items-start">
         {/* Sol Sütun: Lowercase 84px Display Headline & Handwritten Caption */}
         <div className="lg:col-span-6 xl:col-span-7 flex flex-col items-start">
           {/* Kişisel Açılış Ritüeli Karşılama Kartı */}
@@ -324,7 +324,7 @@ export function SuperrHero({
 
         {/* Sağ Sütun: Tilted Product Notebook + Name Label Sticker + 2D Sticker Cluster */}
         <div className="lg:col-span-6 xl:col-span-5 relative flex items-center justify-center p-4">
-          <div className="relative w-full max-w-[380px] p-6 bg-[var(--paper)] border border-[var(--line)] rounded-[16px] shadow-superrCard">
+          <div className="relative w-full max-w-[380px] p-5 bg-[var(--paper)] border border-[var(--line)] rounded-[16px] shadow-superrCard">
             {/* Üstte Dağılmış Fiziksel Stickerlar */}
             <div className="absolute -top-2 -start-2 z-20">
               <LightningSticker />
@@ -343,7 +343,7 @@ export function SuperrHero({
                 deskNames={activeDeskNames}
               />
 
-            <div className="space-y-3 pt-2">
+            <div className="space-y-2 pt-1">
               {/* 6 Dil Masası — tüm dillerin tek özeti */}
               <div
                 onClick={() => {
@@ -370,7 +370,7 @@ export function SuperrHero({
             </div>
 
             {/* Günlük Hedef ve Seviye İlerlemesi (Engagement) */}
-            <div className="mt-4 pt-3 border-t border-dashed border-[color-mix(in_srgb,var(--border-ink)_30%,transparent)]">
+            <div className="mt-3 pt-2 border-t border-dashed border-[color-mix(in_srgb,var(--border-ink)_30%,transparent)]">
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-1.5">
                   <span className="font-geist text-xs font-semibold text-[var(--ink)]">
@@ -434,7 +434,7 @@ export function SuperrHero({
               </div>
 
               {/* ⭐ HAFTALIK RİTİM VE BEKLEYEN KART ÖZETİ (Motivasyon Göstergesi) */}
-              <div className="mt-3.5 pt-2.5 border-t border-[color-mix(in_srgb,var(--border-ink)_18%,transparent)]">
+              <div className="mt-3 pt-2 border-t border-[color-mix(in_srgb,var(--border-ink)_18%,transparent)]">
                 <div className="flex items-center justify-between text-[11px] font-geist pb-1.5">
                   <span className="text-[var(--ink-soft)] font-medium">{t("hero.weekly_rhythm")}:</span>
                   <span className="font-handwritten text-[var(--accent)] text-xs font-bold">
@@ -477,7 +477,7 @@ export function SuperrHero({
         </div>
       </div>
       {/* 3. 3'lü Defter Kartları (12px Card Radius, 1.5px Charcoal Border) */}
-      <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
         <div
           onClick={() => {
             playPopSound();
