@@ -261,13 +261,6 @@ export function SuperrSidebar({
   useEffect(() => {
     try { localStorage.setItem("yourbook_desks_group_open_v1", isDesksOpen ? "1" : "0"); } catch {}
   }, [isDesksOpen]);
-  // Görünüm grubu (temalar, arayüz dili, kağıt & el yazısı): varsayılan KAPALI, tercih hatırlanır.
-  const [isAppearanceOpen, setIsAppearanceOpen] = useState<boolean>(() => {
-    try { return localStorage.getItem("yourbook_appearance_group_open_v1") === "1"; } catch { return false; }
-  });
-  useEffect(() => {
-    try { localStorage.setItem("yourbook_appearance_group_open_v1", isAppearanceOpen ? "1" : "0"); } catch {}
-  }, [isAppearanceOpen]);
   // Dil masası açıldığında önerilecek arayüz dili (varsa).
   const [isUiLangPickerOpen, setIsUiLangPickerOpen] = useState(false);
   const { t, lang: uiLang, setLanguage } = useT();
@@ -839,74 +832,38 @@ export function SuperrSidebar({
           </span>
         </motion.button>
 
-        {/* GÖRÜNÜM (katlanabilir): temalar, arayüz dili, kağıt & el yazısı */}
-        <motion.button
-          type="button"
-          onClick={() => { playPopSound(); setIsAppearanceOpen((v) => !v); }}
-          whileHover={{ x: 2 }}
-          whileTap={{ scale: 0.97 }}
-          aria-expanded={isAppearanceOpen}
-          data-nav="appearance"
-          className="relative mt-1 flex w-full items-center gap-2 rounded-[20px] px-3.5 py-2 text-[13px] font-geist font-medium text-[var(--ink)] transition-colors hover:bg-[color-mix(in_srgb,var(--ink)_6%,transparent)]"
-        >
-          <span className="flex w-[22px] flex-shrink-0 items-center justify-center">
-            <motion.span animate={{ rotate: isAppearanceOpen ? 90 : 0 }} transition={SPRING_PILL} className="flex">
-              <DChevronRight size={14} className="text-current" />
-            </motion.span>
-          </span>
-          <span className="leading-tight">{t("sidebar.appearance")}</span>
-          <span className="ms-auto flex items-center gap-1.5 ps-1" aria-hidden="true">
-            <span className="inline-block h-2.5 w-2.5 rounded-full border border-[var(--line-strong)]" style={{ backgroundColor: theme.accent }} />
-          </span>
-        </motion.button>
-
-        {isAppearanceOpen && (
-          <div className="space-y-1">
-        {/* 5. TEMALAR (⭐ EMIL KOWALSKI FLOATING PILL INDICATOR) */}
-        <div className="pb-0">
-          <span className="font-geist text-[11px] uppercase tracking-[0.08em] text-[var(--ink-soft)] block px-2 mb-1.5 font-semibold">
+        {/* 5. TEMALAR: başlık altında tek satır renk noktası */}
+        <div className="flex items-center justify-between px-2 pt-1">
+          <span className="font-geist text-[11px] uppercase tracking-[0.08em] text-[var(--ink-soft)] font-semibold">
             {t("sidebar.themes")}
           </span>
+          <span className="truncate ps-2 font-geist text-[11px] text-[var(--ink-soft)]">{t(theme.nameKey)}</span>
         </div>
-
-        {themes.map((th) => {
-          const isSelected = theme.id === th.id;
-          return (
-            <motion.button
-              key={th.id}
-              whileHover={{ x: 3 }}
-              whileTap={{ scale: 0.96 }}
-              onClick={() => {
-                playPopSound();
-                onSelectTheme(th.id);
-              }}
-              title={t(th.descKey)}
-              className={`relative flex h-8 w-full items-center justify-between rounded-[20px] px-3.5 text-[13px] font-geist font-medium transition-colors z-10 ${
-                isSelected ? "text-[var(--app-bg)]" : "text-[var(--ink)] hover:text-[#000000]"
-              }`}
-            >
-              {isSelected && (
-                <motion.div
-                  layoutId="sidebar-theme-indicator"
-                  transition={SPRING_PILL}
-                  className="absolute inset-0 rounded-[20px] -z-10 border border-[var(--line)] shadow-sm"
-                  style={{ backgroundColor: th.accent }}
-                />
-              )}
-              <div className="flex items-center gap-2.5">
-                <span className="w-5 flex items-center justify-center flex-shrink-0">
-                  <ThemeDoodleIcon themeId={th.id} size={15} />
-                </span>
-                <span className="font-geist font-medium whitespace-nowrap text-[13px]">{t(th.nameKey)}</span>
-              </div>
-              {isSelected ? (
-                <SketchyCheck color="var(--app-bg)" />
-              ) : (
-                <SketchyColorDot color={th.accent} />
-              )}
-            </motion.button>
-          );
-        })}
+        <div role="radiogroup" aria-label={t("sidebar.themes")} className="flex items-center gap-3 px-2.5 pb-2 pt-1.5">
+          {themes.map((th) => {
+            const isSelected = theme.id === th.id;
+            return (
+              <button
+                key={th.id}
+                type="button"
+                role="radio"
+                aria-checked={isSelected}
+                aria-label={t(th.nameKey)}
+                title={`${t(th.nameKey)} — ${t(th.descKey)}`}
+                onClick={() => {
+                  playPopSound();
+                  onSelectTheme(th.id);
+                }}
+                className={`h-7 w-7 shrink-0 rounded-full border transition-transform duration-100 hover:scale-110 ${
+                  isSelected
+                    ? "border-[var(--ink)] shadow-[0_0_0_2px_var(--paper),0_0_0_3.5px_var(--ink)]"
+                    : "border-[var(--line-strong)]"
+                }`}
+                style={{ background: `linear-gradient(135deg, ${th.appBg} 0 50%, ${th.accent} 50% 100%)` }}
+              />
+            );
+          })}
+        </div>
 
         {/* ARAYÜZ DİLİ — tema seçiciyle aynı görsel dilde, kullanıcı profili alanına yakın */}
                 {/* ARAYÜZ DİLİ ÖNERİSİ — yeni açılan masa ile eşleşen arayüz dili varsa */}
@@ -993,8 +950,6 @@ export function SuperrSidebar({
             </span>
             <span className="text-[9.5px] opacity-75">{t("sidebar.customize.action")}</span>
           </button>
-        )}
-          </div>
         )}
       </div>
 

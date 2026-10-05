@@ -193,8 +193,8 @@ export function SuperrHero({
           {/* Handwritten Annotation — görece konteyner: kıvrık ok "defter" kelimesini işaret eder */}
           <div className="relative flex items-center gap-3.5 mb-2">
             <span
-              style={{ fontSize: "clamp(26px, 2.4vw, 36px)" }}
-              className="font-handwritten text-[var(--accent)] flex items-center gap-4 leading-none whitespace-nowrap"
+              style={{ fontSize: "clamp(32px, 3.3vw, 50px)" }}
+              className="font-handwritten text-[var(--accent)] flex items-center gap-5 leading-none lg:whitespace-nowrap"
             >
               <span>{t("cover.greeting")}</span>
               {/* Gülen yüz + ok = TEK PARÇA: dikey grup, font ne olursa olsun birlikte hareket eder */}
@@ -211,7 +211,7 @@ export function SuperrHero({
                 strokeWidth="1.75"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="inline-block w-[34px] h-[34px] sm:w-[44px] sm:h-[44px] flex-shrink-0 drop-shadow-[0_2px_3px_rgba(0,0,0,0.18)] [filter:saturate(1.15)]"
+                className="inline-block w-[46px] h-[46px] sm:w-[65px] sm:h-[65px] flex-shrink-0 drop-shadow-[0_2px_3px_rgba(0,0,0,0.18)] [filter:saturate(1.15)]"
                 style={{ transformOrigin: "50% 60%" }}
               >
                 {/* Organik hafif asimetrik kafa dairesi — çift çizgi kalem baskısı */}

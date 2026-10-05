@@ -15,7 +15,7 @@ import { useNotes } from "./lib/notes";
 import { useSpaces } from "./lib/spaces";
 import { languageCodeFromSpaceId, getLanguageByTag } from "./lib/languages";
 import { isSoundMuted, toggleSound, playPaperRustle, playSuccessSound, playPopSound } from "./lib/sound";
-import { useTheme } from "./lib/themes";
+import { useTheme, applyThemeVars } from "./lib/themes";
 import { useEngagement, EngagementProvider } from "./components/EngagementSystem";
 import { XpToast, FloatingXp, type XpToastData } from "./components/XpToast";
 import { Confetti } from "./components/Confetti";
@@ -136,7 +136,6 @@ function AppContent() {
 
   // v-perf: tema crossfade SADECE tema degisiminde olsun (opt-in transition sinifi).
   const prevThemeBgRef = useRef<string | null>(null);
-  const themeSwitchTimerRef = useRef<number | undefined>(undefined);
 
   // Superr Defter Bölümleri:
   // hero | collections (Tüm Notlar) | daily (Günlük Notlar) | work (İş ve Projeler) | calendar (Takvim ve Ajanda) | cards (Masalar: DE / EN)
@@ -211,63 +210,9 @@ function AppContent() {
 
   // ⭐ TÜM CİHAZLARDA (LAPTOP, CEP TELEFONU, TABLET) RENK & TEMA BÜTÜNLÜĞÜ
   useEffect(() => {
-    if (typeof document === "undefined") return;
-    const root = document.documentElement;
-    // v-perf: TEMA DEGISKENLERI - TEK SENKRON BLOG.
-    // DIKKAT: cssText KULLANILMAZ! Aksi halde <html> uzerindeki
-    // --font-handwritten (kullanicinin el yazisi fontu) SILINIRDI.
-    // setProperty yalnizca tema degiskenlerine dokunur - font korunur.
-    const themeVars: Array<[string, string]> = [
-      ["--app-bg", theme.appBg],
-      ["--paper", theme.paper || theme.panelBg],
-      ["--panel-bg", theme.panelBg],
-      ["--sidebar-bg", theme.sidebarBg],
-      ["--desk-bg", theme.deskBg],
-      ["--accent", theme.accent],
-      // index.css vurgu kuralları (text-/border-[var(--accent)], odak halkası) bu değişkene bağlı;
-      // tanımsız kalırsa geçersiz sayılır ve vurgu yazıları çevresinden miras alıp koyu kalır.
-      ["--accent-text", theme.accent],
-            ["--ink", theme.ink],
-      ["--ink-soft", theme.inkSoft],
-      ["--border-ink", theme.border],
-      ["--paper-grain-opacity", theme.grainOpacity || "0.16"],
-      ["--paper-secondary", theme.paperSecondary || theme.panelBg],
-      ["--shadow-color", theme.shadowColor || theme.ink],
-      ["--accent-ink", theme.accentInk || theme.appBg],
-      ["--color-success", theme.success || "#287a45"],
-      ["--color-danger", theme.danger || "#b42318"],
-      ["--color-warning", theme.warning || "#9a6700"],
-      ["--article-masc", theme.articleMasc || "#2563a8"],
-      ["--article-fem", theme.articleFem || "#b4234d"],
-      ["--article-neut", theme.articleNeut || "#287a45"],
-      ["--modal-overlay", theme.overlay || "rgba(0,0,0,0.35)"],
-    ];
-    for (let i = 0; i < themeVars.length; i++) {
-      root.style.setProperty(themeVars[i][0], themeVars[i][1]);
-    }
-
-    // v-perf: crossfade yalnizca TEMA degisiminde. Sinifi ekle -> 200ms sonra kaldir.
-    // (Dil degisimi ve diger islemler artik transition yuku tasimaz.)
-    if (prevThemeBgRef.current !== null && prevThemeBgRef.current !== theme.appBg) {
-      root.classList.add("theme-switching");
-      window.clearTimeout(themeSwitchTimerRef.current);
-      themeSwitchTimerRef.current = window.setTimeout(() => {
-        root.classList.remove("theme-switching");
-      }, 200);
-    }
+    // İlk yükleme ve dış değişiklikler (senkron vb.). switchTheme değişkenleri zaten yazmıştır; tekrar yazmak zararsız.
+    applyThemeVars(theme, prevThemeBgRef.current !== null && prevThemeBgRef.current !== theme.appBg);
     prevThemeBgRef.current = theme.appBg;
-
-    // Meta tema rengi: YALNIZCA gercekten degistiyse yaz
-    // (gereksiz DOM mutasyonu + layout tetiklemesi onlenir).
-    let metaThemeColor = document.querySelector("meta[name='theme-color']");
-    if (!metaThemeColor) {
-      metaThemeColor = document.createElement("meta");
-      metaThemeColor.setAttribute("name", "theme-color");
-      document.head.appendChild(metaThemeColor);
-    }
-    if (metaThemeColor.getAttribute("content") !== theme.appBg) {
-      metaThemeColor.setAttribute("content", theme.appBg);
-    }
   }, [theme]);
 
   // XP değişince toast göster; seviye atlarsa kutlama versiyonu
@@ -573,8 +518,8 @@ function AppContent() {
         initial: { opacity: 0, x: 6 },
         animate: { opacity: 1, x: 0 },
         // exit cok kisa + popLayout: gecis boyunca EKRAN BOS KALMAZ.
-        exit: { opacity: 0, x: -4, transition: { duration: 0.04 } },
-        transition: { duration: 0.07, ease: [0.25, 0.1, 0.25, 1] as [number, number, number, number] },
+        exit: { opacity: 0, transition: { duration: 0 } },
+        transition: { duration: 0.06, ease: [0.25, 0.1, 0.25, 1] as [number, number, number, number] },
       };
   return (
     <div

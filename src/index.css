@@ -247,10 +247,10 @@ input, textarea, [contenteditable="true"] {
    SADECE GECIKME). Ustelik dil degisiminde 190 mutasyon bu yuku tasiyordu.
    Simdi <html class="theme-switching"> varken gecerli -> crossfade korunur,
    diger islemler gecikmez. */
-html.theme-switching *,
-html.theme-switching *::before,
-html.theme-switching *::after {
-  transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+html.theme-instant *,
+html.theme-instant *::before,
+html.theme-instant *::after {
+  transition: none !important;
 }
 
 /* Emil Kowalski - Tutarlı buton ve tıklanabilir öğe basılma (press) geri bildirimi (~100ms) */
