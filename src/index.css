@@ -816,6 +816,8 @@ body.font-custom,
 @media (max-width: 640px), (pointer: coarse) {
   button, [role="button"], a { min-width: 44px; min-height: 44px; }
   .btn-pill-superr, .btn-pill-orange { min-height: 44px; }
+  /* Form alanları da parmakla kolay hedeflensin (tarih, saat, seçim, metin) */
+  select, textarea, input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="hidden"]) { min-height: 40px; }
 }
 
 html, body { overflow-x: hidden; }
