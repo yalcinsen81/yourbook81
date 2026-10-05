@@ -1221,6 +1221,7 @@ const trExtra = {
   "sys.error_retry": "sayfayı yenilemeyi dene.",
   "hero.notebook_of": "{name} · Not Defteri",
   "hero.notebook_mine": "Not Defterim",
+  "sidebar.appearance": "görünüm",
 };
 
 export default trExtra;

@@ -1173,5 +1173,6 @@ const esExtra = {
   "sys.error_retry": "prueba a recargar la página.",
   "hero.notebook_of": "El Cuaderno de {name}",
   "hero.notebook_mine": "Mi Cuaderno",
+  "sidebar.appearance": "apariencia",
 };
 export default esExtra;

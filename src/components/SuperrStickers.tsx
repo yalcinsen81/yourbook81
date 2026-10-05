@@ -169,7 +169,7 @@ export function NameLabelSticker({
       onClick={onClick}
       whileHover={{ rotate: 0, scale: 1.02, y: -2 }}
       transition={SPRING}
-      className={`notebook-aged age-tier-${ageTier} inline-block border border-[var(--line-strong)] bg-[var(--app-bg)] rounded-[8px] p-3 shadow-sm rotate-[-3deg] select-none ${className}`}
+      className={`notebook-aged age-tier-${ageTier} inline-block border border-[var(--line-strong)] bg-[var(--app-bg)] rounded-[8px] p-3 shadow-sm rotate-[-1deg] select-none ${className}`}
     >
       {/* Fiziksel yıpranma katmanları (dekoratif, pointer-events yok) */}
       <span className="age-layer age-corners" aria-hidden="true" />

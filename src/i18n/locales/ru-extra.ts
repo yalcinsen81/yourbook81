@@ -1173,5 +1173,6 @@ const ruExtra = {
   "sys.error_retry": "попробуйте обновить страницу.",
   "hero.notebook_of": "Тетрадь {name}",
   "hero.notebook_mine": "Моя тетрадь",
+  "sidebar.appearance": "оформление",
 };
 export default ruExtra;

@@ -1173,5 +1173,6 @@ const frExtra = {
   "sys.error_retry": "essaie de recharger la page.",
   "hero.notebook_of": "Le Cahier de {name}",
   "hero.notebook_mine": "Mon Cahier",
+  "sidebar.appearance": "apparence",
 };
 export default frExtra;

@@ -1173,5 +1173,6 @@ const arExtra = {
   "sys.error_retry": "حاول إعادة تحميل الصفحة.",
   "hero.notebook_of": "دفتر {name}",
   "hero.notebook_mine": "دفتري",
+  "sidebar.appearance": "المظهر",
 };
 export default arExtra;

@@ -1172,5 +1172,6 @@ const itExtra: Record<string, string> = {
   "sys.error_retry": "prova a ricaricare la pagina.",
   "hero.notebook_of": "Quaderno di {name}",
   "hero.notebook_mine": "Il mio quaderno",
+  "sidebar.appearance": "aspetto",
 };
 export default itExtra;

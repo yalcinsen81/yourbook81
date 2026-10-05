@@ -1172,5 +1172,6 @@ const nlExtra: Record<string, string> = {
   "sys.error_retry": "probeer de pagina te herladen.",
   "hero.notebook_of": "Schrift van {name}",
   "hero.notebook_mine": "Mijn schrift",
+  "sidebar.appearance": "uiterlijk",
 };
 export default nlExtra;

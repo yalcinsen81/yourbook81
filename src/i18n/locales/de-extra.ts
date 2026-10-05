@@ -1174,5 +1174,6 @@ const deExtra = {
   "sys.error_retry": "versuche, die Seite neu zu laden.",
   "hero.notebook_of": "Notizheft von {name}",
   "hero.notebook_mine": "Mein Notizheft",
+  "sidebar.appearance": "Darstellung",
 };
 export default deExtra;

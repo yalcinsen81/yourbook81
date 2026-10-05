@@ -261,6 +261,13 @@ export function SuperrSidebar({
   useEffect(() => {
     try { localStorage.setItem("yourbook_desks_group_open_v1", isDesksOpen ? "1" : "0"); } catch {}
   }, [isDesksOpen]);
+  // Görünüm grubu (temalar, arayüz dili, kağıt & el yazısı): varsayılan KAPALI, tercih hatırlanır.
+  const [isAppearanceOpen, setIsAppearanceOpen] = useState<boolean>(() => {
+    try { return localStorage.getItem("yourbook_appearance_group_open_v1") === "1"; } catch { return false; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem("yourbook_appearance_group_open_v1", isAppearanceOpen ? "1" : "0"); } catch {}
+  }, [isAppearanceOpen]);
   // Dil masası açıldığında önerilecek arayüz dili (varsa).
   const [isUiLangPickerOpen, setIsUiLangPickerOpen] = useState(false);
   const { t, lang: uiLang, setLanguage } = useT();
@@ -832,6 +839,29 @@ export function SuperrSidebar({
           </span>
         </motion.button>
 
+        {/* GÖRÜNÜM (katlanabilir): temalar, arayüz dili, kağıt & el yazısı */}
+        <motion.button
+          type="button"
+          onClick={() => { playPopSound(); setIsAppearanceOpen((v) => !v); }}
+          whileHover={{ x: 2 }}
+          whileTap={{ scale: 0.97 }}
+          aria-expanded={isAppearanceOpen}
+          data-nav="appearance"
+          className="relative mt-1 flex w-full items-center gap-2 rounded-[20px] px-3.5 py-2 text-[13px] font-geist font-medium text-[var(--ink)] transition-colors hover:bg-[color-mix(in_srgb,var(--ink)_6%,transparent)]"
+        >
+          <span className="flex w-[22px] flex-shrink-0 items-center justify-center">
+            <motion.span animate={{ rotate: isAppearanceOpen ? 90 : 0 }} transition={SPRING_PILL} className="flex">
+              <DChevronRight size={14} className="text-current" />
+            </motion.span>
+          </span>
+          <span className="leading-tight">{t("sidebar.appearance")}</span>
+          <span className="ms-auto flex items-center gap-1.5 ps-1" aria-hidden="true">
+            <span className="inline-block h-2.5 w-2.5 rounded-full border border-[var(--line-strong)]" style={{ backgroundColor: theme.accent }} />
+          </span>
+        </motion.button>
+
+        {isAppearanceOpen && (
+          <div className="space-y-1">
         {/* 5. TEMALAR (⭐ EMIL KOWALSKI FLOATING PILL INDICATOR) */}
         <div className="pb-0">
           <span className="font-geist text-[11px] uppercase tracking-[0.08em] text-[var(--ink-soft)] block px-2 mb-1.5 font-semibold">
@@ -963,6 +993,8 @@ export function SuperrSidebar({
             </span>
             <span className="text-[9.5px] opacity-75">{t("sidebar.customize.action")}</span>
           </button>
+        )}
+          </div>
         )}
       </div>
 
