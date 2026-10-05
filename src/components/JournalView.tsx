@@ -770,11 +770,11 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
               </span>
             )}
           </div>
-          <h2 className="text-3xl sm:text-4xl font-semibold lowercase text-[var(--ink)] leading-tight tracking-tight">
+          <h1 className="text-3xl sm:text-4xl font-semibold lowercase text-[var(--ink)] leading-tight tracking-tight">
             <span className="font-handwritten text-[var(--accent)] font-bold me-1.5 text-[1.18em] align-baseline">{t("journal.title_accent")}</span>{" "}
             <span className="font-gelica">{t("journal.word")}</span>
             <span className="text-[var(--accent)]">.</span>
-          </h2>
+          </h1>
         </div>
 
         {/* Aksiyon Butonları (Kilit, Dışa Aktar, Sekmeler) */}
@@ -935,10 +935,11 @@ export function JournalView({ onAwardXp, initialDateKey, onConsumedDateKey }: Jo
 
           {/* Gerçek Defter Yazma Alanı */}
           <div className="paper-grain card-superr journal-sheet p-6 sm:p-8 relative min-h-[340px] flex flex-col">
-            <div className="flex items-center justify-between pb-3 border-b border-black/5 text-[var(--ink-soft)] font-geist text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pb-3 border-b border-black/5 text-[var(--ink-soft)] font-geist text-xs">
               <div className="flex items-center gap-2">
                 <input
                   type="date"
+                  aria-label={t("a11y.date")}
                   value={selectedDateKey}
                   onChange={(e) => setSelectedDateKey(e.target.value)}
                   className="font-mono text-xs bg-transparent border border-[var(--line-strong)] rounded px-2 py-0.5 text-[var(--ink)] outline-none"

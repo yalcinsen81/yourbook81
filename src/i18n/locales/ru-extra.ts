@@ -1175,5 +1175,11 @@ const ruExtra = {
   "hero.notebook_mine": "Моя тетрадь",
   "sidebar.appearance": "оформление",
   "onb.back": "Назад",
+  "a11y.prev_month": "предыдущий месяц",
+  "a11y.next_month": "следующий месяц",
+  "a11y.add_task": "добавить задачу",
+  "a11y.toggle_done": "отметить как выполненное",
+  "a11y.date": "дата",
+  "a11y.time": "время",
 };
 export default ruExtra;

@@ -156,7 +156,7 @@ export function SuperrHero({
       <div className="relative flex items-center justify-between pb-[21px] border-b border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)]">
         <div className="flex items-center gap-2">
           <span className="font-gelica text-sm text-[var(--accent)] font-semibold whitespace-nowrap">
-            yourbook v01.0
+            yourbook v{__APP_VERSION__}
           </span>
           <span className="hidden md:inline text-[#bebcbb]">/</span>
           <span className="hidden md:inline font-geist text-xs text-[var(--ink-soft)]">

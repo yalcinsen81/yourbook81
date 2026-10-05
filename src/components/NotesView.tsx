@@ -163,6 +163,7 @@ export function NotesView({ onSendToJournal }: NotesViewProps) {
       data-lovable-file="src/components/NotesView.tsx"
       data-lovable-desc="Notlar listesi ve görsel yükleme alanı"
     >
+      <h1 className="sr-only">{t("sidebar.item.notes")}</h1>
       <input
         ref={fileInputRef}
         type="file"

@@ -811,7 +811,7 @@ body.font-custom,
 
 .theme-modal-overlay { background: var(--modal-overlay, rgba(0,0,0,.35)); }
 
-@media (max-width: 640px) {
+@media (max-width: 640px), (pointer: coarse) {
   button, [role="button"], a { min-width: 44px; min-height: 44px; }
   .btn-pill-superr, .btn-pill-orange { min-height: 44px; }
 }

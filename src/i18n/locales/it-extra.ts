@@ -1174,5 +1174,11 @@ const itExtra: Record<string, string> = {
   "hero.notebook_mine": "Il mio quaderno",
   "sidebar.appearance": "aspetto",
   "onb.back": "Indietro",
+  "a11y.prev_month": "mese precedente",
+  "a11y.next_month": "mese successivo",
+  "a11y.add_task": "aggiungi attività",
+  "a11y.toggle_done": "segna come completato",
+  "a11y.date": "data",
+  "a11y.time": "ora",
 };
 export default itExtra;

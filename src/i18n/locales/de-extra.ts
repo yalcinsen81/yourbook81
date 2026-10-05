@@ -1176,5 +1176,11 @@ const deExtra = {
   "hero.notebook_mine": "Mein Notizheft",
   "sidebar.appearance": "Darstellung",
   "onb.back": "Zurück",
+  "a11y.prev_month": "Vorheriger Monat",
+  "a11y.next_month": "Nächster Monat",
+  "a11y.add_task": "Aufgabe hinzufügen",
+  "a11y.toggle_done": "als erledigt markieren",
+  "a11y.date": "Datum",
+  "a11y.time": "Uhrzeit",
 };
 export default deExtra;

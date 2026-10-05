@@ -52,9 +52,9 @@ export function CollectionsView() {
             <span className="font-handwritten text-[var(--accent)] text-base block">
               {t("col.title")}
             </span>
-            <h2 className="font-gelica text-[36px] sm:text-[42px] font-semibold lowercase text-[var(--ink)] leading-tight">
+            <h1 className="font-gelica text-[36px] sm:text-[42px] font-semibold lowercase text-[var(--ink)] leading-tight">
               {t("col.sub")}
-            </h2>
+            </h1>
           </div>
 
           {/* 20px Pill Buton Sekmeleri */}
@@ -136,6 +136,7 @@ export function CollectionsView() {
                     playPopSound();
                     speak(card.word, card.lang);
                   }}
+                  aria-label={t("card.listen")}
                   className="rounded-[20px] border border-[var(--line)] p-1.5 text-[var(--ink)] hover:bg-[var(--paper)] transition-colors"
                 >
                   <Volume2 size={13} />

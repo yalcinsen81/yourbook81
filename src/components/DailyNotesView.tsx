@@ -144,9 +144,9 @@ export function DailyNotesView({ onOpenJournal }: DailyNotesViewProps = {}) {
           </span>
         </div>
 
-        <h2 className="font-gelica text-[38px] sm:text-[46px] font-semibold lowercase text-[var(--ink)] leading-tight">
+        <h1 className="font-gelica text-[38px] sm:text-[46px] font-semibold lowercase text-[var(--ink)] leading-tight">
           {todayDateStr}.
-        </h2>
+        </h1>
       </div>
 
       {/* 2. Serbest Düşünce Alanı (Card-Superr + kağıt greni) */}
@@ -191,6 +191,7 @@ export function DailyNotesView({ onOpenJournal }: DailyNotesViewProps = {}) {
           />
           <button
             type="submit"
+            aria-label={t("a11y.add_task")}
             className="absolute end-2 flex h-8 w-8 items-center justify-center rounded-[20px] bg-[var(--ink)] text-[var(--app-bg)] hover:bg-[var(--accent)]"
           >
             <Plus size={14} />
@@ -215,7 +216,7 @@ export function DailyNotesView({ onOpenJournal }: DailyNotesViewProps = {}) {
                   onClick={() => handleToggleTask(task.id)}
                   className="flex items-center gap-3 flex-1 cursor-pointer select-none"
                 >
-                  <button type="button" className="flex items-center justify-center">
+                  <button type="button" aria-label={t("a11y.toggle_done")} aria-pressed={task.isDone} className="flex items-center justify-center">
                     <motion.span
                       key={task.isDone ? "done" : "undone"}
                       initial={false}
@@ -261,6 +262,7 @@ export function DailyNotesView({ onOpenJournal }: DailyNotesViewProps = {}) {
 
                 <button
                   onClick={() => handleDeleteTask(task.id)}
+                  aria-label={t("act.delete")}
                   /* MADDE 3: mobilde (hover yok) HER ZAMAN gorunur; masaustunde hover davranisi kalir. */
                   className="opacity-100 lg:opacity-0 lg:group-hover:opacity-100 p-1 text-[var(--ink-soft)] hover:text-red-600 transition-opacity"
                 >

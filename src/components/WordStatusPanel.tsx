@@ -403,10 +403,12 @@ export function WordStatusPanel({ allCards, queueIds, onReturnToQueue, onAwardXp
       {/* ============ MOBİL: altta açılır çekmece ============ */}
       <button
         onClick={() => setMobileOpen(true)}
-        className="fixed bottom-16 sm:bottom-5 end-5 z-30 flex items-center gap-2 rounded-[20px] border border-[var(--line)] bg-[var(--ink)] px-4 py-2.5 shadow-lg lg:hidden"
+        aria-label={t("ws.title")}
+        title={t("ws.title")}
+        className="fixed bottom-20 sm:bottom-5 end-4 z-30 flex items-center justify-center gap-2 rounded-full sm:rounded-[20px] border border-[var(--line)] bg-[var(--ink)] p-3 sm:px-4 sm:py-2.5 shadow-lg lg:hidden"
       >
         <Sparkle size={13} className="text-[var(--app-bg)]" />
-        <span className="font-gelica text-[12px] font-semibold text-[var(--app-bg)]">
+        <span className="hidden sm:inline font-gelica text-[12px] font-semibold text-[var(--app-bg)]">
           {t("ws.title")}
         </span>
       </button>

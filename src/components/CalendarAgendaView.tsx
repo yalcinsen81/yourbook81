@@ -578,12 +578,14 @@ export function CalendarAgendaView({ onOpenJournal }: CalendarAgendaViewProps) {
             <div className="flex items-center gap-1">
               <button
                 onClick={handlePrevMonth}
+                aria-label={t("a11y.prev_month")}
                 className="flex h-8 w-8 items-center justify-center rounded-[20px] border border-[var(--line-strong)] bg-[var(--app-bg)] hover:bg-[var(--paper)] transition-colors"
               >
                 <ChevronLeft size={14} />
               </button>
               <button
                 onClick={handleNextMonth}
+                aria-label={t("a11y.next_month")}
                 className="flex h-8 w-8 items-center justify-center rounded-[20px] border border-[var(--line-strong)] bg-[var(--app-bg)] hover:bg-[var(--paper)] transition-colors"
               >
                 <ChevronRight size={14} />
@@ -684,9 +686,9 @@ export function CalendarAgendaView({ onOpenJournal }: CalendarAgendaViewProps) {
           <span className="font-handwritten text-[var(--accent)] text-xs font-bold block pb-0.5">
             {t("cal.daily_agenda")}
           </span>
-          <h2 className="font-gelica text-[30px] sm:text-[36px] font-semibold lowercase text-[var(--ink)] leading-tight">
+          <h1 className="font-gelica text-[30px] sm:text-[36px] font-semibold lowercase text-[var(--ink)] leading-tight">
             {selectedDateLabel}.
-          </h2>
+          </h1>
         </div>
 
         {/* ⭐ ALARM KURMA & SAATLİ NOT FORMU — v-agendapolish: form alanları TEK font diline getirildi.
@@ -700,6 +702,7 @@ export function CalendarAgendaView({ onOpenJournal }: CalendarAgendaViewProps) {
               <Clock size={17} className="text-[var(--accent)] flex-shrink-0" />
               <input
                 type="time"
+                aria-label={t("a11y.time")}
                 value={newTime}
                 onChange={(e) => setNewTime(e.target.value)}
                 className="rounded-[20px] border-[1.5px] border-[color-mix(in_srgb,var(--ink)_45%,transparent)] bg-[var(--app-bg)] px-3 py-1 font-geist text-[12px] font-semibold tabular-nums leading-none text-[var(--ink)] outline-none transition-colors focus:border-[var(--accent)]"
@@ -878,7 +881,7 @@ export function CalendarAgendaView({ onOpenJournal }: CalendarAgendaViewProps) {
                   }}
                   className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer select-none"
                 >
-                  <button type="button" className="flex h-5 w-5 shrink-0 items-center justify-center text-[#22c55e]">
+                  <button type="button" aria-label={t("a11y.toggle_done")} aria-pressed={ev.isDone} className="flex h-5 w-5 shrink-0 items-center justify-center text-[#22c55e]">
                     <motion.span
                       key={ev.isDone ? "done" : "undone"}
                       initial={false}

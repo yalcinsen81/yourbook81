@@ -56,7 +56,7 @@ export function MobileHeader({
         </button>
 
         {/* Marka: LTR icerik -> RTL sayfada bidi izolasyonu sart (yoksa "bookyour" olur) */}
-        <span dir="ltr" className="inline-flex items-baseline">
+        <span dir="ltr" className={"items-baseline " + (showDeskSwitcher ? "hidden sm:inline-flex" : "inline-flex")}>
          <span className="font-gelica text-[18px] font-semibold text-[var(--ink)] leading-none">your</span>
          <span className="font-gelica text-[18px] font-semibold text-[var(--accent)] leading-none">book</span>
         </span>

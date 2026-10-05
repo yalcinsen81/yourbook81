@@ -316,9 +316,9 @@ export function YouTubeLinksView() {
             <span className="font-handwritten text-[var(--accent)] text-base block font-bold">
               {t("yt.sub")}
             </span>
-            <h2 className="font-gelica text-[36px] sm:text-[42px] font-semibold lowercase text-[var(--ink)] leading-tight">
+            <h1 className="font-gelica text-[36px] sm:text-[42px] font-semibold lowercase text-[var(--ink)] leading-tight">
               {t("yt.section")}
-            </h2>
+            </h1>
           </div>
 
           <div className="flex items-center gap-2">

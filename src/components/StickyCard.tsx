@@ -308,8 +308,8 @@ export function StickyCard({ card, onLearn, onForgot, onUpdateImage, onEdit, onD
       />
 
       {/* 1. Üst Bar: 20px Pill Rozet & Taktil Butonlar */}
-      <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b-2 border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)]">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 sm:px-6 pt-5 pb-3 border-b-2 border-[color-mix(in_srgb,var(--border-ink)_20%,transparent)]">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           <motion.span
             whileHover={{ scale: 1.05 }}
             className="inline-flex items-center gap-1.5 rounded-[20px] border border-[var(--line-strong)] bg-[var(--paper)] px-3 py-1 font-geist text-xs font-semibold text-[var(--ink)]"
@@ -382,6 +382,7 @@ export function StickyCard({ card, onLearn, onForgot, onUpdateImage, onEdit, onD
 
           <Tooltip label={card.imageUrl ? t("notes.photo_change") : t("notes.photo_upload")} side="top">
             <motion.button
+              aria-label={card.imageUrl ? t("notes.photo_change") : t("notes.photo_upload")}
               whileHover={{ scale: 1.10 }}
               whileTap={{ scale: 0.90 }}
               transition={SPRING}
@@ -399,6 +400,7 @@ export function StickyCard({ card, onLearn, onForgot, onUpdateImage, onEdit, onD
           <div className="relative">
             <Tooltip label={t("card.listen")} side="top">
               <motion.button
+                aria-label={t("card.listen")}
                 whileHover={{ scale: 1.10, rotate: 6 }}
                 animate={speaking ? { scale: [1, 1.18, 1] } : { scale: 1 }}
                 transition={speaking ? { duration: 1, repeat: Infinity } : SPRING}
@@ -437,7 +439,7 @@ export function StickyCard({ card, onLearn, onForgot, onUpdateImage, onEdit, onD
               aria-expanded={speakMenuOpen}
               title={t("card.speak_menu")}
               data-speak-menu-toggle="1"
-              className="absolute -end-1.5 -bottom-1 flex h-4 w-4 items-center justify-center rounded-full border-[1.2px] border-[var(--line-strong)] bg-[var(--app-bg)] text-[var(--ink)] shadow-superrButton"
+              className="absolute -end-2 -bottom-1.5 flex h-5 w-5 !min-h-0 !min-w-0 items-center justify-center rounded-full border-[1.2px] border-[var(--line-strong)] bg-[var(--app-bg)] text-[var(--ink)] shadow-superrButton"
             >
               <ChevronDown size={9} />
             </button>

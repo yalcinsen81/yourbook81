@@ -475,11 +475,11 @@ export function WorkProjectsView() {
 
             </span>
 
-            <h2 className="font-gelica text-[32px] sm:text-[38px] font-semibold lowercase text-[var(--ink)] leading-tight">
+            <h1 className="font-gelica text-[32px] sm:text-[38px] font-semibold lowercase text-[var(--ink)] leading-tight">
 
               {t("wp.title")}
 
-            </h2>
+            </h1>
 
           </div>
 
