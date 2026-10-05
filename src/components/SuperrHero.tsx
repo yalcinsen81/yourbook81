@@ -246,7 +246,7 @@ export function SuperrHero({
           {/* Display Headline: Gelica 600, ALL LOWERCASE, Vintage Ink with slight texture feel */}
           <h1
             id="hero-headline"
-            className="font-gelica text-[32px] min-[641px]:text-[40px] font-semibold text-[var(--ink)] leading-[1.14] sm:leading-[1.1] tracking-normal text-start"
+            className="font-gelica text-[34px] min-[641px]:text-[43px] font-semibold text-[var(--ink)] leading-[1.14] sm:leading-[1.1] tracking-normal text-start"
             style={{
               textShadow: "0.5px 0.5px 1px color-mix(in srgb, var(--ink) 18%, transparent)",
               opacity: 0.94,
