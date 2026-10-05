@@ -14,7 +14,7 @@ import { buildDeskCounters } from "./lib/counters";
 import { useNotes } from "./lib/notes";
 import { useSpaces } from "./lib/spaces";
 import { languageCodeFromSpaceId, getLanguageByTag } from "./lib/languages";
-import { isSoundMuted, toggleSound, playPaperRustle, playSuccessSound, playPopSound } from "./lib/sound";
+import { isSoundMuted, toggleSound, playPaperRustle, playSuccessSound, playPopSound, warmUpAudio } from "./lib/sound";
 import { useTheme, applyThemeVars } from "./lib/themes";
 import { useEngagement, EngagementProvider } from "./components/EngagementSystem";
 import { XpToast, FloatingXp, type XpToastData } from "./components/XpToast";
@@ -355,6 +355,12 @@ function AppContent() {
     }
   }, [ringingAlarmNote]);
 
+  // Ses bağlamını ilk dokunuşta (tıklamadan önce) hazırla: kullanıcı jesti gerektirir, gecikme yaratmaz.
+  useEffect(() => {
+    window.addEventListener("pointerdown", warmUpAudio, { once: true, capture: true });
+    return () => window.removeEventListener("pointerdown", warmUpAudio, { capture: true });
+  }, []);
+
   // Görünüm parçalarını ilk boyamadan sonra arka planda indir: ilk tıklamada bekleme olmasın.
   useEffect(() => {
     const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number; cancelIdleCallback?: (id: number) => void };
@@ -498,8 +504,8 @@ function AppContent() {
 
   const handleSelectView = (view: NavView) => {
     if (view !== currentView) {
-      playPaperRustle();
       setCurrentView(view);
+      playPaperRustle();
     }
   };
 

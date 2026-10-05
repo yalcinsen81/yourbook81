@@ -117,6 +117,10 @@ export function getTimeAwareVolumeMultiplier(): number {
   return 1.0;
 }
 
+// Tek, paylaşılan bağlam: her sesde yeni AudioContext açmak pahalıydı (tıklama gecikmesi) ve
+// hiç kapatılmadığı için tarayıcının eşzamanlı bağlam sınırını (~6) aşıp sesi susturabiliyordu.
+let sharedCtx: AudioContext | null = null;
+
 function getAudioContext(): AudioContext | null {
   if (isMuted || typeof window === "undefined") return null;
   try {
@@ -124,10 +128,17 @@ function getAudioContext(): AudioContext | null {
       window.AudioContext ||
       (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (!AudioContextClass) return null;
-    return new AudioContextClass();
+    if (!sharedCtx || sharedCtx.state === "closed") sharedCtx = new AudioContextClass();
+    if (sharedCtx.state === "suspended") void sharedCtx.resume().catch(() => {});
+    return sharedCtx;
   } catch {
     return null;
   }
+}
+
+/** İlk kullanıcı dokunuşunda bağlamı önceden hazırlar: ilk tıklama sesi arayüzü bekletmesin. */
+export function warmUpAudio(): void {
+  void getAudioContext();
 }
 
 /** Pop / Taktil tık (butonlar, kategori hapları) */

@@ -4,7 +4,7 @@ import {
   SketchTranslate,
   SketchDocument,
 } from "./icons/sketchIcons";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, startTransition } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { spaceTopicIcon, DBook as BookOpen, DBriefcase as Briefcase, DCalendar as Calendar, DCalendarDays as CalendarDays, DDownload as Download, DFolder as FolderKanban, DLayers as Layers, DNote as StickyNote, DPlus as Plus, DSearch as Search, DTopicEnglish, DTopicGerman, DUser as User, DVideo as VideoIcon, DVolume as Volume2, DVolumeMute as VolumeX, DX as X, DChevronRight } from "./icons/doodle";
 import { playPopSound } from "../lib/sound";
@@ -212,6 +212,9 @@ interface SuperrSidebarProps {
   languageSpaceExists?: (code: string) => boolean;
 }
 
+// Aktif madde zemininin kayması: yay yerine çok kısa bir tween (seri hissi).
+const PILL_TWEEN = { type: "tween", duration: 0.08, ease: [0.2, 0, 0, 1] } as const;
+
 const SPRING_PILL = {
   type: "spring",
   stiffness: 800,
@@ -219,8 +222,8 @@ const SPRING_PILL = {
 } as const;
 
 export function SuperrSidebar({
-  currentView,
-  onSelectView,
+  currentView: propView,
+  onSelectView: onSelectViewProp,
   activeSpace,
   onSelectSpace,
   theme,
@@ -252,6 +255,14 @@ export function SuperrSidebar({
   onCreateLanguageDesk,
   languageSpaceExists,
 }: SuperrSidebarProps) {
+  // Vurgulanan madde ANINDA değişir (yalnızca bu bileşen yeniden çizilir); içerik değişimi ise
+  // düşük öncelikli geçişle yapılır. Ağır bir görünüm çizilirken bile menü tepkisiz kalmaz.
+  const [currentView, setLocalView] = useState<NavView>(propView);
+  useEffect(() => { setLocalView(propView); }, [propView]);
+  const onSelectView = useCallback((v: NavView) => {
+    setLocalView(v);
+    startTransition(() => onSelectViewProp(v));
+  }, [onSelectViewProp]);
   const [isLanguagePickerOpen, setIsLanguagePickerOpen] = useState(false);
   // Sol menude TUM dil masalari TEK satirda toplanir (6+ dil icin olceklenir).
   // Varsayilan: KAPALI (sol menu kisa kalsin). Kullanici acarsa tercihi hatirlanir.
@@ -494,14 +505,14 @@ export function SuperrSidebar({
             playPopSound();
             onSelectView("hero");
           }}
-          className={`relative flex w-full items-center justify-between rounded-[20px] px-2.5 py-1.5 text-[13px] font-geist font-medium transition-colors z-10 ${
+          className={`relative flex w-full items-center justify-between rounded-[20px] px-2.5 py-1.5 text-[13px] font-geist font-medium !transition-none z-10 ${
             currentView === "hero" ? "text-[var(--app-bg)]" : "text-[var(--ink)] hover:text-[#000000]"
           }`}
         >
           {currentView === "hero" && (
             <motion.div
               layoutId="sidebar-view-indicator"
-              transition={SPRING_PILL}
+              transition={PILL_TWEEN}
               className="absolute inset-0 rounded-[20px] bg-[var(--ink)] -z-10 border border-[var(--line)] shadow-sm"
             />
           )}
@@ -526,14 +537,14 @@ export function SuperrSidebar({
             playPopSound();
             onSelectView("collections");
           }}
-          className={`relative flex h-8 w-full items-center justify-between rounded-[20px] px-3.5 text-[13px] font-geist font-medium transition-colors z-10 ${
+          className={`relative flex h-8 w-full items-center justify-between rounded-[20px] px-3.5 text-[13px] font-geist font-medium !transition-none z-10 ${
             currentView === "collections" ? "text-[var(--app-bg)]" : "text-[var(--ink)] hover:text-[#000000]"
           }`}
         >
           {currentView === "collections" && (
             <motion.div
               layoutId="sidebar-view-indicator"
-              transition={SPRING_PILL}
+              transition={PILL_TWEEN}
               className="absolute inset-0 rounded-[20px] bg-[var(--ink)] -z-10 border border-[var(--line)] shadow-sm"
             />
           )}
@@ -558,14 +569,14 @@ export function SuperrSidebar({
             playPopSound();
             onSelectView("daily");
           }}
-          className={`relative flex h-8 w-full items-center justify-between rounded-[20px] px-3.5 text-[13px] font-geist font-medium transition-colors z-10 ${
+          className={`relative flex h-8 w-full items-center justify-between rounded-[20px] px-3.5 text-[13px] font-geist font-medium !transition-none z-10 ${
             currentView === "daily" ? "text-[var(--app-bg)]" : "text-[var(--ink)] hover:text-[#000000]"
           }`}
         >
           {currentView === "daily" && (
             <motion.div
               layoutId="sidebar-view-indicator"
-              transition={SPRING_PILL}
+              transition={PILL_TWEEN}
               className="absolute inset-0 rounded-[20px] bg-[var(--ink)] -z-10 border border-[var(--line)] shadow-sm"
             />
           )}
@@ -590,14 +601,14 @@ export function SuperrSidebar({
             playPopSound();
             onSelectView("journal");
           }}
-          className={`relative flex h-8 w-full items-center justify-between rounded-[20px] px-3.5 text-[13px] font-geist font-medium transition-colors z-10 ${
+          className={`relative flex h-8 w-full items-center justify-between rounded-[20px] px-3.5 text-[13px] font-geist font-medium !transition-none z-10 ${
             currentView === "journal" ? "text-[var(--app-bg)]" : "text-[var(--ink)] hover:text-[#000000]"
           }`}
         >
           {currentView === "journal" && (
             <motion.div
               layoutId="sidebar-view-indicator"
-              transition={SPRING_PILL}
+              transition={PILL_TWEEN}
               className="absolute inset-0 rounded-[20px] bg-[var(--ink)] -z-10 border border-[var(--line)] shadow-sm"
             />
           )}
@@ -627,7 +638,7 @@ export function SuperrSidebar({
           {currentView === "notes" && (
             <motion.div
               layoutId="sidebar-view-indicator"
-              transition={SPRING_PILL}
+              transition={PILL_TWEEN}
               className="absolute inset-0 rounded-[20px] bg-[var(--ink)] -z-10 border-[var(--line-strong)] shadow-sm"
             />
           )}
@@ -652,14 +663,14 @@ export function SuperrSidebar({
             playPopSound();
             onSelectView("work");
           }}
-          className={`relative flex h-8 w-full items-center justify-between rounded-[20px] px-3.5 text-[13px] font-geist font-medium transition-colors z-10 ${
+          className={`relative flex h-8 w-full items-center justify-between rounded-[20px] px-3.5 text-[13px] font-geist font-medium !transition-none z-10 ${
             currentView === "work" ? "text-[var(--app-bg)]" : "text-[var(--ink)] hover:text-[#000000]"
           }`}
         >
           {currentView === "work" && (
             <motion.div
               layoutId="sidebar-view-indicator"
-              transition={SPRING_PILL}
+              transition={PILL_TWEEN}
               className="absolute inset-0 rounded-[20px] bg-[var(--ink)] -z-10 border border-[var(--line)] shadow-sm"
             />
           )}
@@ -687,14 +698,14 @@ export function SuperrSidebar({
             playPopSound();
             onSelectView("calendar");
           }}
-          className={`relative flex h-8 w-full items-center justify-between rounded-[20px] px-3.5 text-[13px] font-geist font-medium transition-colors z-10 ${
+          className={`relative flex h-8 w-full items-center justify-between rounded-[20px] px-3.5 text-[13px] font-geist font-medium !transition-none z-10 ${
             currentView === "calendar" ? "text-[var(--app-bg)]" : "text-[var(--ink)] hover:text-[#000000]"
           }`}
         >
           {currentView === "calendar" && (
             <motion.div
               layoutId="sidebar-view-indicator"
-              transition={SPRING_PILL}
+              transition={PILL_TWEEN}
               className="absolute inset-0 rounded-[20px] bg-[var(--ink)] -z-10 border border-[var(--line)] shadow-sm"
             />
           )}
@@ -751,14 +762,14 @@ export function SuperrSidebar({
                 onSelectSpace(space.id);
                 onSelectView("cards");
               }}
-              className={`relative flex h-8 w-full items-center justify-between rounded-[20px] px-3.5 text-[13px] font-geist font-medium transition-colors z-10 ${
+              className={`relative flex h-8 w-full items-center justify-between rounded-[20px] px-3.5 text-[13px] font-geist font-medium !transition-none z-10 ${
                 isSelected ? "text-[var(--app-bg)]" : "text-[var(--ink)] hover:text-[#000000]"
               }`}
             >
               {isSelected && (
                 <motion.div
                   layoutId="sidebar-view-indicator"
-                  transition={SPRING_PILL}
+                  transition={PILL_TWEEN}
                   className="absolute inset-0 rounded-[20px] bg-[var(--ink)] -z-10 border border-[var(--line)] shadow-sm"
                 />
               )}
@@ -810,14 +821,14 @@ export function SuperrSidebar({
             playPopSound();
             onSelectView("youtube");
           }}
-          className={`relative flex h-8 w-full items-center justify-between rounded-[20px] px-3.5 text-[13px] font-geist font-medium transition-colors z-10 ${
+          className={`relative flex h-8 w-full items-center justify-between rounded-[20px] px-3.5 text-[13px] font-geist font-medium !transition-none z-10 ${
             currentView === "youtube" ? "text-[var(--app-bg)]" : "text-[var(--ink)] hover:text-[#000000]"
           }`}
         >
           {currentView === "youtube" && (
             <motion.div
               layoutId="sidebar-view-indicator"
-              transition={SPRING_PILL}
+              transition={PILL_TWEEN}
               className="absolute inset-0 rounded-[20px] bg-[var(--ink)] -z-10 border border-[var(--line)] shadow-sm"
             />
           )}
