@@ -31,6 +31,7 @@
 @custom-variant ltr (&:where([dir="ltr"], [dir="ltr"] *));
 
 /* Fontlar (self-hosted, çevrimdışı çalışır) */
+@import "@fontsource/architects-daughter/400.css";
 @import "@fontsource/caveat/600.css";
 @import "@fontsource/caveat/700.css";
 @import "@fontsource/inter/400.css";
@@ -55,7 +56,7 @@
      dusuyordu -> "font sayfa ile uyumlu degil" sikayetinin kok nedeni.
      Artik Inter (self-hosted) + platform yedegi sabit. */
   --font-geist: "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-handwritten: "Kalam", "Caveat", "Comic Sans MS", cursive;
+  --font-handwritten: "Architects Daughter", "Segoe Print", "Kalam", "Caveat", cursive;
 }
 
 /* v-bodyfont: GOVDE FONTU KOK SEVIYEDE TANIMLI.

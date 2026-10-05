@@ -590,7 +590,7 @@ export function SuperrSidebar({
             playPopSound();
             onSelectView("journal");
           }}
-          className={`hidden relative flex h-8 w-full items-center justify-between rounded-[20px] px-3.5 text-[13px] font-geist font-medium transition-colors z-10 ${
+          className={`relative flex h-8 w-full items-center justify-between rounded-[20px] px-3.5 text-[13px] font-geist font-medium transition-colors z-10 ${
             currentView === "journal" ? "text-[var(--app-bg)]" : "text-[var(--ink)] hover:text-[#000000]"
           }`}
         >

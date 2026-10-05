@@ -22,8 +22,8 @@ describe("notebookConfig.ts - Handwriting, Volumes & Milestones", () => {
     localStorage.clear();
   });
 
-  it("should default to kalam font", () => {
-    expect(getSavedHandwriting()).toBe("kalam");
+  it("should default to the architect (titiz & mimari) font", () => {
+    expect(getSavedHandwriting()).toBe("architect");
   });
 
   it("should support custom handwriting font", () => {

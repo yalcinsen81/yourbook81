@@ -210,7 +210,8 @@ export function getSavedHandwriting(): HandwritingStyleType {
     const val = localStorage.getItem(STORAGE_KEY_FONT);
     if (val === "kalam" || val === "architect" || val === "marck" || val === "custom") return val;
   } catch {}
-  return "kalam";
+  // Varsayılan (kayıtlı tercih yoksa): "Titiz & Mimari" (Architects Daughter)
+  return "architect";
 }
 
 export function getSavedCustomHandwriting(): CustomHandwritingConfig | null {
@@ -377,7 +378,7 @@ export function evaluateMilestones(): MilestoneSticker[] {
     // 5. Özelleştirme yapıldı mı
     const paper = localStorage.getItem(STORAGE_KEY_PAPER);
     const font = localStorage.getItem(STORAGE_KEY_FONT);
-    if ((paper && paper !== "plain") || (font && font !== "kalam")) {
+    if ((paper && paper !== "plain") || (font && font !== "architect")) {
       isCustomized = true;
     }
   } catch {}

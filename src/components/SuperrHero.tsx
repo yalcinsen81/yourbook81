@@ -193,7 +193,7 @@ export function SuperrHero({
           {/* Handwritten Annotation — görece konteyner: kıvrık ok "defter" kelimesini işaret eder */}
           <div className="relative flex items-center gap-3.5 mb-2">
             <span
-              style={{ fontSize: "clamp(32px, 3.3vw, 50px)" }}
+              style={{ fontSize: "clamp(27px, 2.8vw, 42.5px)" }}
               className="font-handwritten text-[var(--accent)] flex items-center gap-5 leading-none lg:whitespace-nowrap"
             >
               <span>{t("cover.greeting")}</span>
