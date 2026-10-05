@@ -169,20 +169,6 @@ export function CoverStickerCluster({
           );
         })}
       </div>
-
-      {/* Mürekkep Damgası (Vintage Ink Stamp) */}
-      {stampConfig && activeStamp !== "none" && (
-        <div className="mt-1.5 flex justify-end">
-          <div className={`ink-stamp-box rotate-[-4deg] ${stampConfig.color}`}>
-            <span className="font-mono text-[9px] font-extrabold tracking-wider">
-              {t(stampConfig.titleKey)}
-            </span>
-            <span className="font-handwritten text-[8.5px] font-semibold opacity-90">
-              {t(stampConfig.subtitleKey)}
-            </span>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
