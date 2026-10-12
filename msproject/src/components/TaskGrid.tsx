@@ -91,7 +91,7 @@ export function TaskGrid(props: Props) {
                     {r.collapsed ? "▸" : "▾"}
                   </button>
                 ) : (
-                  <span className="twisty-space">{sched.isMilestone ? "◆" : ""}</span>
+                  <span className={`twisty-space ${sched.isMilestone ? "ms" : ""}`}>{sched.isMilestone ? "◆" : ""}</span>
                 )}
                 <EditableCell
                   value={task.name}

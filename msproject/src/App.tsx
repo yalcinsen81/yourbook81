@@ -12,6 +12,8 @@ import { Gantt } from "./components/Gantt";
 import { TaskGrid, GRID_WIDTH, type GridRow } from "./components/TaskGrid";
 import { PX_PER_DAY, type Zoom } from "./components/layout";
 import { todayIso, useProject } from "./useProject";
+import { fileLinkSupported, useFileLink } from "./useFileLink";
+import { Icon, type IconName } from "./components/icons";
 
 export default function App() {
   const { project, schedule, update, undo, redo, canUndo, canRedo } = useProject();
@@ -22,6 +24,8 @@ export default function App() {
   const [gridWidth, setGridWidth] = useState(Math.min(GRID_WIDTH, 700));
   const [message, setMessage] = useState<string | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [linkMenu, setLinkMenu] = useState(false);
+  const [theme, setTheme] = useTheme();
   const gridRef = useRef<HTMLDivElement>(null);
   const ganttRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -33,6 +37,15 @@ export default function App() {
     window.clearTimeout(flashTimer.current);
     flashTimer.current = window.setTimeout(() => setMessage(null), 4000);
   }, []);
+
+  const replaceProject = useCallback(
+    (p: Project) => {
+      update(() => p);
+      setSelection(new Set());
+    },
+    [update],
+  );
+  const fileLink = useFileLink(project, replaceProject, flash);
 
   // Görünür satırlar: kapalı özetlerin altları gizlenir
   const rows: GridRow[] = useMemo(() => {
@@ -411,115 +424,136 @@ export default function App() {
   };
 
   const leafCount = schedule.rows.filter((r) => !r.isSummary).length;
+  // Süreye göre ağırlıklı tamamlanma (kilometre taşları sayılmaz)
+  const progress = useMemo(() => {
+    let total = 0;
+    let done = 0;
+    project.tasks.forEach((t, i) => {
+      if (schedule.rows[i].isSummary || t.duration === 0) return;
+      total += t.duration;
+      done += (t.duration * t.percent) / 100;
+    });
+    return total ? Math.round((done / total) * 100) : 0;
+  }, [project.tasks, schedule]);
   const criticalCount = schedule.rows.filter((r) => !r.isSummary && r.critical).length;
   const hasSel = selection.size > 0;
 
   return (
     <div className="app">
-      <header className="titlebar">
-        <span className="logo" aria-hidden>
-          ▦
-        </span>
-        <input
-          className="project-name"
-          value={project.name}
-          aria-label="Proje adı"
-          onChange={(e) => {
-            const name = e.target.value;
-            update((p) => ({ ...p, name }));
-          }}
-        />
-        <label className="project-start">
-          Proje başlangıcı
+      <header className="topbar">
+        <div className="brand" aria-hidden>
+          <Icon name="milestone" size={16} />
+        </div>
+        <div className="title-block">
           <input
-            type="date"
-            value={project.start}
+            className="project-name"
+            value={project.name}
+            aria-label="Proje adı"
             onChange={(e) => {
-              const start = e.target.value;
-              if (isValidDate(start)) update((p) => ({ ...p, start }));
+              const name = e.target.value;
+              update((p) => ({ ...p, name }));
             }}
           />
-        </label>
+          <label className="project-start">
+            Başlangıç
+            <input
+              type="date"
+              value={project.start}
+              onChange={(e) => {
+                const start = e.target.value;
+                if (isValidDate(start)) update((p) => ({ ...p, start }));
+              }}
+            />
+          </label>
+        </div>
+        <div className="stats" aria-label="Proje özeti">
+          <div className="stat">
+            <span className="stat-label">Bitiş</span>
+            <span className="stat-value">{formatShort(schedule.finishDate)}</span>
+          </div>
+          <div className="stat">
+            <span className="stat-label">Süre</span>
+            <span className="stat-value">{schedule.finish} iş günü</span>
+          </div>
+          <div className="stat">
+            <span className="stat-label">İlerleme</span>
+            <span className="stat-value">
+              <span className="meter" aria-hidden>
+                <span style={{ width: `${progress}%` }} />
+              </span>
+              %{progress}
+            </span>
+          </div>
+          <div className="stat crit">
+            <span className="stat-label">Kritik</span>
+            <span className="stat-value">{criticalCount} görev</span>
+          </div>
+        </div>
+        <button
+          className={`chip ${fileLink.fileName ? "linked" : ""}`}
+          onClick={() => setLinkMenu((v) => !v)}
+          disabled={!fileLinkSupported}
+          title={
+            fileLinkSupported
+              ? "Projeyi diskteki bir dosyaya bağla: Claude (MCP) aynı dosyayı düzenleyebilir"
+              : "Dosyaya bağlama Chrome ve Edge'de çalışır"
+          }
+          aria-expanded={linkMenu}
+        >
+          <Icon name="plug" size={16} />
+          {fileLink.fileName ?? "Dosyaya bağla"}
+        </button>
+        {linkMenu && (
+          <div className="menu" role="menu" onMouseLeave={() => setLinkMenu(false)}>
+            <button role="menuitem" onClick={() => { setLinkMenu(false); void fileLink.linkExisting(); }}>
+              Var olan dosyayı aç ve bağla
+            </button>
+            <button role="menuitem" onClick={() => { setLinkMenu(false); void fileLink.linkNew(); }}>
+              Bu projeyi yeni dosyaya kaydet ve bağla
+            </button>
+            {fileLink.fileName && (
+              <button role="menuitem" onClick={() => { setLinkMenu(false); fileLink.unlink(); }}>
+                Bağlantıyı kaldır
+              </button>
+            )}
+          </div>
+        )}
+        <button
+          className="icon-btn"
+          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          title={theme === "dark" ? "Açık tema" : "Koyu tema"}
+          aria-label={theme === "dark" ? "Açık temaya geç" : "Koyu temaya geç"}
+        >
+          <Icon name={theme === "dark" ? "sun" : "moon"} />
+        </button>
       </header>
 
-      <nav className="ribbon" aria-label="Araç çubuğu">
-        <div className="group">
-          <button onClick={() => insertTask()} title="Seçili satırın altına görev ekle (Insert)">
-            <span className="ico">＋</span>Görev
-          </button>
-          <button onClick={() => insertTask(true)} title="Kilometre taşı ekle (süre 0)">
-            <span className="ico">◆</span>Kilometre taşı
-          </button>
-          <button onClick={deleteSelected} disabled={!hasSel} title="Seçili görevleri sil (Delete)">
-            <span className="ico">✕</span>Sil
-          </button>
-          <div className="group-label">Ekle</div>
+      <nav className="toolbar" aria-label="Araç çubuğu">
+        <div className="tgroup">
+          <ToolButton icon="plus" label="Görev" primary onClick={() => insertTask()} title="Seçili satırın altına görev ekle (Insert)" />
+          <ToolButton icon="milestone" label="Kilometre taşı" onClick={() => insertTask(true)} title="Kilometre taşı ekle (süre 0)" />
+          <ToolButton icon="trash" onClick={deleteSelected} disabled={!hasSel} title="Seçili görevleri sil (Delete)" />
         </div>
-        <div className="group">
-          <button onClick={() => shiftOutline(-1)} disabled={!hasSel} title="Girintiyi azalt (Alt+Shift+←)">
-            <span className="ico">⇤</span>Dışarı
-          </button>
-          <button onClick={() => shiftOutline(1)} disabled={!hasSel} title="Girintile: özet görev oluşturur (Alt+Shift+→)">
-            <span className="ico">⇥</span>İçeri
-          </button>
-          <button onClick={() => moveSelected(-1)} disabled={primary < 0} title="Yukarı taşı">
-            <span className="ico">↑</span>Yukarı
-          </button>
-          <button onClick={() => moveSelected(1)} disabled={primary < 0} title="Aşağı taşı">
-            <span className="ico">↓</span>Aşağı
-          </button>
-          <div className="group-label">Zamanlama</div>
+        <div className="tgroup">
+          <ToolButton icon="outdent" onClick={() => shiftOutline(-1)} disabled={!hasSel} title="Girintiyi azalt (Alt+Shift+←)" />
+          <ToolButton icon="indent" onClick={() => shiftOutline(1)} disabled={!hasSel} title="Girintile: özet görev oluşturur (Alt+Shift+→)" />
+          <ToolButton icon="up" onClick={() => moveSelected(-1)} disabled={primary < 0} title="Yukarı taşı" />
+          <ToolButton icon="down" onClick={() => moveSelected(1)} disabled={primary < 0} title="Aşağı taşı" />
         </div>
-        <div className="group">
-          <button onClick={linkSelected} disabled={selection.size < 2} title="Seçili görevleri sırayla Bitiş-Başlangıç bağla (Ctrl+F2)">
-            <span className="ico">⛓</span>Bağla
-          </button>
-          <button onClick={unlinkSelected} disabled={!hasSel} title="Seçili görevlerin bağlarını kaldır">
-            <span className="ico">✂</span>Bağı kaldır
-          </button>
-          <div className="group-label">Bağlantılar</div>
+        <div className="tgroup">
+          <ToolButton icon="link" label="Bağla" onClick={linkSelected} disabled={selection.size < 2} title="Seçili görevleri sırayla Bitiş-Başlangıç bağla (Ctrl+F2)" />
+          <ToolButton icon="unlink" onClick={unlinkSelected} disabled={!hasSel} title="Seçili görevlerin bağlarını kaldır" />
         </div>
-        <div className="group">
-          <div className="segmented" role="radiogroup" aria-label="Zaman ölçeği">
-            {(["day", "week", "month"] as Zoom[]).map((z) => (
-              <button key={z} role="radio" aria-checked={zoom === z} className={zoom === z ? "on" : ""} onClick={() => setZoom(z)}>
-                {{ day: "Gün", week: "Hafta", month: "Ay" }[z]}
-              </button>
-            ))}
-          </div>
-          <button onClick={() => setCalendarOpen(true)} title="Tatil günlerini düzenle">
-            <span className="ico">📅</span>Takvim
-          </button>
-          <button onClick={() => scrollToDate(today)} title="Gantt'ı bugüne kaydır">
-            <span className="ico">◎</span>Bugün
-          </button>
-          <div className="group-label">Görünüm</div>
+        <div className="tgroup">
+          <ToolButton icon="undo" onClick={undo} disabled={!canUndo} title="Geri al (Ctrl+Z)" />
+          <ToolButton icon="redo" onClick={redo} disabled={!canRedo} title="Yinele (Ctrl+Y)" />
         </div>
-        <div className="group">
-          <button onClick={undo} disabled={!canUndo} title="Geri al (Ctrl+Z)">
-            <span className="ico">↶</span>Geri al
-          </button>
-          <button onClick={redo} disabled={!canRedo} title="Yinele (Ctrl+Y)">
-            <span className="ico">↷</span>Yinele
-          </button>
-          <div className="group-label">Düzen</div>
-        </div>
-        <div className="group">
-          <button onClick={() => newProject(false)} title="Boş proje">
-            <span className="ico">▢</span>Yeni
-          </button>
-          <button onClick={() => fileRef.current?.click()} title="Proje dosyası aç: bu uygulamanın .json dosyası ya da MS Project'ten XML olarak kaydedilmiş .xml">
-            <span className="ico">📂</span>Aç
-          </button>
-          <button onClick={exportMsp} title="MS Project'te açılabilen XML dosyası indir">
-            <span className="ico">⇪</span>MS Project'e
-          </button>
-          <button onClick={exportJson} title="Projeyi JSON olarak indir">
-            <span className="ico">⤓</span>Kaydet
-          </button>
-          <button onClick={() => newProject(true)} title="Örnek konut inşaatı projesi">
-            <span className="ico">★</span>Örnek
-          </button>
+        <div className="tgroup">
+          <ToolButton icon="file" onClick={() => newProject(false)} title="Yeni boş proje" />
+          <ToolButton icon="open" label="Aç" onClick={() => fileRef.current?.click()} title="Proje dosyası aç: .json ya da MS Project'ten XML olarak kaydedilmiş .xml" />
+          <ToolButton icon="share" label="MS Project" onClick={exportMsp} title="MS Project'te açılabilen XML dosyası indir" />
+          <ToolButton icon="download" onClick={exportJson} title="Projeyi JSON olarak indir" />
+          <ToolButton icon="sparkle" onClick={() => newProject(true)} title="Örnek konut inşaatı projesi" />
           <input
             ref={fileRef}
             type="file"
@@ -531,7 +565,17 @@ export default function App() {
               e.target.value = "";
             }}
           />
-          <div className="group-label">Dosya</div>
+        </div>
+        <div className="toolbar-end">
+          <ToolButton icon="calendar" label="Takvim" onClick={() => setCalendarOpen(true)} title="Tatil günlerini düzenle" />
+          <ToolButton icon="target" label="Bugün" onClick={() => scrollToDate(today)} title="Gantt'ı bugüne kaydır" />
+          <div className="segmented" role="radiogroup" aria-label="Zaman ölçeği">
+            {(["day", "week", "month"] as Zoom[]).map((z) => (
+              <button key={z} role="radio" aria-checked={zoom === z} className={zoom === z ? "on" : ""} onClick={() => setZoom(z)}>
+                {{ day: "Gün", week: "Hafta", month: "Ay" }[z]}
+              </button>
+            ))}
+          </div>
         </div>
       </nav>
 
@@ -587,18 +631,19 @@ export default function App() {
 
       <footer className="statusbar">
         <span>{leafCount} görev</span>
-        <span>Bitiş: {formatShort(schedule.finishDate)}</span>
-        <span>Süre: {schedule.finish} iş günü</span>
-        <span className="crit-legend">Kritik: {criticalCount}</span>
-        {schedule.cycle.length > 0 && <span className="warn">Döngüsel bağ var: kırmızı satırları kontrol edin</span>}
-        {message && (
-          <span className="toast" role="status">
-            {message}
-          </span>
-        )}
+        <span className="legend">
+          <i className="sw normal" /> Normal <i className="sw critical" /> Kritik yol <i className="sw summary" /> Özet
+          <i className="sw ms" /> Kilometre taşı
+        </span>
+        {schedule.cycle.length > 0 && <span className="warn">Döngüsel bağ var: işaretli satırları kontrol edin</span>}
         <span className="spacer" />
-        <span className="hint">Kayıt: tarayıcıda otomatik</span>
+        <span>{fileLink.fileName ? `Kayıt: ${fileLink.fileName} + tarayıcı` : "Kayıt: tarayıcıda otomatik"}</span>
       </footer>
+      {message && (
+        <div className="toast" role="status">
+          {message}
+        </div>
+      )}
     </div>
   );
 }
@@ -611,4 +656,50 @@ function safeFileName(name: string): string {
     .replace(/[çÇğĞıİöÖşŞüÜ]/g, (c) => TR_ASCII[c])
     .replace(/[^A-Za-z0-9_-]+/g, "_")
     .replace(/^_+|_+$/g, "");
+}
+
+function ToolButton(props: {
+  icon: IconName;
+  label?: string;
+  title: string;
+  onClick: () => void;
+  disabled?: boolean;
+  primary?: boolean;
+}) {
+  return (
+    <button
+      className={`tbtn ${props.primary ? "primary" : ""} ${props.label ? "" : "icon-only"}`}
+      onClick={props.onClick}
+      disabled={props.disabled}
+      title={props.title}
+      aria-label={props.label ? undefined : props.title}
+    >
+      <Icon name={props.icon} size={17} />
+      {props.label && <span>{props.label}</span>}
+    </button>
+  );
+}
+
+type Theme = "light" | "dark";
+
+/** Tema: kayıtlı seçim, yoksa sistem ayarı */
+function useTheme(): [Theme, (t: Theme) => void] {
+  const [theme, setTheme] = useState<Theme>(() => {
+    try {
+      const saved = localStorage.getItem("msproject.theme");
+      if (saved === "light" || saved === "dark") return saved;
+    } catch {
+      // depolama kapalı
+    }
+    return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  });
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    try {
+      localStorage.setItem("msproject.theme", theme);
+    } catch {
+      // depolama kapalı
+    }
+  }, [theme]);
+  return [theme, setTheme];
 }

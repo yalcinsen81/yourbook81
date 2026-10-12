@@ -28,7 +28,7 @@ interface Drag {
   dx: number;
 }
 
-const BAR_H = 14;
+const BAR_H = 16;
 const LINK_TURN = 8;
 
 export function Gantt(props: Props) {
@@ -118,6 +118,11 @@ export function Gantt(props: Props) {
               </div>
             ))}
           </div>
+          {todayX >= 0 && todayX <= width && (
+            <div className="today-pill" style={{ left: todayX + ppd / 2 }}>
+              Bugün
+            </div>
+          )}
           <div className="gh-bottom">
             {header.bottom.map((b) => (
               <div
@@ -175,8 +180,9 @@ export function Gantt(props: Props) {
               return (
                 <g key={r.task.id} className="summary-bar" onMouseDown={sel}>
                   <title>{tip}</title>
-                  <rect x={g.x1} y={top + 2} width={w} height={6} />
-                  <path d={`M${g.x1},${top + 8} l0,6 l5,-6 z M${g.x1 + w},${top + 8} l0,6 l-5,-6 z`} />
+                  <rect x={g.x1} y={g.y - 3} width={w} height={6} rx={3} />
+                  <rect x={g.x1} y={g.y - 7} width={3} height={12} rx={1.5} />
+                  <rect x={g.x1 + w - 3} y={g.y - 7} width={3} height={12} rx={1.5} />
                   <text x={g.x1 + w + 6} y={g.y + 4} className="bar-label">
                     {r.task.name}
                   </text>
@@ -213,9 +219,16 @@ export function Gantt(props: Props) {
                 }}
               >
                 <title>{tip}</title>
-                <rect x={g.x1} y={top} width={w} height={BAR_H} rx={2} className="bar" />
+                <rect x={g.x1} y={top} width={w} height={BAR_H} rx={4} className="bar" />
                 {r.task.percent > 0 && (
-                  <rect x={g.x1} y={top + BAR_H / 2 - 2} width={(w * r.task.percent) / 100} height={4} className="progress" />
+                  <rect
+                    x={g.x1}
+                    y={top}
+                    width={(w * r.task.percent) / 100}
+                    height={BAR_H}
+                    rx={4}
+                    className="progress"
+                  />
                 )}
                 <rect
                   x={g.x1 + w - 4}
