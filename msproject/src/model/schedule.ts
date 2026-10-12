@@ -1,4 +1,4 @@
-import { dateToWorkday, isValidDate, nextWorkday, workdayToDate } from "./calendar";
+import { isValidDate, WorkCalendar } from "./calendar";
 import { ancestorsOf, isSummaryAt, subtreeEnd } from "./outline";
 import type { LinkType, Project, Schedule, ScheduledTask, Task } from "./types";
 
@@ -16,7 +16,10 @@ interface Edge {
 
 export function schedule(project: Project): Schedule {
   const { tasks } = project;
-  const base = nextWorkday(isValidDate(project.start) ? project.start : "2026-01-05");
+  const cal = new WorkCalendar(
+    isValidDate(project.start) ? project.start : "2026-01-05",
+    (project.holidays ?? []).map((h) => h.date),
+  );
 
   const summary = new Set<string>();
   const leavesOf = new Map<string, string[]>();
@@ -80,7 +83,7 @@ export function schedule(project: Project): Schedule {
   for (const id of order) {
     const d = dur(id);
     const snet = taskById.get(id)!.startNoEarlierThan;
-    let start = snet && isValidDate(snet) ? Math.max(0, dateToWorkday(base, snet)) : 0;
+    let start = snet && isValidDate(snet) ? Math.max(0, cal.toOffset(snet)) : 0;
     for (const e of incoming.get(id)!) {
       const pes = es.get(e.from);
       const pef = ef.get(e.from);
@@ -122,8 +125,8 @@ export function schedule(project: Project): Schedule {
   }
 
   const toDates = (start: number, end: number) => {
-    const startDate = workdayToDate(base, start);
-    const finishDate = end > start ? workdayToDate(base, end - 1) : startDate;
+    const startDate = cal.toDate(start);
+    const finishDate = end > start ? cal.toDate(end - 1) : startDate;
     return { startDate, finishDate };
   };
 
@@ -171,7 +174,8 @@ export function schedule(project: Project): Schedule {
     rows,
     byId: new Map(rows.map((r) => [r.id, r])),
     finish,
-    finishDate: finish > 0 ? workdayToDate(base, finish - 1) : base,
+    finishDate: finish > 0 ? cal.toDate(finish - 1) : cal.base,
+    calendar: cal,
     cycle,
   };
 }

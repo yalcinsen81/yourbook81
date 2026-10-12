@@ -6,6 +6,7 @@ import { emptyProject, sampleProject } from "./model/sample";
 import { wouldCreateCycle } from "./model/schedule";
 import { newId, sanitizeProject } from "./model/storage";
 import type { Project, Task } from "./model/types";
+import { CalendarDialog } from "./components/CalendarDialog";
 import { Gantt } from "./components/Gantt";
 import { TaskGrid, GRID_WIDTH, type GridRow } from "./components/TaskGrid";
 import { PX_PER_DAY, type Zoom } from "./components/layout";
@@ -19,6 +20,7 @@ export default function App() {
   const [zoom, setZoom] = useState<Zoom>("day");
   const [gridWidth, setGridWidth] = useState(Math.min(GRID_WIDTH, 700));
   const [message, setMessage] = useState<string | null>(null);
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const gridRef = useRef<HTMLDivElement>(null);
   const ganttRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -47,6 +49,25 @@ export default function App() {
   }, [project.tasks, schedule, collapsed]);
 
   const cycle = useMemo(() => new Set(schedule.cycle), [schedule.cycle]);
+  const holidayMap = useMemo(() => new Map(project.holidays.map((h) => [h.date, h.name])), [project.holidays]);
+
+  // Gantt'ta sürükleme: taşıma "şundan önce başlamasın" kısıtı koyar (MS Project gibi), sağ uç süreyi değiştirir
+  const onDragTask = useCallback(
+    (id: string, mode: "move" | "resize", days: number) => {
+      const r = schedule.byId.get(id);
+      if (!r) return;
+      const cal = schedule.calendar;
+      if (mode === "move") {
+        const start = cal.nextWorkday(addDays(r.startDate, days));
+        update((p) => ({ ...p, tasks: p.tasks.map((t) => (t.id === id ? { ...t, startNoEarlierThan: start } : t)) }));
+      } else {
+        const finish = cal.prevWorkday(addDays(r.finishDate, days));
+        const duration = Math.max(1, cal.workdaysBetween(r.startDate, finish));
+        update((p) => ({ ...p, tasks: p.tasks.map((t) => (t.id === id ? { ...t, duration } : t)) }));
+      }
+    },
+    [schedule, update],
+  );
 
   // Zaman çizelgesi: proje başlangıcından önceki pazartesi, bitişten 3 hafta sonrası
   const timeline = useMemo(() => {
@@ -447,6 +468,9 @@ export default function App() {
               </button>
             ))}
           </div>
+          <button onClick={() => setCalendarOpen(true)} title="Tatil günlerini düzenle">
+            <span className="ico">📅</span>Takvim
+          </button>
           <button onClick={() => scrollToDate(today)} title="Gantt'ı bugüne kaydır">
             <span className="ico">◎</span>Bugün
           </button>
@@ -525,8 +549,19 @@ export default function App() {
           scrollRef={ganttRef}
           onScroll={syncScroll("gantt")}
           onSelect={onSelect}
+          holidays={holidayMap}
+          onDragTask={onDragTask}
         />
       </main>
+
+      {calendarOpen && (
+        <CalendarDialog
+          holidays={project.holidays}
+          projectStart={project.start}
+          onSave={(holidays) => update((p) => ({ ...p, holidays }))}
+          onClose={() => setCalendarOpen(false)}
+        />
+      )}
 
       <footer className="statusbar">
         <span>{leafCount} görev</span>

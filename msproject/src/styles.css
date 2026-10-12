@@ -375,6 +375,20 @@ button {
 .weekend-shade {
   fill: var(--weekend);
 }
+.holiday-shade {
+  fill: #fbe9d0;
+}
+.draggable {
+  cursor: grab;
+}
+.task-bar.dragging .bar {
+  opacity: 0.75;
+  stroke-dasharray: 3 2;
+}
+.resize-handle {
+  fill: transparent;
+  cursor: ew-resize;
+}
 .row-selected {
   fill: var(--select);
   opacity: 0.45;
@@ -407,9 +421,7 @@ button {
 .milestone.critical path {
   fill: var(--crit-dark);
 }
-.task-bar,
-.summary-bar,
-.milestone {
+.summary-bar {
   cursor: pointer;
 }
 .bar-label {
@@ -469,4 +481,102 @@ button {
 }
 .spacer {
   flex: 1;
+}
+
+/* Takvim penceresi */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+.modal {
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+  width: min(520px, calc(100vw - 32px));
+  max-height: calc(100vh - 64px);
+  display: flex;
+  flex-direction: column;
+}
+.modal h2 {
+  margin: 0;
+  padding: 14px 16px 4px;
+  font-size: 16px;
+}
+.modal .modal-note {
+  margin: 0;
+  padding: 0 16px 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.holiday-list {
+  overflow: auto;
+  border-block: 1px solid var(--line);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.holiday-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 16px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.holiday-list li .date {
+  width: 96px;
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+.holiday-list li .name {
+  flex: 1;
+}
+.holiday-list li button,
+.modal-actions button,
+.holiday-add button {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 3px;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+.holiday-list li button {
+  border-color: transparent;
+  color: var(--muted);
+}
+.holiday-list li button:hover {
+  color: var(--crit);
+}
+.holiday-add {
+  display: flex;
+  gap: 8px;
+  padding: 10px 16px;
+}
+.holiday-add input {
+  font: inherit;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 3px 6px;
+}
+.holiday-add input[type="text"] {
+  flex: 1;
+  min-width: 0;
+}
+.modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 10px 16px 14px;
+}
+.modal-actions .primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.modal-actions .left {
+  margin-inline-end: auto;
 }

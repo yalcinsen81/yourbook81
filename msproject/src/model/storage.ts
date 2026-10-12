@@ -1,5 +1,7 @@
 import { isValidDate } from "./calendar";
+import type { Holiday } from "./holidays";
 import { normalizeOutline } from "./outline";
+import { defaultHolidays } from "./sample";
 import type { LinkType, Predecessor, Project, Task } from "./types";
 
 const KEY = "msproject.project.v1";
@@ -35,7 +37,21 @@ export function sanitizeProject(raw: unknown): Project | null {
   // Var olmayan görevlere işaret eden öncülleri at
   const ids = new Set(tasks.map((t) => t.id));
   for (const t of tasks) t.predecessors = t.predecessors.filter((p) => ids.has(p.taskId) && p.taskId !== t.id);
-  return { name: typeof r.name === "string" ? r.name : "Proje", start: r.start, tasks: normalizeOutline(tasks) };
+  // Tatil listesi olmayan eski kayıtlara varsayılan Türkiye tatilleri eklenir
+  const holidays: Holiday[] = Array.isArray(r.holidays)
+    ? (r.holidays as unknown[]).flatMap((h) => {
+        const o = h as Record<string, unknown> | null;
+        return o && typeof o.date === "string" && isValidDate(o.date)
+          ? [{ date: o.date, name: typeof o.name === "string" ? o.name : "" }]
+          : [];
+      })
+    : defaultHolidays(r.start);
+  return {
+    name: typeof r.name === "string" ? r.name : "Proje",
+    start: r.start,
+    tasks: normalizeOutline(tasks),
+    holidays: holidays.sort((a, b) => a.date.localeCompare(b.date)),
+  };
 }
 
 function toPredecessor(raw: unknown): Predecessor[] {

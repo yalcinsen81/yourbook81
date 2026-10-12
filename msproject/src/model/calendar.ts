@@ -79,3 +79,83 @@ export function monthLabel(iso: string): string {
 export function dayOfWeekLetter(iso: string): string {
   return ["P", "P", "S", "Ç", "P", "C", "C"][parseDate(iso).getUTCDay()];
 }
+
+/**
+ * Tatil günlerini de bilen iş takvimi. Ofsetler `base`'den (ilk iş günü) sayılır.
+ * İş günleri ihtiyaç oldukça ileri/geri doğru önbelleğe eklenir.
+ */
+export class WorkCalendar {
+  readonly base: string;
+  private readonly off: Set<string>;
+  private readonly forward: string[];
+  private readonly backward: string[] = [""]; // backward[k] = base'den k iş günü önce (k >= 1)
+  private readonly index = new Map<string, number>();
+
+  constructor(start: string, holidays: Iterable<string> = []) {
+    this.off = new Set(holidays);
+    this.base = this.nextWorkday(start);
+    this.forward = [this.base];
+    this.index.set(this.base, 0);
+  }
+
+  isWorkday(iso: string): boolean {
+    return isWorkday(iso) && !this.off.has(iso);
+  }
+
+  isHoliday(iso: string): boolean {
+    return this.off.has(iso);
+  }
+
+  nextWorkday(iso: string): string {
+    let d = iso;
+    // 400 günden uzun tatil zinciri olamaz; sonsuz döngüye karşı sınır
+    for (let i = 0; i < 400 && !this.isWorkday(d); i++) d = addDays(d, 1);
+    return d;
+  }
+
+  prevWorkday(iso: string): string {
+    let d = iso;
+    for (let i = 0; i < 400 && !this.isWorkday(d); i++) d = addDays(d, -1);
+    return d;
+  }
+
+  toDate(offset: number): string {
+    if (offset >= 0) {
+      while (this.forward.length <= offset) {
+        const next = this.nextWorkday(addDays(this.forward[this.forward.length - 1], 1));
+        this.index.set(next, this.forward.length);
+        this.forward.push(next);
+      }
+      return this.forward[offset];
+    }
+    const k = -offset;
+    while (this.backward.length <= k) {
+      const last = this.backward.length === 1 ? this.base : this.backward[this.backward.length - 1];
+      const prev = this.prevWorkday(addDays(last, -1));
+      this.index.set(prev, -this.backward.length);
+      this.backward.push(prev);
+    }
+    return this.backward[k];
+  }
+
+  /** Tarihin ofseti; iş günü değilse sonraki iş gününe yuvarlanır. */
+  toOffset(iso: string): number {
+    const target = this.nextWorkday(iso);
+    const known = this.index.get(target);
+    if (known !== undefined) return known;
+    if (target > this.base) {
+      while (this.forward[this.forward.length - 1] < target) this.toDate(this.forward.length);
+    } else {
+      while ((this.backward.length === 1 ? this.base : this.backward[this.backward.length - 1]) > target) {
+        this.toDate(-this.backward.length);
+      }
+    }
+    return this.index.get(target)!;
+  }
+
+  /** `from`–`to` arasındaki (ikisi dahil) iş günü sayısı; `to` önceyse 0. */
+  workdaysBetween(from: string, to: string): number {
+    if (to < from) return 0;
+    return this.toOffset(addDays(to, 1)) - this.toOffset(from);
+  }
+}

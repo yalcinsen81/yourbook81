@@ -1,4 +1,4 @@
-import { useMemo, type MouseEvent, type RefObject, type UIEvent } from "react";
+import { useEffect, useMemo, useState, type MouseEvent, type RefObject, type UIEvent } from "react";
 import { addDays, diffDays, formatShort, isWorkday, monthLabel, parseDate } from "../model/calendar";
 import type { LinkType } from "../model/types";
 import { HEADER_H, PX_PER_DAY, ROW_H, type Zoom } from "./layout";
@@ -15,18 +15,64 @@ interface Props {
   scrollRef: RefObject<HTMLDivElement | null>;
   onScroll: (e: UIEvent<HTMLDivElement>) => void;
   onSelect: (id: string, e: MouseEvent) => void;
+  /** Tatil günleri (tarih → ad); hafta içine denk gelenler gölgelenir */
+  holidays: Map<string, string>;
+  /** Çubuk sürüklendi: taşıma ya da sağ uçtan süre değiştirme, takvim günü cinsinden */
+  onDragTask: (id: string, mode: "move" | "resize", days: number) => void;
+}
+
+interface Drag {
+  id: string;
+  mode: "move" | "resize";
+  startX: number;
+  dx: number;
 }
 
 const BAR_H = 14;
 const LINK_TURN = 8;
 
-export function Gantt({ rows, timelineStart, days, zoom, today, selection, scrollRef, onScroll, onSelect }: Props) {
+export function Gantt(props: Props) {
+  const { rows, timelineStart, days, zoom, today, selection, scrollRef, onScroll, onSelect, holidays, onDragTask } = props;
+  const [drag, setDrag] = useState<Drag | null>(null);
   const ppd = PX_PER_DAY[zoom];
   const width = days * ppd;
   const height = rows.length * ROW_H + ROW_H; // son satır: "yeni görev" satırı hizası
   const x = (iso: string) => diffDays(timelineStart, iso) * ppd;
 
-  const header = useMemo(() => buildHeader(timelineStart, days, zoom), [timelineStart, days, zoom]);
+  const header = useMemo(() => buildHeader(timelineStart, days, zoom, holidays), [timelineStart, days, zoom, holidays]);
+  const snap = drag ? Math.round(drag.dx / ppd) : 0;
+
+  // Sürükleme: fare bırakılınca gün farkı bildirilir; tıklama (0 gün) yalnızca seçimdir
+  useEffect(() => {
+    if (!drag) return;
+    const onMove = (e: globalThis.MouseEvent) => setDrag((d) => (d ? { ...d, dx: e.clientX - d.startX } : d));
+    const onUp = () => {
+      const moved = Math.round(drag.dx / ppd);
+      if (moved !== 0) onDragTask(drag.id, drag.mode, moved);
+      setDrag(null);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [drag, ppd, onDragTask]);
+
+  const startDrag = (id: string, mode: Drag["mode"], e: MouseEvent) => {
+    if (e.button !== 0 || e.shiftKey || e.ctrlKey || e.metaKey) return;
+    e.preventDefault();
+    setDrag({ id, mode, startX: e.clientX, dx: 0 });
+  };
+
+  const holidayDays = useMemo(() => {
+    const list: { i: number; name: string }[] = [];
+    for (const [date, name] of holidays) {
+      const i = diffDays(timelineStart, date);
+      if (i >= 0 && i < days && parseDate(date).getUTCDay() % 6 !== 0) list.push({ i, name });
+    }
+    return list;
+  }, [holidays, timelineStart, days]);
 
   // Çubuk geometrisi (görünür satır indeksine göre)
   const geo = new Map<string, { x1: number; x2: number; y: number; milestone: boolean }>();
@@ -35,6 +81,12 @@ export function Gantt({ rows, timelineStart, days, zoom, today, selection, scrol
     const x1 = x(r.sched.startDate);
     const milestone = r.sched.isMilestone;
     const x2 = milestone ? x1 : x(r.sched.finishDate) + ppd;
+    if (drag?.id === r.task.id) {
+      // Sürüklenen çubuğun önizlemesi
+      if (drag.mode === "move") geo.set(r.task.id, { x1: x1 + snap * ppd, x2: x2 + snap * ppd, y, milestone });
+      else geo.set(r.task.id, { x1, x2: Math.max(x1 + ppd, x2 + snap * ppd), y, milestone });
+      return;
+    }
     geo.set(r.task.id, { x1, x2, y, milestone });
   });
 
@@ -92,6 +144,11 @@ export function Gantt({ rows, timelineStart, days, zoom, today, selection, scrol
             header.weekends.map((w) => (
               <rect key={w} x={w * ppd} y={0} width={ppd * 2} height={height} className="weekend-shade" />
             ))}
+          {holidayDays.map((h) => (
+            <rect key={`h${h.i}`} x={h.i * ppd} y={0} width={Math.max(ppd, 2)} height={height} className="holiday-shade">
+              <title>{h.name}</title>
+            </rect>
+          ))}
           {rows.map((r, i) =>
             selection.has(r.task.id) ? (
               <rect key={`sel-${r.task.id}`} x={0} y={i * ROW_H} width={width} height={ROW_H} className="row-selected" />
@@ -129,7 +186,14 @@ export function Gantt({ rows, timelineStart, days, zoom, today, selection, scrol
             if (g.milestone) {
               const s = 7;
               return (
-                <g key={r.task.id} className={`milestone ${r.sched.critical ? "critical" : ""}`} onMouseDown={sel}>
+                <g
+                  key={r.task.id}
+                  className={`milestone draggable ${r.sched.critical ? "critical" : ""}`}
+                  onMouseDown={(e) => {
+                    sel(e);
+                    startDrag(r.task.id, "move", e);
+                  }}
+                >
                   <title>{tip}</title>
                   <path d={`M${g.x1},${g.y - s} L${g.x1 + s},${g.y} L${g.x1},${g.y + s} L${g.x1 - s},${g.y} z`} />
                   <text x={g.x1 + s + 5} y={g.y + 4} className="bar-label">
@@ -140,14 +204,37 @@ export function Gantt({ rows, timelineStart, days, zoom, today, selection, scrol
             }
             const w = Math.max(g.x2 - g.x1, 2);
             return (
-              <g key={r.task.id} className={`task-bar ${r.sched.critical ? "critical" : ""}`} onMouseDown={sel}>
+              <g
+                key={r.task.id}
+                className={`task-bar draggable ${r.sched.critical ? "critical" : ""} ${drag?.id === r.task.id ? "dragging" : ""}`}
+                onMouseDown={(e) => {
+                  sel(e);
+                  startDrag(r.task.id, "move", e);
+                }}
+              >
                 <title>{tip}</title>
                 <rect x={g.x1} y={top} width={w} height={BAR_H} rx={2} className="bar" />
                 {r.task.percent > 0 && (
                   <rect x={g.x1} y={top + BAR_H / 2 - 2} width={(w * r.task.percent) / 100} height={4} className="progress" />
                 )}
+                <rect
+                  x={g.x1 + w - 4}
+                  y={top}
+                  width={8}
+                  height={BAR_H}
+                  className="resize-handle"
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    sel(e);
+                    startDrag(r.task.id, "resize", e);
+                  }}
+                >
+                  <title>Süreyi değiştirmek için sürükleyin</title>
+                </rect>
                 <text x={g.x1 + w + 6} y={g.y + 4} className="bar-label">
-                  {r.task.name}
+                  {drag?.id === r.task.id && snap !== 0
+                    ? `${snap > 0 ? "+" : ""}${snap} gün`
+                    : r.task.name}
                 </text>
               </g>
             );
@@ -192,7 +279,7 @@ interface Band {
   weekend?: boolean;
 }
 
-function buildHeader(start: string, days: number, zoom: Zoom) {
+function buildHeader(start: string, days: number, zoom: Zoom, holidays: Map<string, string>) {
   const top: Band[] = [];
   const bottom: Band[] = [];
   const weekends: number[] = [];
@@ -218,7 +305,15 @@ function buildHeader(start: string, days: number, zoom: Zoom) {
     const d = parseDate(iso);
     if (d.getUTCDay() === 6) weekends.push(i);
     if (zoom === "day") {
-      bottom.push({ key: iso, start: i, span: 1, label: String(d.getUTCDate()), title: formatShort(iso), weekend: !isWorkday(iso) });
+      const holiday = holidays.get(iso);
+      bottom.push({
+        key: iso,
+        start: i,
+        span: 1,
+        label: String(d.getUTCDate()),
+        title: holiday ? `${formatShort(iso)} · ${holiday}` : formatShort(iso),
+        weekend: !isWorkday(iso) || !!holiday,
+      });
     } else if (zoom === "week" && d.getUTCDay() === 1) {
       bottom.push({ key: iso, start: i, span: 7, label: `${d.getUTCDate()}`, title: `Hafta: ${formatShort(iso)}` });
     } else if (zoom === "month" && d.getUTCDate() === 1) {

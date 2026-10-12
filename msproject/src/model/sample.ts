@@ -1,3 +1,4 @@
+import { turkishHolidays } from "./holidays";
 import type { LinkType, Project, Task } from "./types";
 
 // İlk açılışta gösterilen örnek proje: küçük bir konut inşaatı.
@@ -41,9 +42,15 @@ export function sampleProject(start: string): Project {
         return { taskId: ids[Number(m[1]) - 1], type: (m[2] ?? "FS") as LinkType, lag: Number(m[3] ?? 0) };
       }),
   }));
-  return { name: "Örnek: Konut İnşaatı", start, tasks };
+  return { name: "Örnek: Konut İnşaatı", start, tasks, holidays: defaultHolidays(start) };
 }
 
 export function emptyProject(start: string): Project {
-  return { name: "Yeni Proje", start, tasks: [] };
+  return { name: "Yeni Proje", start, tasks: [], holidays: defaultHolidays(start) };
+}
+
+/** Proje başlangıç yılından itibaren 4 yılın Türkiye resmî tatilleri */
+export function defaultHolidays(start: string) {
+  const y = Number(start.slice(0, 4));
+  return turkishHolidays(y, y + 3);
 }

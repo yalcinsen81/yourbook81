@@ -1,3 +1,6 @@
+import type { Holiday } from "./holidays";
+import type { WorkCalendar } from "./calendar";
+
 // Bağımlılık tipleri (MS Project ile aynı): Bitiş-Başlangıç, Başlangıç-Başlangıç, Bitiş-Bitiş, Başlangıç-Bitiş
 export type LinkType = "FS" | "SS" | "FF" | "SF";
 
@@ -27,6 +30,8 @@ export interface Project {
   /** Proje başlangıç tarihi (YYYY-MM-DD). */
   start: string;
   tasks: Task[];
+  /** Çalışılmayan günler (resmî tatil vb.); hafta sonları zaten tatildir. */
+  holidays: Holiday[];
 }
 
 /** Hesaplanmış satır: zamanlama motorunun her görev için ürettiği sonuç. */
@@ -57,6 +62,8 @@ export interface Schedule {
   /** Projenin bitiş ofseti (hariç). */
   finish: number;
   finishDate: string;
+  /** Bu zamanlamada kullanılan iş takvimi (tatiller dahil). */
+  calendar: WorkCalendar;
   /** Döngüye giren görevlerin kimlikleri; boşsa döngü yok. */
   cycle: string[];
 }

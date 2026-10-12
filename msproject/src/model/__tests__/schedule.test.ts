@@ -14,7 +14,12 @@ const t = (id: string, duration: number, preds: string[] = [], outline = 0, extr
   }),
   ...extra,
 });
-const project = (tasks: Task[]): Project => ({ name: "p", start: "2026-10-12", tasks });
+const project = (tasks: Task[], holidays: string[] = []): Project => ({
+  name: "p",
+  start: "2026-10-12",
+  tasks,
+  holidays: holidays.map((date) => ({ date, name: "" })),
+});
 
 describe("zamanlama", () => {
   it("FS zincirini hafta sonunu atlayarak dizer", () => {
@@ -85,5 +90,13 @@ describe("zamanlama", () => {
     expect(wouldCreateCycle(p, "a", "b")).toBe(true);
     expect(wouldCreateCycle(p, "s1", "S")).toBe(true);
     expect(wouldCreateCycle(p, "s1", "b")).toBe(false);
+  });
+
+  it("tatil günlerini atlar", () => {
+    // 29 Ekim 2026 perşembe tatil
+    const s = schedule(project([t("a", 5), t("b", 1, ["a"])], ["2026-10-29"]));
+    expect(s.byId.get("a")!.finishDate).toBe("2026-10-16");
+    const s2 = schedule(project([t("a", 14)], ["2026-10-29"]));
+    expect(s2.byId.get("a")!.finishDate).toBe("2026-10-30");
   });
 });
