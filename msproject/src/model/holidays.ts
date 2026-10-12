@@ -37,5 +37,8 @@ export function turkishHolidays(fromYear: number, toYear: number): Holiday[] {
       list.push({ date: new Date(d0 + i * 86_400_000).toISOString().slice(0, 10), name: `${name} ${i + 1}. gün` });
     }
   }
-  return list.sort((a, b) => a.date.localeCompare(b.date));
+  // Aynı güne denk gelen tatiller tek satırda birleşir (ör. 19 Mayıs 2027 Kurban Bayramı'na denk gelir)
+  const byDate = new Map<string, string>();
+  for (const h of list) byDate.set(h.date, byDate.has(h.date) ? `${byDate.get(h.date)} / ${h.name}` : h.name);
+  return [...byDate].map(([date, name]) => ({ date, name })).sort((a, b) => a.date.localeCompare(b.date));
 }

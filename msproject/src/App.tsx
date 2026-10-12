@@ -4,6 +4,7 @@ import { ancestorsOf, indent, isSummaryAt, move, normalizeOutline, outdent, subt
 import { formatPredecessors, parsePredecessors } from "./model/predecessors";
 import { emptyProject, sampleProject } from "./model/sample";
 import { wouldCreateCycle } from "./model/schedule";
+import { parseMspXml, toMspXml } from "./model/mspXml";
 import { newId, sanitizeProject } from "./model/storage";
 import type { Project, Task } from "./model/types";
 import { CalendarDialog } from "./components/CalendarDialog";
@@ -288,25 +289,43 @@ export default function App() {
   };
 
   // --- Dosya ---
-  const exportJson = () => {
-    const blob = new Blob([JSON.stringify(project, null, 2)], { type: "application/json" });
+  const download = (content: string, type: string, ext: string) => {
     const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `${project.name.replace(/[^\p{L}\p{N}_-]+/gu, "_") || "proje"}.json`;
+    a.href = URL.createObjectURL(new Blob([content], { type }));
+    a.download = `${safeFileName(project.name) || "proje"}.${ext}`;
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(a.href);
+    a.remove();
+    // İndirme başlamadan bağlantı iptal edilmesin
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   };
+  const exportJson = () => download(JSON.stringify(project, null, 2), "application/json", "json");
+  const exportMsp = () => download(toMspXml(project, schedule), "application/xml", "xml");
 
-  const importJson = async (file: File) => {
+  const openFile = async (file: File) => {
+    const content = await file.text();
+    const isXml = /\.xml$/i.test(file.name) || content.trimStart().startsWith("<");
     try {
-      const parsed = sanitizeProject(JSON.parse(await file.text()));
+      let parsed: Project | null;
+      let warnings: string[] = [];
+      if (isXml) {
+        ({ project: parsed, warnings } = parseMspXml(content));
+        parsed = sanitizeProject(parsed);
+      } else {
+        parsed = sanitizeProject(JSON.parse(content));
+      }
       if (!parsed) throw new Error();
-      update(() => parsed);
+      const opened = parsed;
+      update(() => opened);
       setSelection(new Set());
       setCollapsed(new Set());
-      flash(`"${parsed.name}" açıldı (${parsed.tasks.length} görev).`);
-    } catch {
-      flash("Dosya okunamadı: geçerli bir proje JSON dosyası değil.");
+      flash([`"${opened.name}" açıldı (${opened.tasks.length} görev).`, ...warnings].join(" "));
+    } catch (e) {
+      flash(
+        isXml
+          ? `MS Project dosyası okunamadı${e instanceof Error && e.message ? `: ${e.message}` : "."} MS Project'te "XML Biçimi" ile kaydedin.`
+          : "Dosya okunamadı: geçerli bir proje dosyası değil.",
+      );
     }
   };
 
@@ -373,9 +392,9 @@ export default function App() {
 
   useEffect(() => {
     scrollToDate(project.start);
-    // Yalnızca ilk açılışta ve ölçek değişince
+    // İlk açılışta, ölçek ya da proje başlangıcı değişince (ör. dosya açılınca)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [zoom]);
+  }, [zoom, project.start]);
 
   // --- Bölücü sürükleme ---
   const startResize = (e: MouseEvent) => {
@@ -489,8 +508,11 @@ export default function App() {
           <button onClick={() => newProject(false)} title="Boş proje">
             <span className="ico">▢</span>Yeni
           </button>
-          <button onClick={() => fileRef.current?.click()} title="JSON proje dosyası aç">
+          <button onClick={() => fileRef.current?.click()} title="Proje dosyası aç: bu uygulamanın .json dosyası ya da MS Project'ten XML olarak kaydedilmiş .xml">
             <span className="ico">📂</span>Aç
+          </button>
+          <button onClick={exportMsp} title="MS Project'te açılabilen XML dosyası indir">
+            <span className="ico">⇪</span>MS Project'e
           </button>
           <button onClick={exportJson} title="Projeyi JSON olarak indir">
             <span className="ico">⤓</span>Kaydet
@@ -501,11 +523,11 @@ export default function App() {
           <input
             ref={fileRef}
             type="file"
-            accept="application/json,.json"
+            accept="application/json,.json,application/xml,text/xml,.xml"
             hidden
             onChange={(e) => {
               const f = e.target.files?.[0];
-              if (f) void importJson(f);
+              if (f) void openFile(f);
               e.target.value = "";
             }}
           />
@@ -579,4 +601,14 @@ export default function App() {
       </footer>
     </div>
   );
+}
+
+const TR_ASCII: Record<string, string> = { ç: "c", Ç: "C", ğ: "g", Ğ: "G", ı: "i", İ: "I", ö: "o", Ö: "O", ş: "s", Ş: "S", ü: "u", Ü: "U" };
+
+/** Dosya adı: Türkçe harfler ASCII'ye çevrilir (bazı tarayıcılar ASCII olmayan adı "download" yapıyor) */
+function safeFileName(name: string): string {
+  return name
+    .replace(/[çÇğĞıİöÖşŞüÜ]/g, (c) => TR_ASCII[c])
+    .replace(/[^A-Za-z0-9_-]+/g, "_")
+    .replace(/^_+|_+$/g, "");
 }
