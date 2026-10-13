@@ -21,6 +21,9 @@ import {
   type Resource,
   type ResourceType,
   type Task,
+  type TaskColor,
+  type TaskLink,
+  TASK_COLORS,
 } from "./types";
 
 const KEY = "msproject.project.v1";
@@ -67,6 +70,11 @@ export function sanitizeProject(raw: unknown): Project | null {
       costAccrual: ACCRUALS.includes(t.costAccrual as CostAccrual) && t.costAccrual !== "prorated" ? (t.costAccrual as CostAccrual) : undefined,
       blackouts: Array.isArray(t.blackouts) ? (t.blackouts as unknown[]).filter((b): b is string => typeof b === "string") : undefined,
       levelingDelay: typeof t.levelingDelay === "number" && t.levelingDelay > 0 ? clampInt(t.levelingDelay, 0, 10_000) : undefined,
+      actualCost: typeof t.actualCost === "number" && Number.isFinite(t.actualCost) && t.actualCost >= 0 ? t.actualCost : undefined,
+      notes: typeof t.notes === "string" && t.notes.trim() ? t.notes.slice(0, 20_000) : undefined,
+      links: toLinks(t.links),
+      tags: toTags(t.tags),
+      color: TASK_COLORS.includes(t.color as TaskColor) ? (t.color as TaskColor) : undefined,
     };
     for (const [k, v] of Object.entries(optional)) if (v !== undefined && !(Array.isArray(v) && !v.length)) (task as unknown as Record<string, unknown>)[k] = v;
     tasks.push(task);
@@ -164,7 +172,8 @@ export function needsUpgradeBackup(raw: unknown): boolean {
  * Sürüm yükseltme. Sürüm alanı olmayan dosyalar 1. sürümdür: pazartesi–cuma çalışılır, tatil listesi olduğu gibi
  * kalır (kullanıcının tatillerine dokunulmaz). İlerleme ağırlığı yoksa maliyettir. Sürüm 3: para birimi yoksa TRY;
  * hazır tatillere kaynak anahtarı verilir (bkz. tagBuiltinHolidays). Sürüm 4: "şundan önce başlamasın" alanı SNET
- * kısıtına çevrilir; diğer yeni alanlar isteğe bağlıdır, yoksa önceki davranış sürer.
+ * kısıtına çevrilir; diğer yeni alanlar isteğe bağlıdır, yoksa önceki davranış sürer. Sürüm 5: not, bağlantı,
+ * etiket, renk ve gerçekleşen maliyet isteğe bağlı alanlardır; dönüştürülecek eski alan yoktur.
  */
 function migrate(r: Record<string, unknown>): Pick<Project, "version" | "workdays" | "progressWeight" | "currency"> {
   return {
@@ -198,6 +207,46 @@ function toAssignment(raw: unknown): Assignment[] {
   // Malzeme miktarı küsuratlı olabilir (iki basamak)
   const n = typeof a.units === "number" && Number.isFinite(a.units) ? a.units : 100;
   return [{ resourceId: a.resourceId, units: Math.min(1_000_000, Math.max(0.01, Math.round(n * 100) / 100)) }];
+}
+
+/** Güvenli bağlantı adresi: http(s), mailto, file; başka şema (ör. javascript:) atılır */
+export function safeUrl(raw: unknown): string | undefined {
+  if (typeof raw !== "string") return undefined;
+  const s = raw.trim();
+  if (!s || s.length > 2000) return undefined;
+  if (/^(https?:|mailto:|file:)/i.test(s)) return s;
+  // Şemasız yazılan alan adı (ör. www.ornek.com/plan.pdf)
+  if (/^[\w-]+(\.[\w-]+)+(\/|$)/.test(s)) return `https://${s}`;
+  return undefined;
+}
+
+function toLinks(raw: unknown): TaskLink[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const out = raw.flatMap((x) => {
+    const o = x as Record<string, unknown> | null;
+    const url = safeUrl(o?.url);
+    if (!o || !url) return [];
+    const title = typeof o.title === "string" && o.title.trim() ? o.title.trim().slice(0, 200) : undefined;
+    return [title ? { url, title } : { url }];
+  });
+  return out.length ? out.slice(0, 50) : undefined;
+}
+
+/** Etiketler: kırpılır, tekrarsız, en çok 20 tane, 32 karakter */
+export function toTags(raw: unknown): string[] | undefined {
+  const list = Array.isArray(raw) ? raw : typeof raw === "string" ? raw.split(/[,;]/) : [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const x of list) {
+    if (typeof x !== "string") continue;
+    const tag = x.trim().replace(/\s+/g, " ").slice(0, 32);
+    // Türkçe I/İ farkı yinelenen etiket sayılmasın
+    const key = tag.toLocaleLowerCase("tr").replace(/ı/g, "i");
+    if (!tag || seen.has(key)) continue;
+    seen.add(key);
+    out.push(tag);
+  }
+  return out.length ? out.slice(0, 20) : undefined;
 }
 
 function toConstraint(raw: unknown): Constraint | undefined {
@@ -273,6 +322,16 @@ export function loadProject(): Project | null {
     return raw ? sanitizeProject(JSON.parse(raw)) : null;
   } catch {
     return null;
+  }
+}
+
+/** Tarayıcıdaki kayıt var ama okunamıyor mu (açılışta kurtarma önerilir) */
+export function storedProjectCorrupt(): boolean {
+  try {
+    const raw = localStorage.getItem(KEY);
+    return !!raw && !sanitizeProject(JSON.parse(raw));
+  } catch {
+    return true;
   }
 }
 

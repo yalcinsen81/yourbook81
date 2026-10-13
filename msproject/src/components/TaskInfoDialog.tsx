@@ -4,8 +4,8 @@ import type { Variance } from "../model/baseline";
 import { formatShort } from "../model/calendar";
 import { taskCostBreakdown } from "../model/costs";
 import { constraintOf, OpError, withActualFinish, withActualStart, withPercent, withRemaining } from "../model/ops";
-import { CONSTRAINT_TYPES } from "../model/storage";
-import type { ConstraintType, CostAccrual, Project, Schedule, Task } from "../model/types";
+import { CONSTRAINT_TYPES, safeUrl, toTags } from "../model/storage";
+import { TASK_COLORS, type ConstraintType, type CostAccrual, type Project, type Schedule, type Task, type TaskColor, type TaskLink } from "../model/types";
 import { DateInput } from "./DateInput";
 
 interface Props {
@@ -39,6 +39,13 @@ export function TaskInfoDialog({ project, schedule, taskId, baseline, issues, on
   const [accrual, setAccrual] = useState<CostAccrual>(task.costAccrual ?? "prorated");
   const [blackouts, setBlackouts] = useState<Set<string>>(new Set(task.blackouts ?? []));
   const [clearDelay, setClearDelay] = useState(false);
+  const [actualCost, setActualCost] = useState(task.actualCost !== undefined ? formatNumber(task.actualCost, 2) : "");
+  const [notes, setNotes] = useState(task.notes ?? "");
+  const [links, setLinks] = useState<TaskLink[]>(task.links ?? []);
+  const [linkUrl, setLinkUrl] = useState("");
+  const [linkTitle, setLinkTitle] = useState("");
+  const [tags, setTags] = useState((task.tags ?? []).join(", "));
+  const [color, setColor] = useState<TaskColor | undefined>(task.color);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -83,7 +90,25 @@ export function TaskInfoDialog({ project, schedule, taskId, baseline, issues, on
         if (ids.length) next.blackouts = ids;
         else delete next.blackouts;
         if (clearDelay) delete next.levelingDelay;
+        const ac = actualCost.trim() ? parseNumberLocal(actualCost) : null;
+        if (actualCost.trim() && (ac === null || ac < 0)) throw new OpError(t("err.actualCost"));
+        if (ac !== null) next.actualCost = ac;
+        else delete next.actualCost;
       }
+      // Not, bağlantı, etiket, renk özet görevlerde de tutulur
+      if (notes.trim()) next.notes = notes.slice(0, 20_000);
+      else delete next.notes;
+      // Eklenmemiş ama yazılmış bağlantı da kaydedilir
+      const pending = linkUrl.trim() ? safeUrl(linkUrl) : null;
+      if (linkUrl.trim() && !pending) throw new OpError(t("err.linkUrl"));
+      const allLinks = pending ? [...links, linkTitle.trim() ? { url: pending, title: linkTitle.trim() } : { url: pending }] : links;
+      if (allLinks.length) next.links = allLinks;
+      else delete next.links;
+      const tagList = toTags(tags);
+      if (tagList) next.tags = tagList;
+      else delete next.tags;
+      if (color) next.color = color;
+      else delete next.color;
       onSave(next);
       onClose();
     } catch (e) {
@@ -221,6 +246,11 @@ export function TaskInfoDialog({ project, schedule, taskId, baseline, issues, on
                     ))}
                   </select>
                 </label>
+                <label className="field">
+                  <span>{t("info.actualCost")}</span>
+                  <input value={actualCost} inputMode="decimal" placeholder={t("info.actualCostEmpty")} onChange={(e) => setActualCost(e.target.value)} />
+                  <small>{t("info.actualCostHint")}</small>
+                </label>
               </div>
               <dl className="cost-breakdown">
                 {(["labor", "equipment", "material", "fixed", "overhead"] as const).map((k) =>
@@ -262,6 +292,68 @@ export function TaskInfoDialog({ project, schedule, taskId, baseline, issues, on
               {!project.blackouts?.length && <small className="hint">{t("info.noPeriods")}</small>}
             </fieldset>
           )}
+
+          <fieldset className="setting">
+            <legend>{t("info.notesLinks")}</legend>
+            <label className="field">
+              <span>{t("info.notes")}</span>
+              <textarea value={notes} rows={4} maxLength={20_000} onChange={(e) => setNotes(e.target.value)} />
+            </label>
+            <div className="field">
+              <span>{t("info.links")}</span>
+              {links.length > 0 && (
+                <ul className="link-list">
+                  {links.map((l, i) => (
+                    <li key={`${l.url}-${i}`}>
+                      <a href={l.url} target="_blank" rel="noopener noreferrer">
+                        {l.title || l.url}
+                      </a>
+                      <button type="button" className="link-btn" onClick={() => setLinks(links.filter((_, k) => k !== i))} aria-label={t("info.removeLink", { name: l.title || l.url })}>
+                        {t("info.clear")}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="field-row">
+                <input value={linkUrl} placeholder={t("info.linkUrl")} aria-label={t("info.linkUrl")} onChange={(e) => setLinkUrl(e.target.value)} />
+                <input value={linkTitle} placeholder={t("info.linkTitle")} aria-label={t("info.linkTitle")} onChange={(e) => setLinkTitle(e.target.value)} />
+                <button
+                  type="button"
+                  disabled={!linkUrl.trim()}
+                  onClick={() => {
+                    const url = safeUrl(linkUrl);
+                    if (!url) {
+                      setError(t("err.linkUrl"));
+                      return;
+                    }
+                    setError(null);
+                    setLinks([...links, linkTitle.trim() ? { url, title: linkTitle.trim() } : { url }]);
+                    setLinkUrl("");
+                    setLinkTitle("");
+                  }}
+                >
+                  {t("common.add")}
+                </button>
+              </div>
+              <small>{t("info.linksHint")}</small>
+            </div>
+            <div className="field-row">
+              <label className="field">
+                <span>{t("info.tags")}</span>
+                <input value={tags} placeholder={t("info.tagsPlaceholder")} onChange={(e) => setTags(e.target.value)} />
+              </label>
+              <div className="field">
+                <span id="color-label">{t("info.color")}</span>
+                <div className="swatches" role="radiogroup" aria-labelledby="color-label">
+                  <button type="button" role="radio" aria-checked={!color} className={`swatch none ${!color ? "on" : ""}`} onClick={() => setColor(undefined)} title={t("color.none")} aria-label={t("color.none")} />
+                  {TASK_COLORS.map((c) => (
+                    <button key={c} type="button" role="radio" aria-checked={color === c} className={`swatch tc-${c} ${color === c ? "on" : ""}`} onClick={() => setColor(c)} title={t(`color.${c}`)} aria-label={t(`color.${c}`)} />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </fieldset>
 
           {baseline && (
             <fieldset className="setting">

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { formatDate, nextWorkday } from "./model/calendar";
 import { sampleProject } from "./model/sample";
 import { schedule } from "./model/schedule";
-import { loadProject, saveProject } from "./model/storage";
+import { loadProject, saveProject, storedProjectCorrupt } from "./model/storage";
 import { initHistory, push, redo as redoStep, undo as undoStep, type History } from "./model/history";
 import type { Project } from "./model/types";
 
@@ -13,6 +13,8 @@ export function todayIso(): string {
 
 /** Proje durumu: geri al / yinele geçmişi ve localStorage'a otomatik kayıt. */
 export function useProject() {
+  // Bozuk kayıt örnek projeyle değişmeden önce fark edilir; uygulama kurtarma penceresini açar
+  const [startedCorrupt] = useState(storedProjectCorrupt);
   const [history, setHistory] = useState<History<Project>>(() => initHistory(loadProject() ?? sampleProject(nextWorkday(todayIso()))));
   const project = history.present;
 
@@ -34,6 +36,7 @@ export function useProject() {
 
   return {
     project,
+    startedCorrupt,
     schedule: sched,
     update,
     undo,

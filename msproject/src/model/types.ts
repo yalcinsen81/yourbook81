@@ -55,7 +55,25 @@ export interface Task {
   blackouts?: string[];
   /** Seviyeleme gecikmesi (görevin iş günü cinsinden); kaynak seviyelemesi yazar */
   levelingDelay?: number;
+  /** Gerçekleşen maliyet (kazanılmış değerde AC); yoksa AC = EV sayılır */
+  actualCost?: number;
+  /** Serbest not */
+  notes?: string;
+  /** Bağlantı ekleri (web adresi ya da paylaşılan dosya adresi) */
+  links?: TaskLink[];
+  /** Etiketler (filtre için) */
+  tags?: string[];
+  /** Satır ve çubuk rengi */
+  color?: TaskColor;
 }
+
+export interface TaskLink {
+  url: string;
+  title?: string;
+}
+
+export const TASK_COLORS = ["red", "orange", "yellow", "green", "teal", "blue", "purple", "gray"] as const;
+export type TaskColor = (typeof TASK_COLORS)[number];
 
 /** Çalışılamayan dönem (ör. kışın dış işler durur); yalnızca seçildiği görevlere uygulanır. */
 export interface Blackout {
@@ -112,8 +130,9 @@ export type ProgressWeight = "cost" | "work" | "duration";
  * 3: para birimi ve hazır tatillerin kaynak anahtarı (ad seçili dilde gösterilir) eklendi.
  * 4: kısıtlar, son tarih, gerçekleşen tarihler, referans planlar, kaynak takvimi/türü, maliyet kalemleri,
  *    çalışılamayan dönemler, yarım gün seçeneği. `startNoEarlierThan` → `constraint: SNET`.
+ * 5: görev notu, bağlantılar, etiketler, renk ve gerçekleşen maliyet (hepsi isteğe bağlı).
  */
-export const PROJECT_VERSION = 4;
+export const PROJECT_VERSION = 5;
 
 /** Referans plan (baseline): kaydedildiği andaki tarihler, süre ve maliyet */
 export interface Baseline {

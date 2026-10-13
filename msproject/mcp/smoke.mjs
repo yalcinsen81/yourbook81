@@ -79,5 +79,25 @@ console.log({ v5, levelOptions: lev.options?.map((o) => o.strategy), afterLevel,
 if (v5.finishVarianceDays <= 0 || lev.options?.length !== 3 || !afterLevel.startsWith("Aşırı yüklü kaynak yok") || !cyc.isError || res2.find((r) => r.name === "Beton").type !== "material") {
   throw new Error("Faz 2B sonucu beklenen gibi değil");
 }
+// Faz 2C: not/etiket/renk/bağlantı/AC, EVM, raporlar, şablon, içe aktarma
+await call("update_task", { row: 2, percent: 100, actual_cost: 12000, notes: "Belediye onayı alındı", tags: "resmi, Resmi; izin", color: "green", links: [{ url: "www.ornek.com/ruhsat.pdf", title: "Ruhsat" }] });
+const badLink = await client.callTool({ name: "update_task", arguments: { row: 2, links: [{ url: "javascript:alert(1)" }] } });
+const t2 = JSON.parse(readFileSync(file, "utf8")).tasks[1];
+const evm = JSON.parse(await call("get_earned_value", { today: "2026-11-20", baseline: 1 }));
+const cash = JSON.parse(await call("get_report", { kind: "cashflow", period: "month", today: "2026-11-20" }));
+await call("export_report", { kind: "tasks", path: join(dir, "gorevler.csv") });
+await call("export_report", { kind: "cashflow", path: join(dir, "nakit.xlsx") });
+const xlsx = readFileSync(join(dir, "nakit.xlsx"));
+console.log({ tags: t2.tags, color: t2.color, link: t2.links?.[0], evm: { pv: evm.pv, ev: evm.ev, ac: evm.ac, cpi: evm.cpi }, cashRows: cash.rows.length });
+if (t2.tags?.join() !== "resmi,izin" || t2.color !== "green" || t2.links?.[0].url !== "https://www.ornek.com/ruhsat.pdf" || t2.actualCost !== 12000 || !badLink.isError ||
+  evm.ac < 12000 || evm.pvSource !== "baseline" || !cash.rows.length || xlsx[0] !== 0x50 || !readFileSync(join(dir, "gorevler.csv"), "utf8").includes("Ruhsat")) {
+  throw new Error("Faz 2C sonucu beklenen gibi değil");
+}
+await call("import_tasks", { path: join(dir, "gorevler.csv") });
+const afterImport = JSON.parse(readFileSync(file, "utf8")).tasks.length;
+await call("new_from_template", { template: "fitout", name: "Ofis", start: "2027-01-04" });
+const tpl = JSON.parse(await call("get_project_summary"));
+console.log({ afterImport, template: { name: tpl.name, tasks: tpl.tasks, finish: tpl.finish } });
+if (afterImport <= 5 || tpl.name !== "Ofis" || !tpl.tasks) throw new Error("Şablon / içe aktarma beklenen gibi değil");
 console.log("Tamam:", file);
 await client.close();

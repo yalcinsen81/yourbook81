@@ -36,6 +36,13 @@ const PATHS = {
   duplicate: "M8 8h12v12H8zM4 16V4h12M14 11v6M11 14h6",
   flag: "M5 21V4M5 4h11l-2 4 2 4H5",
   level: "M4 20h16M7 16V9M12 16V5M17 16v-4M4 9h6M14 12h6",
+  search: "M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4",
+  columns: "M4 5h16v14H4zM10 5v14M15 5v14",
+  report: "M6 3h9l4 4v14H6zM9 17v-4M12 17v-7M15 17v-2",
+  help: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6M12 17h.01",
+  menu: "M4 7h16M4 12h16M4 17h16",
+  image: "M4 5h16v14H4zM4 16l5-5 4 4 3-3 4 4M15 9h.01",
+  clock: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2",
   crosshair: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 3v4M12 17v4M3 12h4M17 12h4",
 } as const;
 

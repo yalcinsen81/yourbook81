@@ -113,3 +113,31 @@ describe("MS Project XML: çalışma haftası ve yarım günler", () => {
     expect(back.workdays).toEqual([1, 2, 3, 4, 5, 6]);
   });
 });
+
+describe("MS Project XML gidiş-dönüş (Faz 2C)", () => {
+  it("referans proje: tarih, maliyet, referans plan, not, bağlantı ve gerçekleşen maliyet korunur", async () => {
+    const { referenceProject } = await import("./fixtures/reference");
+    const { saveBaseline } = await import("../baseline");
+    const { progressCurves } = await import("../resources");
+    const base = referenceProject();
+    let p = saveBaseline(base, schedule(base), 0, "2026-11-01", "İlk plan");
+    p = {
+      ...p,
+      tasks: p.tasks.map((x, i) =>
+        i === 0
+          ? { ...x, percent: 100, actualStart: "2026-11-02", actualFinish: "2026-11-13", actualCost: 90_000, notes: "Zemin raporu & ek <1>", links: [{ url: "https://ornek.com/plan.pdf", title: "Plan" }] }
+          : x,
+      ),
+    };
+    const s = schedule(p);
+    const back = parseMspXml(toMspXml(p, s)).project;
+    const s2 = schedule(back);
+    expect(s2.finishDate).toBe("2027-03-01");
+    expect(s2.rows.map((r) => [r.startDate, r.finishDate])).toEqual(s.rows.map((r) => [r.startDate, r.finishDate]));
+    expect(progressCurves(back, s2, "2026-11-01").totalCost).toBe(635_000);
+    expect(back.tasks[0]).toMatchObject({ percent: 100, actualCost: 90_000, notes: "Zemin raporu & ek <1>", links: [{ url: "https://ornek.com/plan.pdf", title: "Plan" }] });
+    expect(back.baselines?.[0].tasks[back.tasks[5].id].finish).toBe("2027-03-01");
+    // İkinci tur aynı XML'i üretir
+    expect(toMspXml(back, s2).replace(/<Name>[^<]*<\/Name>/, "")).toBe(toMspXml({ ...p, tasks: p.tasks.map((x, i) => ({ ...x, id: back.tasks[i].id, predecessors: back.tasks[i].predecessors })) , baselines: back.baselines }, s).replace(/<Name>[^<]*<\/Name>/, ""));
+  });
+});

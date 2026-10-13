@@ -8,7 +8,7 @@ import { cloneRows, insertRows, moveBlockTo } from "../outline";
 import { progressCurves, resourceUsage } from "../resources";
 import { schedule } from "../schedule";
 import { fileVersion, needsUpgradeBackup, sanitizeProject } from "../storage";
-import type { LinkType, Project, Resource, Task } from "../types";
+import { PROJECT_VERSION, type LinkType, type Project, type Resource, type Task } from "../types";
 import { REFERENCE_DATES, referenceProject } from "./fixtures/reference";
 
 const t = (id: string, duration: number, preds: string[] = [], extra: Partial<Task> = {}): Task => ({
@@ -54,7 +54,7 @@ describe("referans proje (regresyon, Faz 2B)", () => {
     const raw = JSON.parse(JSON.stringify({ ...referenceProject(), version: 3 }));
     expect(needsUpgradeBackup(raw)).toBe(true);
     const p = sanitizeProject(raw)!;
-    expect(p.version).toBe(4);
+    expect(p.version).toBe(PROJECT_VERSION);
     expect(schedule(p).finishDate).toBe("2027-03-01");
     expect(projectSummary(p, "2026-10-13").totalCost).toBe(635_000);
   });

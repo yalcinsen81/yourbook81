@@ -389,7 +389,7 @@ export function Gantt(props: Props) {
             return (
               <g
                 key={r.task.id}
-                className={`task-bar draggable ${r.sched.critical ? "critical" : ""} ${drag?.id === r.task.id ? "dragging" : ""} ${r.issues.length ? "issue" : ""}`}
+                className={`task-bar draggable ${r.sched.critical ? "critical" : ""} ${drag?.id === r.task.id ? "dragging" : ""} ${r.issues.length ? "issue" : ""} ${r.task.color ? `tc-${r.task.color}` : ""} ${r.warnings.some((w) => w.kind === "late") ? "late" : ""}`}
                 onMouseDown={(e) => {
                   sel(e);
                   startDrag(r.task.id, "move", e);

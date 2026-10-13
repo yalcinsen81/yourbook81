@@ -1,4 +1,4 @@
-import { useEffect, useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { t } from "../i18n";
 
 interface Props {
@@ -21,6 +21,8 @@ export function EditableCell({ value, onCommit, type = "text", readOnly, row, co
   const [draft, setDraft] = useState(value);
   const [focused, setFocused] = useState(false);
   const [invalid, setInvalid] = useState(false);
+  // Esc ile vazgeçilince odak kaybı eski taslağı kaydetmeye çalışmasın
+  const cancelled = useRef(false);
 
   useEffect(() => {
     if (!focused) {
@@ -44,6 +46,7 @@ export function EditableCell({ value, onCommit, type = "text", readOnly, row, co
       e.preventDefault();
       if (commit()) focusCell(row + (e.shiftKey ? -1 : 1), col);
     } else if (e.key === "Escape") {
+      cancelled.current = true;
       setDraft(value);
       setInvalid(false);
       e.currentTarget.blur();
@@ -75,7 +78,8 @@ export function EditableCell({ value, onCommit, type = "text", readOnly, row, co
         if (type === "text") e.currentTarget.select();
       }}
       onBlur={() => {
-        commit();
+        if (!cancelled.current) commit();
+        cancelled.current = false;
         setFocused(false);
       }}
       onKeyDown={onKeyDown}

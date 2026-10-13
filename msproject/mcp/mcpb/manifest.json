@@ -2,17 +2,22 @@
   "manifest_version": "0.3",
   "name": "proje-planlayici",
   "display_name": "Proje Planlayıcı",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "MS Project benzeri iş programını Claude'a bağlar: görev, bağ, tatil, kaynak, aşırı yük, S eğrisi ve MS Project XML.",
   "long_description": "Proje Planlayıcı uygulamasının proje dosyasını (proje.json) okur ve düzenler. Uygulamada 'Dosyaya bağla' ile aynı dosya açıkken Claude'un yaptığı değişiklikler ekranda anında görünür.",
-  "author": { "name": "yalcinsen81" },
+  "author": {
+    "name": "yalcinsen81"
+  },
   "icon": "icon.png",
   "server": {
     "type": "node",
     "entry_point": "server/index.mjs",
     "mcp_config": {
       "command": "node",
-      "args": ["${__dirname}/server/index.mjs", "${user_config.project_file}"]
+      "args": [
+        "${__dirname}/server/index.mjs",
+        "${user_config.project_file}"
+      ]
     }
   },
   "user_config": {
@@ -25,29 +30,131 @@
     }
   },
   "tools": [
-    { "name": "get_project_summary", "description": "Proje özeti: bitiş, süre, ilerleme, maliyet, aşırı yüklü kaynaklar" },
-    { "name": "get_tasks", "description": "Zamanlanmış görev listesi" },
-    { "name": "add_task", "description": "Görev ekle" },
-    { "name": "update_task", "description": "Görevi güncelle" },
-    { "name": "delete_task", "description": "Görevi sil" },
-    { "name": "indent_task", "description": "Girinti" },
-    { "name": "link_tasks", "description": "Görevleri bağla" },
-    { "name": "unlink_tasks", "description": "Bağı kaldır" },
-    { "name": "set_project", "description": "Proje adı ve başlangıcı" },
-    { "name": "list_resources", "description": "Kaynaklar, yük ve aşırı yük" },
-    { "name": "set_resource", "description": "Kaynak ekle / güncelle" },
-    { "name": "delete_resource", "description": "Kaynağı sil" },
-    { "name": "get_progress_curve", "description": "S eğrisi ve maliyet eğrisi" },
-    { "name": "list_holidays", "description": "Tatilleri listele" },
-    { "name": "set_holiday", "description": "Tatil ekle / kaldır (yarım gün dahil)" },
-    { "name": "add_turkish_holidays", "description": "Seçilen Türkiye tatillerini ekle" },
-    { "name": "set_calendar", "description": "Çalışma günleri ve ilerleme ağırlığı" },
-    { "name": "export_msproject_xml", "description": "MS Project XML olarak kaydet" }
+    {
+      "name": "get_project_summary",
+      "description": "Proje özeti: bitiş, süre, ilerleme, maliyet, aşırı yüklü kaynaklar"
+    },
+    {
+      "name": "get_tasks",
+      "description": "Zamanlanmış görev listesi"
+    },
+    {
+      "name": "add_task",
+      "description": "Görev ekle"
+    },
+    {
+      "name": "update_task",
+      "description": "Görevi güncelle"
+    },
+    {
+      "name": "delete_task",
+      "description": "Görevi sil"
+    },
+    {
+      "name": "indent_task",
+      "description": "Girinti"
+    },
+    {
+      "name": "link_tasks",
+      "description": "Görevleri bağla"
+    },
+    {
+      "name": "unlink_tasks",
+      "description": "Bağı kaldır"
+    },
+    {
+      "name": "set_project",
+      "description": "Proje adı ve başlangıcı"
+    },
+    {
+      "name": "list_resources",
+      "description": "Kaynaklar, yük ve aşırı yük"
+    },
+    {
+      "name": "set_resource",
+      "description": "Kaynak ekle / güncelle"
+    },
+    {
+      "name": "delete_resource",
+      "description": "Kaynağı sil"
+    },
+    {
+      "name": "get_progress_curve",
+      "description": "S eğrisi ve maliyet eğrisi"
+    },
+    {
+      "name": "list_holidays",
+      "description": "Tatilleri listele"
+    },
+    {
+      "name": "set_holiday",
+      "description": "Tatil ekle / kaldır (yarım gün dahil)"
+    },
+    {
+      "name": "add_turkish_holidays",
+      "description": "Seçilen Türkiye tatillerini ekle"
+    },
+    {
+      "name": "set_calendar",
+      "description": "Çalışma günleri ve ilerleme ağırlığı"
+    },
+    {
+      "name": "export_msproject_xml",
+      "description": "MS Project XML olarak kaydet"
+    },
+    {
+      "name": "set_blackout",
+      "description": "Çalışılamayan dönem"
+    },
+    {
+      "name": "save_baseline",
+      "description": "Referans plan kaydet"
+    },
+    {
+      "name": "get_baseline_variance",
+      "description": "Referans plana göre sapma"
+    },
+    {
+      "name": "level_resources",
+      "description": "Kaynak seviyeleme"
+    },
+    {
+      "name": "get_earned_value",
+      "description": "Kazanılmış değer (EVM)"
+    },
+    {
+      "name": "get_report",
+      "description": "Rapor (S eğrisi, kritik yol, nakit akışı …)"
+    },
+    {
+      "name": "export_report",
+      "description": "Raporu CSV / Excel olarak kaydet"
+    },
+    {
+      "name": "new_from_template",
+      "description": "Hazır şablondan yeni proje"
+    },
+    {
+      "name": "import_tasks",
+      "description": "CSV / Excel'den görev al"
+    }
   ],
-  "keywords": ["proje", "gantt", "ms project", "planlama", "kaynak"],
+  "keywords": [
+    "proje",
+    "gantt",
+    "ms project",
+    "planlama",
+    "kaynak"
+  ],
   "license": "UNLICENSED",
   "compatibility": {
-    "platforms": ["win32", "darwin", "linux"],
-    "runtimes": { "node": ">=18.0.0" }
+    "platforms": [
+      "win32",
+      "darwin",
+      "linux"
+    ],
+    "runtimes": {
+      "node": ">=18.0.0"
+    }
   }
 }

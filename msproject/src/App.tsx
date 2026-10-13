@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type UIEvent } from "react";
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type UIEvent } from "react";
 import { addDays, diffDays, formatShort, isValidDate, nextWorkday, parseDate } from "./model/calendar";
 import { ancestorsOf, blockIndexes, cloneRows, dropAncestorLinks, indent, insertRows, isSummaryAt, move, moveBlockTo, normalizeOutline, outdent, subtreeEnd, wbsCodes } from "./model/outline";
 import { formatPredecessors, parsePredecessors } from "./model/predecessors";
 import { emptyProject, sampleProject } from "./model/sample";
 import { wouldCreateCycle } from "./model/schedule";
 import { parseMspXml, toMspXml } from "./model/mspXml";
-import { newId, normalizeCurrency, sanitizeProject } from "./model/storage";
+import { needsUpgradeBackup, newId, normalizeCurrency, sanitizeProject } from "./model/storage";
 import type { Project, Task } from "./model/types";
 import { CalendarDialog } from "./components/CalendarDialog";
 import { Gantt } from "./components/Gantt";
@@ -31,12 +31,29 @@ import { useLocale } from "./i18n/react";
 import { holidayLabel } from "./model/holidays";
 import { parseDuration } from "./model/duration";
 import { anchoredScroll, clampPpd, fitPpd, MAX_PPD, scaleFor, ZOOM_STEP } from "./model/timescale";
-import { loadView, saveView, viewKey } from "./settings";
+import { addBackup, addTemplate, loadSettings, loadView, saveHiddenColumns, saveView, takeSnapshot, viewKey } from "./settings";
+import { downloadBlob, fileNameFor } from "./download";
+import { addRecent, loadRecents, removeRecent, type RecentFile } from "./handleStore";
+import { HelpDialog, type HelpTopic } from "./components/HelpDialog";
+import { RecoveryDialog } from "./components/RecoveryDialog";
+import { PromptDialog } from "./components/PromptDialog";
+import { FilterBar } from "./components/FilterBar";
+import { Menu, MenuItem } from "./components/Menu";
+import { DEFAULT_HIDDEN, gridWidthFor } from "./components/TaskGrid";
+import { applyTemplate, projectToTemplate } from "./model/templates";
+import { DEFAULT_VIEW, isViewActive, visibleOrder, type ViewOptions } from "./model/view";
+import { allWarnings } from "./model/validation";
+import { serializeProject } from "./useFileLink";
 
-type View = "gantt" | "resources" | "charts";
+// Raporlar, Gantt dışa aktarma ve içe aktarma ayrı parçada yüklenir (ilk açılış hafif kalsın; çevrimdışı önbellekte de vardır)
+const ReportsView = lazy(() => import("./components/ReportsView").then((m) => ({ default: m.ReportsView })));
+const GanttExportDialog = lazy(() => import("./components/GanttExportDialog").then((m) => ({ default: m.GanttExportDialog })));
+const ImportDialog = lazy(() => import("./components/ImportDialog").then((m) => ({ default: m.ImportDialog })));
+
+type View = "gantt" | "resources" | "charts" | "reports";
 
 export default function App() {
-  const { project, schedule, update, undo, redo, canUndo, canRedo } = useProject();
+  const { project, schedule, update, undo, redo, canUndo, canRedo, startedCorrupt } = useProject();
   // Dil ya da tarih biçimi değişince yeniden çizilir; metin üreten useMemo'lar buna bağlıdır
   const loc = useLocale();
   // Para birimi proje ayarıdır; biçimleyiciler her çizimde güncel projeninkini kullanır
@@ -59,6 +76,20 @@ export default function App() {
   const [infoId, setInfoId] = useState<string | null>(null);
   const [baselineOpen, setBaselineOpen] = useState(false);
   const [levelOpen, setLevelOpen] = useState(false);
+  const [help, setHelp] = useState<HelpTopic | null>(null);
+  const [gexportOpen, setGexportOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  // Kurtarma penceresi; bozuk dosya / kayıt açılırken hata açıklamasıyla
+  const [recovery, setRecovery] = useState<{ problem?: { name: string; detail: string } } | null>(() =>
+    startedCorrupt ? { problem: { name: t("recovery.browserStore"), detail: "" } } : null,
+  );
+  const [saveTplOpen, setSaveTplOpen] = useState(false);
+  const [fileMenu, setFileMenu] = useState(false);
+  const [recents, setRecents] = useState<RecentFile[]>([]);
+  const [setupTemplate, setSetupTemplate] = useState("");
+  const [viewOpts, setViewOpts] = useState<Omit<ViewOptions, "today">>(DEFAULT_VIEW);
+  const [hiddenCols, setHiddenCols] = useState<Set<string>>(() => new Set(loadSettings().hiddenColumns ?? DEFAULT_HIDDEN));
+  const searchRef = useRef<HTMLInputElement>(null);
   // Gantt'ta gösterilen referans plan (-1 = yok); proje açılınca ilk referans plan seçilir
   const [shownBaseline, setShownBaseline] = useState(() => project.baselines?.[0]?.index ?? -1);
   // Kopyalanan satırlar (alt ağaçlarıyla, uygulama içi pano)
@@ -77,15 +108,40 @@ export default function App() {
     flashTimer.current = window.setTimeout(() => setMessage(null), 4000);
   }, []);
 
+  // Proje bütünüyle değişmeden önce mevcut hali kurtarma noktası olur (yanlışlıkla başka dosya açılsa da geri dönülür)
+  const projectRef = useRef(project);
+  projectRef.current = project;
+  const snapshotNow = useCallback(() => {
+    const cur = projectRef.current;
+    takeSnapshot(cur.name, cur.tasks.length, serializeProject(cur), new Date(), true);
+  }, []);
   const replaceProject = useCallback(
     (p: Project) => {
+      snapshotNow();
       update(() => p);
       setSelection(new Set());
       setLoadToken((n) => n + 1);
     },
-    [update],
+    [snapshotNow, update],
   );
-  const fileLink = useFileLink(project, replaceProject, flash);
+  const onInvalidFile = useCallback((name: string, detail: string) => setRecovery({ problem: { name, detail } }), []);
+  const fileLink = useFileLink(project, replaceProject, flash, onInvalidFile);
+
+  // Son dosyalar: bağlanan dosya listeye girer (tutamacıyla); liste açılışta okunur
+  useEffect(() => {
+    void loadRecents().then(setRecents);
+  }, []);
+  useEffect(() => {
+    if (!fileLink.handle || !fileLink.fileName) return;
+    const cur = projectRef.current;
+    void addRecent({ name: fileLink.fileName, at: new Date().toISOString(), projectName: cur.name, text: serializeProject(cur), handle: fileLink.handle }).then(setRecents);
+  }, [fileLink.handle, fileLink.fileName]);
+
+  // Otomatik kurtarma noktası: değişiklikten 2 sn sonra, en çok dakikada bir (son 8)
+  useEffect(() => {
+    const timer = window.setTimeout(() => takeSnapshot(project.name, project.tasks.length, serializeProject(project)), 2000);
+    return () => window.clearTimeout(timer);
+  }, [project]);
 
   const usage = useMemo(() => resourceUsage(project, schedule), [project, schedule]);
   const overTasks = useMemo(() => overallocatedTasks(usage), [usage]);
@@ -101,7 +157,11 @@ export default function App() {
     [baseline, project, schedule],
   );
 
-  // Görünür satırlar: kapalı özetlerin altları gizlenir
+  const taskWarns = useMemo(() => allWarnings(project, schedule, today), [project, schedule, today, loc]); // eslint-disable-line react-hooks/exhaustive-deps
+  const lateCount = useMemo(() => [...taskWarns.values()].filter((w) => w.some((x) => x.kind === "late")).length, [taskWarns]);
+  const viewActive = isViewActive(viewOpts);
+
+  // Görünür satırlar: arama / süzgeç / sıralama, sonra kapalı özetlerin altları gizlenir
   const rows: GridRow[] = useMemo(() => {
     const wbs = wbsCodes(project.tasks);
     const anc = ancestorsOf(project.tasks);
@@ -112,24 +172,26 @@ export default function App() {
     );
     const issues = new Map<string, string[]>();
     for (const is of schedule.issues) issues.set(is.taskId, [...(issues.get(is.taskId) ?? []), issueText(project, schedule, is)]);
-    return project.tasks
-      .map((task, i) => ({
-        task,
+    const order = viewActive ? visibleOrder(project, schedule, { ...viewOpts, today }, cost, wbs) : project.tasks.map((_, i) => i);
+    return order
+      .map((i) => ({
+        task: project.tasks[i],
         sched: schedule.rows[i],
         wbs: wbs[i],
-        predText: formatPredecessors(task.predecessors, project.tasks),
-        resText: schedule.rows[i].isSummary ? "" : formatAssignments(task.assignments, project.resources),
-        overallocated: overTasks.has(task.id),
+        predText: formatPredecessors(project.tasks[i].predecessors, project.tasks),
+        resText: schedule.rows[i].isSummary ? "" : formatAssignments(project.tasks[i].assignments, project.resources),
+        overallocated: overTasks.has(project.tasks[i].id),
         noCost: noCostRows.has(i + 1),
         cost: cost[i],
-        collapsed: collapsed.has(task.id),
-        issues: issues.get(task.id) ?? [],
-        variance: variance.get(task.id)?.finish,
+        collapsed: collapsed.has(project.tasks[i].id),
+        issues: issues.get(project.tasks[i].id) ?? [],
+        variance: variance.get(project.tasks[i].id)?.finish,
+        warnings: taskWarns.get(project.tasks[i].id) ?? [],
       }))
       .filter((r) => !(anc.get(r.task.id) ?? []).some((a) => collapsed.has(a)));
     // loc: öncül metnindeki gecikme birimi (g / d) dile bağlı
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [project, schedule, collapsed, overTasks, noCostRows, variance, loc]);
+  }, [project, schedule, collapsed, overTasks, noCostRows, variance, loc, taskWarns, viewActive, viewOpts, today]);
 
   const cycle = useMemo(() => new Set(schedule.cycle), [schedule.cycle]);
   // Hazır tatillerin adı seçili dilde; kullanıcının girdiği ad olduğu gibi
@@ -210,6 +272,28 @@ export default function App() {
       setAnchor(id);
     },
     [anchor, rows, selection],
+  );
+
+  // Klavyeyle hücreye gelinince satır seçilir (seçimin içindeyse seçim korunur)
+  const onFocusRow = useCallback(
+    (id: string) => {
+      setSelection((sel) => (sel.has(id) ? sel : new Set([id])));
+      setAnchor((a) => (selection.has(id) ? a : id));
+    },
+    [selection],
+  );
+  // Shift+↑/↓: bağlantı noktasından yeni satıra kadar seçili
+  const onExtend = useCallback(
+    (id: string, dir: 1 | -1) => {
+      const ids = rows.map((r) => r.task.id);
+      const at = ids.indexOf(id) + dir;
+      if (at < 0 || at >= ids.length) return;
+      const from = ids.indexOf(anchor ?? id);
+      const [a, b] = [from < 0 ? at - dir : from, at].sort((x, y) => x - y);
+      setSelection(new Set(ids.slice(a, b + 1)));
+      if (!anchor || from < 0) setAnchor(id);
+    },
+    [anchor, rows],
   );
 
   // --- Görev işlemleri ---
@@ -404,7 +488,7 @@ export default function App() {
     // 5, 5g, 5d (iş günü) · 2w (hafta) · 4h (saat, güne yukarı yuvarlanır)
     const parsed = parseDuration(text, workdays.length);
     if (!parsed) {
-      flash(t("err.duration"));
+      flash(/^\s*[-−]/.test(text) ? t("valid.negativeDuration") : t("err.duration"));
       return false;
     }
     if (parsed.hours !== undefined) flash(t("msg.hoursRounded", { hours: formatNumber(parsed.hours), days: String(parsed.days) }));
@@ -418,6 +502,11 @@ export default function App() {
       return true;
     }
     if (!isValidDate(iso)) return false;
+    // Proje başlangıcından önceki tarih kısıt olamaz (görev zaten proje başında başlar)
+    if (iso < project.start) {
+      flash(t("valid.startBeforeProject", { date: formatShort(iso), start: formatShort(project.start) }));
+      return false;
+    }
     patchTask(id, { constraint: { type: "SNET", date: iso } });
     return true;
   };
@@ -468,24 +557,24 @@ export default function App() {
   };
 
   // --- Dosya ---
-  const downloadAs = (content: string, type: string, fileName: string) => {
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(new Blob([content], { type }));
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    // İndirme başlamadan bağlantı iptal edilmesin
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  };
-  const download = (content: string, type: string, ext: string) =>
-    downloadAs(content, type, `${safeFileName(project.name) || t("default.fileName")}.${ext}`);
-  const exportJson = () => download(JSON.stringify(project, null, 2), "application/json", "json");
+  const downloadAs = (content: string, type: string, fileName: string) => downloadBlob(new Blob([content], { type }), fileName);
+  const download = (content: string, type: string, ext: string) => downloadAs(content, type, fileNameFor([project.name], ext));
+  const exportJson = () => download(serializeProject(project), "application/json", "json");
   const exportMsp = () => download(toMspXml(project, schedule), "application/xml", "xml");
 
-  const openFile = async (file: File) => {
-    const content = await file.text();
-    const isXml = /\.xml$/i.test(file.name) || content.trimStart().startsWith("<");
+  const loadOpened = (opened: Project, fileName: string, warnings: string[] = []) => {
+    snapshotNow();
+    update(() => opened);
+    setSelection(new Set());
+    setCollapsed(new Set());
+    setLoadToken((n) => n + 1);
+    flash([t("msg.opened", { name: opened.name, n: opened.tasks.length }), ...warnings].join(" "));
+    void addRecent({ name: fileName, at: new Date().toISOString(), projectName: opened.name, text: serializeProject(opened) }).then(setRecents);
+  };
+
+  /** Metinden proje: MS Project XML ya da JSON; bozuksa kurtarma penceresi açılır */
+  const openText = (content: string, fileName: string) => {
+    const isXml = /\.xml$/i.test(fileName) || content.trimStart().startsWith("<");
     try {
       let parsed: Project | null;
       let warnings: string[] = [];
@@ -493,31 +582,50 @@ export default function App() {
         ({ project: parsed, warnings } = parseMspXml(content));
         parsed = sanitizeProject(parsed);
       } else {
-        parsed = sanitizeProject(JSON.parse(content));
+        const raw = JSON.parse(content);
+        parsed = sanitizeProject(raw);
+        // Eski sürümlü dosyanın özgün metni yedeklenir (Kurtarma > yükseltme yedekleri)
+        if (parsed && needsUpgradeBackup(raw)) addBackup(fileName, content);
       }
-      if (!parsed) throw new Error();
-      const opened = parsed;
-      update(() => opened);
-      setSelection(new Set());
-      setCollapsed(new Set());
-      setLoadToken((n) => n + 1);
-      flash([t("msg.opened", { name: opened.name, n: opened.tasks.length }), ...warnings].join(" "));
+      if (!parsed) throw new Error(t("recovery.notProject"));
+      loadOpened(parsed, fileName, warnings);
     } catch (e) {
-      flash(
-        isXml
-          ? t("msg.xmlFailed", { detail: e instanceof Error && e.message ? `: ${e.message}` : "." })
-          : t("msg.fileInvalid"),
-      );
+      if (isXml) flash(t("msg.xmlFailed", { detail: e instanceof Error && e.message ? `: ${e.message}` : "." }));
+      else setRecovery({ problem: { name: fileName, detail: e instanceof Error ? e.message : String(e) } });
     }
   };
 
-  const newProject = (sample: boolean) => {
+  const openFile = async (file: File) => openText(await file.text(), file.name);
+
+  const openRecent = async (r: RecentFile, index: number) => {
+    setFileMenu(false);
+    // Tutamaç varsa dosyaya yeniden bağlanılır; izin yoksa ya da dosya silinmişse son kopya açılır
+    if (r.handle && (await fileLink.openHandle(r.handle))) return;
+    if (r.text) {
+      openText(r.text, r.name);
+      if (r.handle) flash(t("file.recentCopy", { name: r.name }));
+    } else {
+      setRecents(await removeRecent(index));
+      flash(t("file.recentMissing", { name: r.name }));
+    }
+  };
+
+  const saveAs = () => {
+    setFileMenu(false);
+    if (fileLinkSupported) void fileLink.linkNew();
+    else exportJson();
+  };
+
+  const newProject = (sample: boolean, template = "") => {
+    setFileMenu(false);
     // Boş proje: takvim (çalışma günleri, tatiller) ve ilerleme ağırlığı kullanıcıya sorulur
     if (!sample) {
+      setSetupTemplate(template);
       setSetupOpen(true);
       return;
     }
     if (!window.confirm(t("msg.confirmSample"))) return;
+    snapshotNow();
     update(() => sampleProject(nextWorkday(today)));
     setSelection(new Set());
     setCollapsed(new Set());
@@ -648,9 +756,22 @@ export default function App() {
   // --- Klavye kısayolları (MS Project'tekilere yakın) ---
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const editing = (e.target as HTMLElement).tagName === "INPUT";
+      const tag = (e.target as HTMLElement).tagName;
+      const editing = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
       const mod = e.ctrlKey || e.metaKey;
-      if (mod && e.key.toLowerCase() === "z" && !e.shiftKey && !editing) {
+      // Açık pencere varsa kısayollar pencereye aittir
+      if (document.querySelector(".modal-backdrop:not([hidden]), .print-overlay")) return;
+      if (e.key === "F1" || (e.key === "?" && !editing)) {
+        e.preventDefault();
+        setHelp("keys");
+      } else if (mod && e.key.toLowerCase() === "f" && view === "gantt") {
+        e.preventDefault();
+        searchRef.current?.focus();
+        searchRef.current?.select();
+      } else if (mod && e.key.toLowerCase() === "p" && view === "gantt") {
+        e.preventDefault();
+        setGexportOpen(true);
+      } else if (mod && e.key.toLowerCase() === "z" && !e.shiftKey && !editing) {
         e.preventDefault();
         undo();
       } else if (mod && (e.key.toLowerCase() === "y" || (e.key.toLowerCase() === "z" && e.shiftKey)) && !editing) {
@@ -679,7 +800,7 @@ export default function App() {
       } else if (e.key === "Insert") {
         e.preventDefault();
         insertTask();
-      } else if (e.key === "Delete" && !editing) {
+      } else if (e.key === "Delete" && (!editing || mod)) {
         e.preventDefault();
         deleteSelected();
       } else if (mod && e.key === "F2") {
@@ -708,11 +829,14 @@ export default function App() {
   }, [copySelected, deleteSelected, duplicateSelected, fitProject, insertTask, linkSelected, pasteRows, primary, project.start, project.tasks, redo, schedule.finishDate, scrollToDate, shiftOutline, undo, view, zoomTo]);
 
   // --- Bölücü sürükleme ---
+  // Tablo genişliği görünen sütunlardan fazla olamaz (sütun gizlenince Gantt genişler)
+  const maxGridWidth = gridWidthFor(hiddenCols, !!baseline) + 2;
+  const shownGridWidth = Math.min(gridWidth, maxGridWidth);
   const startResize = (e: MouseEvent) => {
     const startX = e.clientX;
-    const startW = gridWidth;
+    const startW = shownGridWidth;
     const onMove = (ev: globalThis.MouseEvent) =>
-      setGridWidth(Math.max(200, Math.min(GRID_WIDTH + 2, startW + ev.clientX - startX, window.innerWidth - 120)));
+      setGridWidth(Math.max(200, Math.min(maxGridWidth, startW + ev.clientX - startX, window.innerWidth - 120)));
     const onUp = () => {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
@@ -833,6 +957,9 @@ export default function App() {
             )}
           </div>
         )}
+        <button className="icon-btn" onClick={() => setHelp("keys")} title={t("help.button")} aria-label={t("help.title")}>
+          <Icon name="help" />
+        </button>
         <button className="icon-btn" onClick={() => setSettingsOpen(true)} title={t("settings.button")} aria-label={t("settings.title")}>
           <Icon name="gear" />
         </button>
@@ -879,16 +1006,106 @@ export default function App() {
           <ToolButton icon="undo" onClick={undo} disabled={!canUndo} title={t("tb.undo")} />
           <ToolButton icon="redo" onClick={redo} disabled={!canRedo} title={t("tb.redo")} />
         </div>
-        <div className="tgroup">
-          <ToolButton icon="file" onClick={() => newProject(false)} title={t("setup.buttonTitle")} />
+        <div className="tgroup file-group">
+          <button className="tbtn" aria-haspopup="true" aria-expanded={fileMenu} onClick={() => setFileMenu((v) => !v)} title={t("file.menuTitle")}>
+            <Icon name="menu" size={17} />
+            <span>{t("file.menu")}</span>
+          </button>
+          {fileMenu && (
+            <Menu label={t("file.menu")} onClose={() => setFileMenu(false)} className="file-menu">
+              <MenuItem onClick={() => newProject(false)}>{t("file.new")}</MenuItem>
+              <MenuItem onClick={() => newProject(false, "b:konut")}>{t("file.fromTemplate")}</MenuItem>
+              <MenuItem
+                onClick={() => {
+                  setFileMenu(false);
+                  fileRef.current?.click();
+                }}
+              >
+                {t("file.open")}
+              </MenuItem>
+              {fileLinkSupported && (
+                <MenuItem
+                  onClick={() => {
+                    setFileMenu(false);
+                    void fileLink.linkExisting();
+                  }}
+                >
+                  {t("link.openExisting")}
+                </MenuItem>
+              )}
+              <MenuItem onClick={saveAs}>{fileLinkSupported ? t("file.saveAs") : t("file.saveAsDownload")}</MenuItem>
+              <MenuItem
+                onClick={() => {
+                  setFileMenu(false);
+                  setSaveTplOpen(true);
+                }}
+              >
+                {t("file.saveTemplate")}
+              </MenuItem>
+              <div className="menu-sep" role="separator" />
+              <div className="menu-label">{t("file.recent")}</div>
+              {recents.length ? (
+                recents.map((r, i) => (
+                  <MenuItem key={`${r.name}-${r.at}`} onClick={() => void openRecent(r, i)} title={`${r.projectName} · ${new Date(r.at).toLocaleString()}`}>
+                    {r.name} <small>{r.projectName}</small>
+                  </MenuItem>
+                ))
+              ) : (
+                <div className="menu-empty">{t("file.noRecent")}</div>
+              )}
+              <div className="menu-sep" role="separator" />
+              <MenuItem
+                onClick={() => {
+                  setFileMenu(false);
+                  setImportOpen(true);
+                }}
+              >
+                {t("file.import")}
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
+                  setFileMenu(false);
+                  exportMsp();
+                }}
+              >
+                {t("tb.mspTitle")}
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
+                  setFileMenu(false);
+                  exportJson();
+                }}
+              >
+                {t("tb.json")}
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
+                  setFileMenu(false);
+                  setView("gantt");
+                  setGexportOpen(true);
+                }}
+                hint="Ctrl+P"
+              >
+                {t("file.ganttExport")}
+              </MenuItem>
+              <div className="menu-sep" role="separator" />
+              <MenuItem
+                onClick={() => {
+                  setFileMenu(false);
+                  setRecovery({});
+                }}
+              >
+                {t("file.recovery")}
+              </MenuItem>
+              <MenuItem onClick={() => newProject(true)}>{t("tb.sample")}</MenuItem>
+            </Menu>
+          )}
           <ToolButton icon="open" label={t("tb.open")} onClick={() => fileRef.current?.click()} title={t("tb.openTitle")} />
-          <ToolButton icon="share" label={t("tb.msp")} onClick={exportMsp} title={t("tb.mspTitle")} />
-          <ToolButton icon="download" onClick={exportJson} title={t("tb.json")} />
-          <ToolButton icon="sparkle" onClick={() => newProject(true)} title={t("tb.sample")} />
+          <ToolButton icon="image" onClick={() => setGexportOpen(true)} title={t("file.ganttExport")} />
           <input
             ref={fileRef}
             type="file"
-            accept="application/json,.json,application/xml,text/xml,.xml"
+            accept="application/json,.json,application/xml,text/xml,.xml,.bak"
             hidden
             onChange={(e) => {
               const f = e.target.files?.[0];
@@ -904,6 +1121,7 @@ export default function App() {
                 ["gantt", "gantt", "view.gantt"],
                 ["resources", "users", "view.resources"],
                 ["charts", "chart", "view.charts"],
+                ["reports", "report", "view.reports"],
               ] as [View, IconName, MessageKey][]
             ).map(([v, icon, label]) => (
               <button key={v} role="tab" aria-selected={view === v} className={view === v ? "on" : ""} onClick={() => setView(v)}>
@@ -955,8 +1173,37 @@ export default function App() {
           }}
         />
       )}
+      {view === "reports" && (
+        <Suspense fallback={<div className="lazy-loading">{t("common.loading")}</div>}>
+        <ReportsView
+          project={project}
+          schedule={schedule}
+          usage={usage}
+          curves={curves}
+          today={today}
+          baselineIndex={baseline ? baseline.index : -1}
+          onHelp={(topic) => setHelp(topic)}
+        />
+        </Suspense>
+      )}
+      {view === "gantt" && (
+        <FilterBar
+          project={project}
+          opts={viewOpts}
+          onChange={setViewOpts}
+          shown={rows.filter((r) => !r.sched.isSummary).length}
+          total={leafCount}
+          lateCount={lateCount}
+          hidden={hiddenCols}
+          onHidden={(h) => {
+            setHiddenCols(h);
+            saveHiddenColumns([...h]);
+          }}
+          searchRef={searchRef}
+        />
+      )}
       <main className="workspace" hidden={view !== "gantt"}>
-        <div style={{ width: gridWidth, flex: "none", display: "flex" }}>
+        <div style={{ width: shownGridWidth, flex: "none", display: "flex" }}>
           <TaskGrid
             rows={rows}
             selection={selection}
@@ -982,6 +1229,10 @@ export default function App() {
             onInfo={setInfoId}
             onMoveRow={onMoveRow}
             showVariance={!!baseline}
+            hidden={hiddenCols}
+            dragDisabled={viewActive}
+            onFocusRow={onFocusRow}
+            onExtend={onExtend}
           />
         </div>
         <div className="splitter" onMouseDown={startResize} role="separator" aria-orientation="vertical" aria-label={t("app.splitter")} />
@@ -1080,9 +1331,12 @@ export default function App() {
       {setupOpen && (
         <ProjectSetupDialog
           today={today}
+          initialTemplate={setupTemplate}
           onClose={() => setSetupOpen(false)}
-          onCreate={(setup) => {
-            update(() => emptyProject(setup.start, setup));
+          onCreate={(setup, template) => {
+            snapshotNow();
+            const base = emptyProject(setup.start, setup);
+            update(() => (template ? applyTemplate(base, template) : base));
             setSelection(new Set());
             setCollapsed(new Set());
             setSetupOpen(false);
@@ -1096,6 +1350,59 @@ export default function App() {
           onCurrency={(code) => update((p) => ({ ...p, currency: code.trim() ? normalizeCurrency(code) : code }))}
           download={(content, fileName) => downloadAs(content, "application/json", fileName)}
           onClose={() => setSettingsOpen(false)}
+        />
+      )}
+
+      {help && <HelpDialog topic={help} onClose={() => setHelp(null)} />}
+      {gexportOpen && (
+        <Suspense fallback={null}>
+        <GanttExportDialog
+          project={project}
+          schedule={schedule}
+          today={today}
+          baseline={baseline}
+          visible={rows.map((r) => r.sched.row - 1)}
+          flash={flash}
+          onClose={() => setGexportOpen(false)}
+        />
+        </Suspense>
+      )}
+      {importOpen && (
+        <Suspense fallback={null}>
+        <ImportDialog
+          project={project}
+          onClose={() => setImportOpen(false)}
+          onImport={(next, n) => {
+            update(() => next);
+            flash(t("import.done", { n }));
+          }}
+        />
+        </Suspense>
+      )}
+      {recovery && (
+        <RecoveryDialog
+          problem={recovery.problem}
+          onClose={() => setRecovery(null)}
+          onRestore={(p, label) => {
+            replaceProject(p);
+            setCollapsed(new Set());
+            flash(t("recovery.restored", { name: label }));
+          }}
+        />
+      )}
+      {saveTplOpen && (
+        <PromptDialog
+          title={t("tpl.saveTitle")}
+          label={t("tpl.name")}
+          note={t("tpl.saveNote")}
+          initial={project.name}
+          okLabel={t("common.save")}
+          onClose={() => setSaveTplOpen(false)}
+          onOk={(name) => {
+            const ok = addTemplate(projectToTemplate(project, name, today));
+            flash(ok ? t("tpl.saved", { name }) : t("tpl.saveFailed"));
+            setSaveTplOpen(false);
+          }}
         />
       )}
 
@@ -1115,6 +1422,18 @@ export default function App() {
             {t("status.issues", { n: schedule.issues.length })}
           </span>
         )}
+        {lateCount > 0 && (
+          <button
+            className="warn link-btn"
+            onClick={() => {
+              setView("gantt");
+              setViewOpts({ ...viewOpts, filter: "late" });
+            }}
+            title={t("status.lateTitle")}
+          >
+            {t("status.late", { n: lateCount })}
+          </button>
+        )}
         <span className="spacer" />
         <span className="save-state" title={fileLink.fileName ?? undefined}>
           {fileLink.fileName ? t("status.saveFile", { name: fileLink.fileName }) : t("status.saveBrowser")}
@@ -1127,16 +1446,6 @@ export default function App() {
       )}
     </div>
   );
-}
-
-const TR_ASCII: Record<string, string> = { ç: "c", Ç: "C", ğ: "g", Ğ: "G", ı: "i", İ: "I", ö: "o", Ö: "O", ş: "s", Ş: "S", ü: "u", Ü: "U" };
-
-/** Dosya adı: Türkçe harfler ASCII'ye çevrilir (bazı tarayıcılar ASCII olmayan adı "download" yapıyor) */
-function safeFileName(name: string): string {
-  return name
-    .replace(/[çÇğĞıİöÖşŞüÜ]/g, (c) => TR_ASCII[c])
-    .replace(/[^A-Za-z0-9_-]+/g, "_")
-    .replace(/^_+|_+$/g, "");
 }
 
 /** Yüzde: TR "%45", EN "45%" */

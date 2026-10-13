@@ -31,7 +31,13 @@ export function serializeProject(project: Project): string {
   return JSON.stringify(project, null, 2);
 }
 
-export function useFileLink(project: Project, replace: (p: Project) => void, notify: (text: string) => void) {
+export function useFileLink(
+  project: Project,
+  replace: (p: Project) => void,
+  notify: (text: string) => void,
+  /** Dosya okunamadı (bozuk JSON / proje değil): kurtarma önerilir */
+  onInvalid?: (name: string, detail: string) => void,
+) {
   const [handle, setHandle] = useState<FileHandle | null>(null);
   /** Önceki oturumdan hatırlanan, izni yenilenmeyi bekleyen dosya */
   const [pending, setPending] = useState<FileHandle | null>(null);
@@ -82,15 +88,38 @@ export function useFileLink(project: Project, replace: (p: Project) => void, not
   /** Var olan dosyayı aç ve bağla: dosyadaki proje yüklenir. */
   const linkExisting = useCallback(async () => {
     const w = window as PickerWindow;
+    let h: FileHandle | undefined;
     try {
-      const [h] = await w.showOpenFilePicker!({ types: pickerTypes(), multiple: false });
+      [h] = await w.showOpenFilePicker!({ types: pickerTypes(), multiple: false });
       if (h.requestPermission && (await h.requestPermission({ mode: "readwrite" })) !== "granted") return;
       await attach(h);
       notify(t("link.linked", { name: h.name }));
     } catch (e) {
-      if ((e as Error)?.name !== "AbortError") notify(t("link.openFailed"));
+      if ((e as Error)?.name === "AbortError") return;
+      if (h && onInvalid && (e instanceof SyntaxError || (e as Error)?.message === "invalid")) onInvalid(h.name, e instanceof SyntaxError ? e.message : "");
+      else notify(t("link.openFailed"));
     }
-  }, [attach, notify]);
+  }, [attach, notify, onInvalid]);
+
+  /** Son dosyalardan: hatırlanan tutamacı izin isteyip bağla (bağlı dosya değişir) */
+  const openHandle = useCallback(
+    async (raw: unknown): Promise<boolean> => {
+      const h = raw as FileHandle;
+      try {
+        if (h.requestPermission && (await h.requestPermission({ mode: "readwrite" })) !== "granted") return false;
+        await attach(h);
+        notify(t("link.linked", { name: h.name }));
+        return true;
+      } catch (e) {
+        if (onInvalid && (e instanceof SyntaxError || (e as Error)?.message === "invalid")) {
+          onInvalid(h.name, e instanceof SyntaxError ? e.message : "");
+          return true;
+        }
+        return false;
+      }
+    },
+    [attach, notify, onInvalid],
+  );
 
   /** Hatırlanan dosyaya yeniden bağlan (izin istemi kullanıcı tıklamasıyla açılmalı). */
   const reconnect = useCallback(async () => {
@@ -196,5 +225,5 @@ export function useFileLink(project: Project, replace: (p: Project) => void, not
     return () => window.clearInterval(timer);
   }, [handle, notify, replace]);
 
-  return { fileName: handle?.name ?? null, pendingName: pending?.name ?? null, linkExisting, linkNew, unlink, reconnect };
+  return { handle: handle as unknown, fileName: handle?.name ?? null, pendingName: pending?.name ?? null, linkExisting, linkNew, unlink, reconnect, openHandle };
 }

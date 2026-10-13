@@ -31,11 +31,15 @@ import {
 import { curveSamples, plannedAt, progressCurves, projectWeight } from "../src/model/resources";
 import { emptyProject } from "../src/model/sample";
 import { schedule } from "../src/model/schedule";
-import { CONSTRAINT_TYPES, needsUpgradeBackup, sanitizeProject } from "../src/model/storage";
+import { CONSTRAINT_TYPES, needsUpgradeBackup, safeUrl, sanitizeProject, toTags } from "../src/model/storage";
 import { baselineVariance, clearBaseline, getBaseline, saveBaseline } from "../src/model/baseline";
 import { clearLeveling, overallocations, proposeLeveling } from "../src/model/leveling";
 import { detectLang, setLocale, t } from "../src/i18n";
-import { BASELINE_SLOTS, type Project } from "../src/model/types";
+import { BASELINE_SLOTS, TASK_COLORS, type Project, type Task } from "../src/model/types";
+import { buildReport, earnedValue, REPORT_KINDS, type ReportTable } from "../src/model/reports";
+import { guessMapping, importTasks, parseCsv, reportToCsv, reportToSheet } from "../src/model/tabular";
+import { readXlsx, writeXlsx } from "../src/model/xlsx";
+import { applyTemplate, BUILTIN_TEMPLATES } from "../src/model/templates";
 
 /** "~", ${HOME}, ${DOCUMENTS}, ${DESKTOP} kısaltmalarını açar (Claude Desktop eklentisinin varsayılan yolu bunları içerir) */
 function expandPath(p: string): string {
@@ -122,9 +126,62 @@ const constraintArgs = {
   fixed_cost: z.number().min(0).optional().describe("Kaynaktan bağımsız sabit maliyet; 0 kaldırır"),
   cost_accrual: z.enum(["prorated", "start", "end"]).optional().describe("Maliyet dağılımı: eşit (varsayılan), başta, sonda"),
 };
+const extraArgs = {
+  notes: z.string().optional().describe("Görev notu (boş metin siler)"),
+  tags: z.string().optional().describe("Etiketler, virgül ya da ';' ile: 'dış iş, beton'. Boş metin hepsini siler; listeyi değiştirir."),
+  color: z.enum(["none", ...TASK_COLORS] as [string, ...string[]]).optional().describe("Satır/çubuk rengi; none kaldırır"),
+  links: z
+    .array(z.object({ url: z.string(), title: z.string().optional() }))
+    .optional()
+    .describe("Bağlantı ekleri (http/https/mailto/file); listeyi değiştirir, [] kaldırır"),
+  actual_cost: z.number().min(0).optional().describe("Gerçekleşen maliyet (kazanılmış değerde AC); negatif olamaz, 0 kaldırır"),
+};
+type Extras = { notes?: string; tags?: string; color?: string; links?: { url: string; title?: string }[]; actual_cost?: number };
+
+/** Not, etiket, renk, bağlantı ve gerçekleşen maliyeti satıra uygular */
+function applyExtras(p: Project, r: number, a: Extras): Project {
+  if (a.notes === undefined && a.tags === undefined && a.color === undefined && a.links === undefined && a.actual_cost === undefined) return p;
+  const old = p.tasks[r - 1];
+  if (!old) throw new OpError(t("err.noRow", { row: String(r), count: p.tasks.length }));
+  const task: Task = { ...old };
+  if (a.notes !== undefined) {
+    if (a.notes.trim()) task.notes = a.notes.slice(0, 20000);
+    else delete task.notes;
+  }
+  if (a.tags !== undefined) {
+    const tags = toTags(a.tags);
+    if (tags) task.tags = tags;
+    else delete task.tags;
+  }
+  if (a.color !== undefined) {
+    if (a.color === "none") delete task.color;
+    else task.color = a.color as Task["color"];
+  }
+  if (a.links !== undefined) {
+    const bad = a.links.find((l) => !safeUrl(l.url));
+    if (bad) throw new OpError(`${t("err.linkUrl")} (${bad.url})`);
+    const links = a.links.map((l) => ({ url: safeUrl(l.url)!, ...(l.title?.trim() ? { title: l.title.trim() } : {}) }));
+    if (links.length) task.links = links;
+    else delete task.links;
+  }
+  if (a.actual_cost !== undefined) {
+    if (a.actual_cost > 0) task.actualCost = Math.round(a.actual_cost * 100) / 100;
+    else delete task.actualCost;
+  }
+  return { ...p, tasks: p.tasks.map((x, i) => (i === r - 1 ? task : x)) };
+}
+
+const today = (d?: string) => (d && isValidDate(d) ? d : formatDate(new Date()));
+
+/** Rapor tablosunu Claude için satır nesnelerine çevirir */
+function tableRows(table: ReportTable) {
+  const conv = (row: Record<string, unknown>) => Object.fromEntries(table.columns.map((c) => [c.label, row[c.key] ?? null]));
+  return { rows: table.rows.map(conv), ...(table.total ? { total: conv(table.total) } : {}), ...(table.notes?.length ? { notes: table.notes } : {}) };
+}
+
 const dateRange = z.object({ from: z.string(), to: z.string(), name: z.string().optional() });
 
-const server = new McpServer({ name: "proje-planlayici", version: "0.6.0" });
+const server = new McpServer({ name: "proje-planlayici", version: "0.7.0" });
 
 server.registerTool(
   "get_project_summary",
@@ -171,12 +228,13 @@ server.registerTool(
       percent: z.number().min(0).max(100).optional(),
       start_no_earlier_than: z.string().optional().describe("YYYY-AA-GG (SNET kısıtının kısa yolu)"),
       ...constraintArgs,
+      ...extraArgs,
       resources: resourcesArg,
     },
   },
   async (a) =>
     mutate((p) => {
-      const { project, row: r } = addTask(p, {
+      const { project: added, row: r } = addTask(p, {
         constraintType: a.constraint_type,
         constraintDate: a.constraint_date,
         deadline: a.deadline,
@@ -191,7 +249,7 @@ server.registerTool(
         percent: a.percent,
         startNoEarlierThan: a.start_no_earlier_than,
       });
-      return { project, message: `"${a.name}" ${r}. satıra eklendi.` };
+      return { project: applyExtras(added, r, a), message: `"${a.name}" ${r}. satıra eklendi.` };
     }),
 );
 
@@ -216,12 +274,13 @@ server.registerTool(
       actual_finish: z.string().optional().describe("Gerçekleşen bitiş: görev %100 olur, süre gerçek tarihlere göre ayarlanır"),
       remaining_duration: z.number().min(0).optional().describe("Kalan süre (iş günü): süre = gerçekleşen + kalan"),
       blackouts: z.array(z.string()).optional().describe("Uygulanacak çalışılamayan dönemlerin adları (listeyi değiştirir; [] kaldırır)"),
+      ...extraArgs,
       resources: resourcesArg,
     },
   },
   async (a) =>
     mutate((p) => ({
-      project: updateTask(p, a.row, {
+      project: applyExtras(updateTask(p, a.row, {
         constraintType: a.constraint_type,
         constraintDate: a.constraint_date,
         deadline: a.deadline,
@@ -237,7 +296,7 @@ server.registerTool(
         predecessors: a.predecessors,
         percent: a.percent,
         startNoEarlierThan: a.start_no_earlier_than,
-      }),
+      }), a.row, a),
       message: `${a.row}. satır güncellendi.`,
     })),
 );
@@ -651,6 +710,130 @@ server.registerTool(
       writeFileSync(target, toMspXml(p, schedule(p)), "utf8");
       return `MS Project XML yazıldı: ${target}`;
     }),
+);
+
+const baselineArg = z.number().int().min(1).max(BASELINE_SLOTS).optional().describe("Karşılaştırılacak referans plan 1–3; varsayılan ilk kayıtlı");
+
+server.registerTool(
+  "get_earned_value",
+  {
+    title: "Kazanılmış değer (EVM)",
+    description:
+      "Bugünün sonu itibarıyla BAC, PV, EV, AC, SV, CV, SPI, CPI, EAC, ETC, VAC. PV referans plandan (yoksa güncel plandan); " +
+      "gerçekleşen maliyeti girilmemiş başlamış görevlerde AC = EV sayılır (acEstimatedRows). SPI/CPI < 1 gecikme/aşım demektir.",
+    inputSchema: { today: z.string().optional().describe("YYYY-AA-GG; varsayılan bugün"), baseline: baselineArg },
+    annotations: { readOnlyHint: true },
+  },
+  async (a) =>
+    run(() => {
+      const p = load();
+      return earnedValue(p, schedule(p), today(a.today), a.baseline !== undefined ? a.baseline - 1 : undefined);
+    }),
+);
+
+const reportArgs = {
+  kind: z
+    .enum(REPORT_KINDS as [string, ...string[]])
+    .describe("evm, scurve (S eğrisi), critical (kritik yol), resources, histogram (kaynak yükü), cashflow (nakit akışı), tasks (görev listesi), milestones"),
+  period: z.enum(["month", "week"]).optional().describe("Nakit akışı dönemi; varsayılan month"),
+  baseline: baselineArg,
+  today: z.string().optional().describe("YYYY-AA-GG; varsayılan bugün"),
+};
+type ReportArgs = { kind: string; period?: "month" | "week"; baseline?: number; today?: string };
+
+function reportOf(a: ReportArgs): ReportTable {
+  const p = load();
+  return buildReport(a.kind as (typeof REPORT_KINDS)[number], p, schedule(p), {
+    today: today(a.today),
+    period: a.period ?? "month",
+    baselineIndex: a.baseline !== undefined ? a.baseline - 1 : undefined,
+  });
+}
+
+server.registerTool(
+  "get_report",
+  {
+    title: "Rapor",
+    description: "Uygulamanın Raporlar görünümündeki tabloyu satır nesneleri olarak döner (sütun adları seçili dilde).",
+    inputSchema: reportArgs,
+    annotations: { readOnlyHint: true },
+  },
+  async (a) =>
+    run(() => {
+      const table = reportOf(a);
+      return { title: table.title, ...tableRows(table) };
+    }),
+);
+
+server.registerTool(
+  "export_report",
+  {
+    title: "Raporu dosyaya yaz",
+    description: "Raporu .csv (Excel'in dil ayarına uygun ayraçla) ya da .xlsx olarak verilen yola yazar; biçim uzantıdan anlaşılır.",
+    inputSchema: { ...reportArgs, path: z.string().describe("Hedef .csv ya da .xlsx dosya yolu") },
+  },
+  async (a) =>
+    run(() => {
+      const table = reportOf(a);
+      const target = resolve(expandPath(a.path));
+      if (/\.xlsx$/i.test(target)) writeFileSync(target, writeXlsx([reportToSheet(table)]));
+      else if (/\.csv$/i.test(target)) writeFileSync(target, reportToCsv(table), "utf8");
+      else throw new OpError("Uzantı .csv ya da .xlsx olmalı.");
+      return `${table.title}: ${table.rows.length} satır yazıldı → ${target}`;
+    }),
+);
+
+server.registerTool(
+  "new_from_template",
+  {
+    title: "Şablondan yeni proje",
+    description:
+      `Proje dosyasını hazır şablonla DEĞİŞTİRİR (görevler ve kaynaklar; tatiller ve takvim korunur). Şablonlar: ${BUILTIN_TEMPLATES.map((x) => x.id).join(", ")}. ` +
+      "Var olan görevler silineceği için önce kullanıcıya sorun.",
+    inputSchema: {
+      template: z.enum(BUILTIN_TEMPLATES.map((x) => x.id) as [string, ...string[]]),
+      name: z.string().optional().describe("Proje adı"),
+      start: z.string().optional().describe("Başlangıç YYYY-AA-GG; varsayılan mevcut başlangıç"),
+    },
+    annotations: { destructiveHint: true },
+  },
+  async (a) =>
+    mutate((p) => {
+      if (a.start !== undefined && !isValidDate(a.start)) throw new OpError(`Geçersiz tarih: ${a.start}`);
+      const tpl = BUILTIN_TEMPLATES.find((x) => x.id === a.template)!;
+      const base: Project = { ...p, tasks: [], resources: [], baselines: undefined, name: a.name ?? p.name, start: a.start ?? p.start };
+      const project = applyTemplate(base, tpl);
+      return { project, message: `"${a.template}" şablonundan ${project.tasks.length} görev oluşturuldu.` };
+    }),
+);
+
+server.registerTool(
+  "import_tasks",
+  {
+    title: "CSV / Excel'den görev al",
+    description:
+      "CSV ya da .xlsx dosyasından görev alır. İlk satır başlıktır; sütunlar başlıktan tanınır (Ad/Name, Süre/Duration, Başlangıç/Start, Bitiş/Finish, " +
+      "Öncüller/Predecessors, Kaynaklar/Resource Names, % Tamamlanan, Anahat düzeyi/Outline Level, WBS, Notlar, Etiketler). " +
+      "mode=replace mevcut görevleri siler (önce kullanıcıya sorun); varsayılan append sona ekler.",
+    inputSchema: { path: z.string(), mode: z.enum(["append", "replace"]).optional() },
+  },
+  async (a) => {
+    const target = resolve(expandPath(a.path));
+    let table: string[][];
+    try {
+      table = /\.xlsx$/i.test(target) ? await readXlsx(new Uint8Array(readFileSync(target))) : parseCsv(readFileSync(target, "utf8").replace(/^\uFEFF/, ""));
+    } catch (e) {
+      return { content: [{ type: "text" as const, text: `Dosya okunamadı: ${(e as Error).message}` }], isError: true };
+    }
+    return mutate((p) => {
+      if (!table.length) throw new OpError("Dosya boş.");
+      const mapping = guessMapping(table[0]);
+      const r = importTasks(p, table, mapping, { hasHeader: true, mode: a.mode ?? "append" });
+      if (!r.imported) throw new OpError(`Görev alınamadı. ${r.problems.map((x) => `${x.line}: ${x.message}`).join(" ")}`);
+      const notes = r.problems.length ? `\nSorunlar: ${r.problems.map((x) => `satır ${x.line}: ${x.message}`).join("; ")}` : "";
+      return { project: r.project, message: `${r.imported} görev alındı (sütunlar: ${mapping.join(", ")}).${notes}` };
+    });
+  },
 );
 
 // Dosya yoksa boş proje olarak oluşturulur: uygulamada "Dosyaya bağla" ile hemen açılabilsin

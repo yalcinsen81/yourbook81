@@ -3,6 +3,7 @@ import { addDays, DEFAULT_WORKDAYS, isValidDate, normalizeWorkdays } from "./cal
 import { tagBuiltinHolidays, type Holiday } from "./holidays";
 import { normalizeOutline, wbsCodes } from "./outline";
 import { taskCost } from "./costs";
+import { safeUrl } from "./storage";
 import type { Assignment, Baseline, ConstraintType, CostAccrual, LinkType, Predecessor, Project, Resource, Schedule, Task } from "./types";
 
 // Microsoft Project XML biçimi (Dosya > Farklı Kaydet > XML). .mpp ikili biçimi tarayıcıda okunamaz;
@@ -97,6 +98,15 @@ export function parseMspXml(xml: string): ImportResult {
     }
     const fixedCost = Number(text(t, "FixedCost")) || 0;
     if (fixedCost > 0) extra.fixedCost = fixedCost;
+    const actualCost = Number(text(t, "ActualCost"));
+    if (text(t, "ActualCost") && actualCost > 0) extra.actualCost = actualCost;
+    const notes = text(t, "Notes").trim();
+    if (notes) extra.notes = notes.slice(0, 20_000);
+    const url = safeUrl(text(t, "HyperlinkAddress"));
+    if (url) {
+      const title = text(t, "Hyperlink").trim();
+      extra.links = [title && title !== url ? { url, title } : { url }];
+    }
     const accrual = ACCRUAL_FROM_MSP[text(t, "FixedCostAccrual")];
     if (accrual) extra.costAccrual = accrual;
     for (const b of children(t, "Baseline")) {
@@ -344,6 +354,7 @@ export function toMspXml(project: Project, schedule: Schedule): string {
       out.push(`      <Cost>${money(taskCost(t, project))}</Cost>`);
       if (t.fixedCost) out.push(`      <FixedCost>${money(t.fixedCost)}</FixedCost>`);
       out.push(`      <FixedCostAccrual>${ACCRUAL_TO_MSP[t.costAccrual ?? "prorated"]}</FixedCostAccrual>`);
+      if (t.actualCost !== undefined) out.push(`      <ActualCost>${money(t.actualCost)}</ActualCost>`);
     }
     out.push(`      <TotalSlack>${Math.round(s.slack * 480 * 10)}</TotalSlack>`);
     const c = s.isSummary ? undefined : t.constraint;
@@ -353,6 +364,13 @@ export function toMspXml(project: Project, schedule: Schedule): string {
       out.push(`      <ConstraintDate>${c.date}T${finishType ? "17:00:00" : "08:00:00"}</ConstraintDate>`);
     }
     if (t.deadline) out.push(`      <Deadline>${t.deadline}T17:00:00</Deadline>`);
+    // MS Project görev başına tek köprü tutar; ilk bağlantı yazılır
+    const link = t.links?.[0];
+    if (link) {
+      out.push(`      <Hyperlink>${esc(link.title ?? link.url)}</Hyperlink>`);
+      out.push(`      <HyperlinkAddress>${esc(link.url)}</HyperlinkAddress>`);
+    }
+    if (t.notes) out.push(`      <Notes>${esc(t.notes)}</Notes>`);
     for (const p of t.predecessors) {
       const pu = uid.get(p.taskId);
       if (!pu) continue;

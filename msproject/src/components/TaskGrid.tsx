@@ -1,8 +1,9 @@
 import { useRef, useState, type DragEvent, type MouseEvent, type RefObject, type UIEvent } from "react";
-import { datePattern, formatDateLocal, formatNumber, formatPercent, parseDateLocal, t, type MessageKey } from "../i18n";
+import { datePattern, formatDateLocal, formatMoney, formatNumber, formatPercent, parseDateLocal, t, type MessageKey } from "../i18n";
 import { formatShort } from "../model/calendar";
 import { visibleRange } from "../model/timescale";
 import type { ScheduledTask, Task } from "../model/types";
+import type { TaskWarning } from "../model/validation";
 import { EditableCell } from "./EditableCell";
 import { Icon } from "./icons";
 import { HEADER_H, ROW_H } from "./layout";
@@ -26,6 +27,8 @@ export interface GridRow {
   issues: string[];
   /** Gösterilen referans plana göre bitiş sapması (iş günü); referans planda yoksa undefined */
   variance?: number;
+  /** Doğrulama uyarıları (gecikme, tarih aralığı) */
+  warnings: TaskWarning[];
 }
 
 interface Props {
@@ -49,6 +52,14 @@ interface Props {
   onMoveRow: (id: string, beforeId: string | null) => void;
   /** Sapma sütunu (referans plan gösteriliyorsa) */
   showVariance: boolean;
+  /** Gizlenen sütunlar (sütun seçici) */
+  hidden: Set<string>;
+  /** Sıralı / süzülmüş görünümde satır sürükleme kapalı */
+  dragDisabled?: boolean;
+  /** Klavyeyle bir hücreye gelinince satır seçilir */
+  onFocusRow: (id: string) => void;
+  /** Shift+↑/↓: seçimi bir satır genişlet */
+  onExtend: (id: string, dir: 1 | -1) => void;
 }
 
 export const COLUMNS: { key: string; label: MessageKey | ""; width: number }[] = [
@@ -63,14 +74,26 @@ export const COLUMNS: { key: string; label: MessageKey | ""; width: number }[] =
   { key: "resources", label: "col.resources", width: 150 },
   { key: "percent", label: "col.percent", width: 64 },
   { key: "slack", label: "col.slack", width: 64 },
+  { key: "cost", label: "col.cost", width: 104 },
   { key: "variance", label: "col.variance", width: 64 },
 ];
+
+/** Gizlenemeyen sütunlar */
+export const FIXED_COLUMNS = new Set(["row", "ind", "name"]);
+/** İlk açılışta gizli sütunlar */
+export const DEFAULT_HIDDEN = ["cost"];
+
+/** Görünen sütunların toplam genişliği */
+export function gridWidthFor(hidden: Set<string>, showVariance: boolean): number {
+  return COLUMNS.filter((c) => !hidden.has(c.key) && (c.key !== "variance" || showVariance)).reduce((s, c) => s + c.width, 0);
+}
 
 export const GRID_WIDTH = COLUMNS.reduce((s, c) => s + c.width, 0);
 
 export function TaskGrid(props: Props) {
   const { rows, selection, cycle, scrollRef, onScroll } = props;
-  const columns = COLUMNS.filter((c) => c.key !== "variance" || props.showVariance);
+  const columns = COLUMNS.filter((c) => !props.hidden.has(c.key) && (c.key !== "variance" || props.showVariance));
+  const show = (key: string) => columns.some((c) => c.key === key);
   const template = columns.map((c) => `${c.width}px`).join(" ");
   const width = columns.reduce((sum, c) => sum + c.width, 0);
   // Sürükle-bırak: sürüklenen satır ve üzerine gelinen satır (bırakılınca önüne girer)
@@ -122,6 +145,8 @@ export function TaskGrid(props: Props) {
             r.issues.length > 0 && "has-issue",
             dropId === task.id && dragId !== task.id && "drop-before",
             dragId === task.id && "dragging",
+            r.warnings.some((w) => w.kind === "late") && "late",
+            task.color && `tc-${task.color}`,
           ]
             .filter(Boolean)
             .join(" ");
@@ -136,6 +161,18 @@ export function TaskGrid(props: Props) {
                 if (e.shiftKey && (e.target as HTMLElement).tagName !== "INPUT") e.preventDefault();
                 props.onSelect(task.id, e);
               }}
+              onFocus={() => props.onFocusRow(task.id)}
+              onKeyDownCapture={(e) => {
+                // Shift+↑/↓ hücreden çıkmadan seçimi genişletir; odak aynı sütunda bir satır kayar
+                if (e.shiftKey && !e.altKey && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const dir = e.key === "ArrowDown" ? 1 : -1;
+                  const col = (e.target as HTMLElement).dataset.col;
+                  props.onExtend(task.id, dir);
+                  if (col) requestAnimationFrame(() => document.querySelector<HTMLInputElement>(`input[data-row="${i + dir}"][data-col="${col}"]`)?.focus());
+                }
+              }}
               onDoubleClick={(e) => {
                 // Hücre düzenlemesi değilse görev bilgisini aç
                 if ((e.target as HTMLElement).tagName !== "INPUT") props.onInfo(task.id);
@@ -144,8 +181,8 @@ export function TaskGrid(props: Props) {
             >
               <div
                 className="gc gc-row"
-                title={`${t("grid.row", { row })}\n${t("grid.dragHint")}`}
-                draggable
+                title={props.dragDisabled ? t("grid.row", { row }) : `${t("grid.row", { row })}\n${t("grid.dragHint")}`}
+                draggable={!props.dragDisabled}
                 onDragStart={(e) => {
                   e.dataTransfer.effectAllowed = "move";
                   e.dataTransfer.setData("text/plain", task.name);
@@ -159,9 +196,11 @@ export function TaskGrid(props: Props) {
                 {sched.row}
               </div>
               <Indicators row={r} />
-              <div className="gc gc-wbs" title={r.wbs}>
-                {r.wbs}
-              </div>
+              {show("wbs") && (
+                <div className="gc gc-wbs" title={r.wbs}>
+                  {r.wbs}
+                </div>
+              )}
               <div className="gc gc-name" style={{ paddingInlineStart: 4 + task.outline * 16 }}>
                 {sched.isSummary ? (
                   <button
@@ -185,84 +224,103 @@ export function TaskGrid(props: Props) {
                   onCommit={(v) => props.onName(task.id, v)}
                 />
               </div>
-              <div className="gc">
-                <EditableCell
-                  value={`${formatNumber(sched.isSummary ? sched.duration : task.duration)} ${dayLetter}`}
-                  readOnly={sched.isSummary}
-                  row={i}
-                  col="duration"
-                  className="num"
-                  ariaLabel={t("grid.aria.duration", { row })}
-                  title={sched.isSummary ? t("grid.summaryDuration") : t("grid.durationHint")}
-                  onCommit={(v) => props.onDuration(task.id, v)}
-                />
-              </div>
-              <div className="gc">
-                <DateCell
-                  iso={sched.startDate}
-                  readOnly={sched.isSummary}
-                  row={i}
-                  constrained={!!task.constraint}
-                  ariaLabel={t("grid.aria.start", { row })}
-                  title={
-                    task.constraint
-                      ? `${t(`constraint.${task.constraint.type}`)}${task.constraint.date ? `: ${formatShort(task.constraint.date)}` : ""}\n${t("grid.constraintHint")}`
-                      : t("grid.startHint", { pattern: datePattern() })
-                  }
-                  onCommit={(v) => props.onStart(task.id, v)}
-                />
-              </div>
-              <div className="gc gc-finish" title={formatShort(sched.finishDate)}>
-                {formatShort(sched.finishDate)}
-              </div>
-              <div className="gc">
-                <EditableCell
-                  value={r.predText}
-                  row={i}
-                  col="preds"
-                  ariaLabel={t("grid.aria.predecessors", { row })}
-                  title={t("grid.predHint")}
-                  onCommit={(v) => props.onPredecessors(task.id, v)}
-                />
-              </div>
-              <div className={`gc gc-res ${r.overallocated ? "over" : ""}`}>
-                {r.noCost && !r.overallocated && (
-                  <span className="info-flag" title={t("warn.taskNoCost")} aria-label={t("warn.taskNoCost")}>
-                    i
-                  </span>
-                )}
-                {r.overallocated && (
-                  <span className="over-flag" title={t("grid.overallocated")}>
-                    !
-                  </span>
-                )}
-                <EditableCell
-                  value={r.resText ?? ""}
-                  placeholder={t("common.empty")}
-                  readOnly={sched.isSummary}
-                  row={i}
-                  col="resources"
-                  ariaLabel={t("grid.aria.resources", { row })}
-                  title={sched.isSummary ? t("grid.summaryNoResource") : r.resText ? `${r.resText}\n${t("grid.resourceHint")}` : t("grid.resourceHint")}
-                  onCommit={(v) => props.onResources(task.id, v)}
-                />
-              </div>
-              <div className="gc">
-                <EditableCell
-                  value={formatPercent(sched.percent)}
-                  readOnly={sched.isSummary}
-                  title={sched.isSummary ? t("grid.summaryPercent") : undefined}
-                  row={i}
-                  col="percent"
-                  className="num"
-                  ariaLabel={t("grid.aria.percent", { row })}
-                  onCommit={(v) => props.onPercent(task.id, v)}
-                />
-              </div>
-              <div className={`gc gc-slack num ${sched.slack <= 0 ? "zero" : ""}`}>
-                {formatNumber(sched.slack, 1)} {dayLetter}
-              </div>
-              {props.showVariance && (
+              {show("duration") && (
+                <div className="gc">
+                  <EditableCell
+                    value={`${formatNumber(sched.isSummary ? sched.duration : task.duration)} ${dayLetter}`}
+                    readOnly={sched.isSummary}
+                    row={i}
+                    col="duration"
+                    className="num"
+                    ariaLabel={t("grid.aria.duration", { row })}
+                    title={sched.isSummary ? t("grid.summaryDuration") : t("grid.durationHint")}
+                    onCommit={(v) => props.onDuration(task.id, v)}
+                  />
+                </div>
+              )}
+              {show("start") && (
+                <div className="gc">
+                  <DateCell
+                    iso={sched.startDate}
+                    readOnly={sched.isSummary}
+                    row={i}
+                    constrained={!!task.constraint}
+                    ariaLabel={t("grid.aria.start", { row })}
+                    title={
+                      task.constraint
+                        ? `${t(`constraint.${task.constraint.type}`)}${task.constraint.date ? `: ${formatShort(task.constraint.date)}` : ""}\n${t("grid.constraintHint")}`
+                        : t("grid.startHint", { pattern: datePattern() })
+                    }
+                    onCommit={(v) => props.onStart(task.id, v)}
+                  />
+                </div>
+              )}
+              {show("finish") && (
+                <div className="gc gc-finish" title={formatShort(sched.finishDate)}>
+                  {formatShort(sched.finishDate)}
+                </div>
+              )}
+              {show("preds") && (
+                <div className="gc">
+                  <EditableCell
+                    value={r.predText}
+                    row={i}
+                    col="preds"
+                    ariaLabel={t("grid.aria.predecessors", { row })}
+                    title={t("grid.predHint")}
+                    onCommit={(v) => props.onPredecessors(task.id, v)}
+                  />
+                </div>
+              )}
+              {show("resources") && (
+                <div className={`gc gc-res ${r.overallocated ? "over" : ""}`}>
+                  {r.noCost && !r.overallocated && (
+                    <span className="info-flag" title={t("warn.taskNoCost")} aria-label={t("warn.taskNoCost")}>
+                      i
+                    </span>
+                  )}
+                  {r.overallocated && (
+                    <span className="over-flag" title={t("grid.overallocated")}>
+                      !
+                    </span>
+                  )}
+                  <EditableCell
+                    value={r.resText ?? ""}
+                    placeholder={t("common.empty")}
+                    readOnly={sched.isSummary}
+                    row={i}
+                    col="resources"
+                    ariaLabel={t("grid.aria.resources", { row })}
+                    title={sched.isSummary ? t("grid.summaryNoResource") : r.resText ? `${r.resText}\n${t("grid.resourceHint")}` : t("grid.resourceHint")}
+                    onCommit={(v) => props.onResources(task.id, v)}
+                  />
+                </div>
+              )}
+              {show("percent") && (
+                <div className="gc">
+                  <EditableCell
+                    value={formatPercent(sched.percent)}
+                    readOnly={sched.isSummary}
+                    title={sched.isSummary ? t("grid.summaryPercent") : undefined}
+                    row={i}
+                    col="percent"
+                    className="num"
+                    ariaLabel={t("grid.aria.percent", { row })}
+                    onCommit={(v) => props.onPercent(task.id, v)}
+                  />
+                </div>
+              )}
+              {show("slack") && (
+                <div className={`gc gc-slack num ${sched.slack <= 0 ? "zero" : ""}`}>
+                  {formatNumber(sched.slack, 1)} {dayLetter}
+                </div>
+              )}
+              {show("cost") && (
+                <div className="gc gc-cost num" title={formatMoney(r.cost)}>
+                  {r.cost ? formatMoney(r.cost) : "—"}
+                </div>
+              )}
+              {show("variance") && (
                 <div
                   className={`gc num gc-var ${r.variance && r.variance > 0 ? "late" : r.variance && r.variance < 0 ? "early" : ""}`}
                   title={r.variance === undefined ? t("grid.varianceNone") : t("grid.varianceHint")}
@@ -354,34 +412,50 @@ function DateCell(props: {
   );
 }
 
-/** Gösterge sütunu (MS Project'teki gibi): uyarı, kısıt, son tarih, tamamlandı */
+/** Gösterge sütunu (MS Project'teki gibi): uyarı, gecikme, kısıt, tamamlandı, son tarih; not ve bağlantı küçük işaretle */
 function Indicators({ row }: { row: GridRow }) {
   const { task, sched } = row;
-  const notes: string[] = [...row.issues];
+  const notes: string[] = [...row.issues, ...row.warnings.map((w) => w.text)];
   const c = task.constraint;
   if (c && !sched.isSummary) notes.push(`${t(`constraint.${c.type}`)}${c.date ? `: ${formatShort(c.date)}` : ""}`);
   if (task.deadline) notes.push(`${t("info.deadline")}: ${formatShort(task.deadline)}`);
   if (task.levelingDelay) notes.push(t("grid.levelingDelay", { n: String(task.levelingDelay) }));
   if (!sched.isSummary && task.percent === 100) notes.push(t("grid.complete"));
+  if (task.tags?.length) notes.push(`${t("info.tags")}: ${task.tags.join(", ")}`);
+  if (task.links?.length) notes.push(...task.links.map((l) => `🔗 ${l.title ?? l.url}`));
+  if (task.notes) notes.push(`✎ ${task.notes.length > 200 ? `${task.notes.slice(0, 200)}…` : task.notes}`);
+  const late = row.warnings.some((w) => w.kind === "late");
+  const warn = row.warnings.length > 0 && !late;
+  const main =
+    row.issues.length > 0 || warn ? (
+      <span className="ind issue" aria-label={[...row.issues, ...row.warnings.map((w) => w.text)].join(" ")}>
+        !
+      </span>
+    ) : late ? (
+      <span className="ind late" aria-label={row.warnings[0].text}>
+        ⏰
+      </span>
+    ) : c && !sched.isSummary ? (
+      <span className={`ind constraint ${c.type === "MSO" || c.type === "MFO" ? "hard" : ""}`} aria-label={notes[0]}>
+        <Icon name="calendar" size={12} />
+      </span>
+    ) : !sched.isSummary && task.percent === 100 ? (
+      <span className="ind done" aria-label={t("grid.complete")}>
+        ✓
+      </span>
+    ) : task.deadline ? (
+      <span className="ind deadline" aria-label={notes[0]}>
+        ⇩
+      </span>
+    ) : null;
   return (
     <div className="gc gc-ind" title={notes.join("\n") || undefined}>
-      {row.issues.length > 0 ? (
-        <span className="ind issue" aria-label={row.issues.join(" ")}>
-          !
+      {main}
+      {(task.notes || task.links?.length) && (
+        <span className={`ind-mini ${task.links?.length ? "link" : "note"}`} aria-label={task.links?.length ? t("help.i.link") : t("help.i.note")}>
+          {task.links?.length ? "🔗" : "✎"}
         </span>
-      ) : c && !sched.isSummary ? (
-        <span className={`ind constraint ${c.type === "MSO" || c.type === "MFO" ? "hard" : ""}`} aria-label={notes[0]}>
-          <Icon name="calendar" size={12} />
-        </span>
-      ) : !sched.isSummary && task.percent === 100 ? (
-        <span className="ind done" aria-label={t("grid.complete")}>
-          ✓
-        </span>
-      ) : task.deadline ? (
-        <span className="ind deadline" aria-label={notes[0]}>
-          ⇩
-        </span>
-      ) : null}
+      )}
     </div>
   );
 }
