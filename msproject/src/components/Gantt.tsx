@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type MouseEvent, type RefObject, type UIEvent } from "react";
-import { addDays, diffDays, formatShort, isWorkday, monthLabel, parseDate } from "../model/calendar";
+import { t } from "../i18n";
+import { addDays, diffDays, formatShort, monthLabel, parseDate } from "../model/calendar";
 import type { LinkType } from "../model/types";
 import { HEADER_H, PX_PER_DAY, ROW_H, type Zoom } from "./layout";
 import type { GridRow } from "./TaskGrid";
@@ -15,8 +16,10 @@ interface Props {
   scrollRef: RefObject<HTMLDivElement | null>;
   onScroll: (e: UIEvent<HTMLDivElement>) => void;
   onSelect: (id: string, e: MouseEvent) => void;
-  /** Tatil günleri (tarih → ad); hafta içine denk gelenler gölgelenir */
-  holidays: Map<string, string>;
+  /** Tatil günleri (tarih → ad, yarım gün mü); çalışılan günlere denk gelenler gölgelenir */
+  holidays: Map<string, { name: string; halfDay: boolean }>;
+  /** Haftanın çalışılan günleri (0 = pazar); diğerleri gölgelenir */
+  workdays: number[];
   /** Çubuk sürüklendi: taşıma ya da sağ uçtan süre değiştirme, takvim günü cinsinden */
   onDragTask: (id: string, mode: "move" | "resize", days: number) => void;
 }
@@ -32,14 +35,17 @@ const BAR_H = 16;
 const LINK_TURN = 8;
 
 export function Gantt(props: Props) {
-  const { rows, timelineStart, days, zoom, today, selection, scrollRef, onScroll, onSelect, holidays, onDragTask } = props;
+  const { rows, timelineStart, days, zoom, today, selection, scrollRef, onScroll, onSelect, holidays, workdays, onDragTask } = props;
   const [drag, setDrag] = useState<Drag | null>(null);
   const ppd = PX_PER_DAY[zoom];
   const width = days * ppd;
   const height = rows.length * ROW_H + ROW_H; // son satır: "yeni görev" satırı hizası
   const x = (iso: string) => diffDays(timelineStart, iso) * ppd;
 
-  const header = useMemo(() => buildHeader(timelineStart, days, zoom, holidays), [timelineStart, days, zoom, holidays]);
+  const header = useMemo(
+    () => buildHeader(timelineStart, days, zoom, holidays, workdays),
+    [timelineStart, days, zoom, holidays, workdays],
+  );
   const snap = drag ? Math.round(drag.dx / ppd) : 0;
 
   // Sürükleme: fare bırakılınca gün farkı bildirilir; tıklama (0 gün) yalnızca seçimdir
@@ -66,13 +72,13 @@ export function Gantt(props: Props) {
   };
 
   const holidayDays = useMemo(() => {
-    const list: { i: number; name: string }[] = [];
-    for (const [date, name] of holidays) {
+    const list: { i: number; name: string; halfDay: boolean }[] = [];
+    for (const [date, h] of holidays) {
       const i = diffDays(timelineStart, date);
-      if (i >= 0 && i < days && parseDate(date).getUTCDay() % 6 !== 0) list.push({ i, name });
+      if (i >= 0 && i < days && workdays.includes(parseDate(date).getUTCDay())) list.push({ i, ...h });
     }
     return list;
-  }, [holidays, timelineStart, days]);
+  }, [holidays, timelineStart, days, workdays]);
 
   // Çubuk geometrisi (görünür satır indeksine göre)
   const geo = new Map<string, { x1: number; x2: number; y: number; milestone: boolean }>();
@@ -127,7 +133,7 @@ export function Gantt(props: Props) {
             {header.bottom.map((b) => (
               <div
                 key={b.key}
-                className={`gh-band ${b.weekend ? "weekend" : ""}`}
+                className={`gh-band ${b.weekend ? "weekend" : ""} ${b.half ? "half" : ""}`}
                 style={{ left: b.start * ppd, width: b.span * ppd }}
                 title={b.title}
               >
@@ -147,11 +153,18 @@ export function Gantt(props: Props) {
           </defs>
           {zoom !== "month" &&
             header.weekends.map((w) => (
-              <rect key={w} x={w * ppd} y={0} width={ppd * 2} height={height} className="weekend-shade" />
+              <rect key={w.start} x={w.start * ppd} y={0} width={ppd * w.span} height={height} className="weekend-shade" />
             ))}
           {holidayDays.map((h) => (
-            <rect key={`h${h.i}`} x={h.i * ppd} y={0} width={Math.max(ppd, 2)} height={height} className="holiday-shade">
-              <title>{h.name}</title>
+            <rect
+              key={`h${h.i}`}
+              x={h.i * ppd}
+              y={0}
+              width={Math.max(ppd, 2)}
+              height={height}
+              className={h.halfDay ? "holiday-shade half" : "holiday-shade"}
+            >
+              <title>{h.halfDay ? `${h.name} (${t("calendar.halfDay")})` : h.name}</title>
             </rect>
           ))}
           {rows.map((r, i) =>
@@ -302,12 +315,20 @@ interface Band {
   label: string;
   title?: string;
   weekend?: boolean;
+  half?: boolean;
 }
 
-function buildHeader(start: string, days: number, zoom: Zoom, holidays: Map<string, string>) {
+function buildHeader(
+  start: string,
+  days: number,
+  zoom: Zoom,
+  holidays: Map<string, { name: string; halfDay: boolean }>,
+  workdays: number[],
+) {
   const top: Band[] = [];
   const bottom: Band[] = [];
-  const weekends: number[] = [];
+  // Çalışılmayan hafta günlerinin ardışık blokları (gölgelendirme)
+  const weekends: { start: number; span: number }[] = [];
   const end = addDays(start, days);
 
   // Üst bant: ay (gün/hafta ölçeği) ya da yıl (ay ölçeği)
@@ -328,16 +349,23 @@ function buildHeader(start: string, days: number, zoom: Zoom, holidays: Map<stri
   for (let i = 0; i < days; i++) {
     const iso = addDays(start, i);
     const d = parseDate(iso);
-    if (d.getUTCDay() === 6) weekends.push(i);
+    const working = workdays.includes(d.getUTCDay());
+    if (!working) {
+      const last = weekends[weekends.length - 1];
+      if (last && last.start + last.span === i) last.span++;
+      else weekends.push({ start: i, span: 1 });
+    }
     if (zoom === "day") {
       const holiday = holidays.get(iso);
+      const label = holiday ? `${holiday.name}${holiday.halfDay ? ` (${t("calendar.halfDay")})` : ""}` : "";
       bottom.push({
         key: iso,
         start: i,
         span: 1,
         label: String(d.getUTCDate()),
-        title: holiday ? `${formatShort(iso)} · ${holiday}` : formatShort(iso),
-        weekend: !isWorkday(iso) || !!holiday,
+        title: holiday ? `${formatShort(iso)} · ${label}` : formatShort(iso),
+        weekend: !working || (!!holiday && !holiday.halfDay),
+        half: !!holiday?.halfDay,
       });
     } else if (zoom === "week" && d.getUTCDay() === 1) {
       bottom.push({ key: iso, start: i, span: 7, label: `${d.getUTCDate()}`, title: `Hafta: ${formatShort(iso)}` });

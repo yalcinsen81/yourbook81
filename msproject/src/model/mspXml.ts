@@ -1,4 +1,4 @@
-import { addDays, isValidDate } from "./calendar";
+import { addDays, DEFAULT_WORKDAYS, isValidDate, normalizeWorkdays } from "./calendar";
 import type { Holiday } from "./holidays";
 import { normalizeOutline, wbsCodes } from "./outline";
 import type { Assignment, LinkType, Predecessor, Project, Resource, Schedule, Task } from "./types";
@@ -141,19 +141,40 @@ export function parseMspXml(xml: string): ImportResult {
       tasks: normalizeOutline(tasks),
       holidays: readHolidays(root),
       resources,
+      workdays: readWorkdays(root),
     },
     warnings,
   };
 }
 
-/** Proje takvimindeki çalışılmayan istisna günleri */
-function readHolidays(root: Element): Holiday[] {
+function projectCalendar(root: Element): Element | undefined {
   const calendars = children(child(root, "Calendars"), "Calendar");
   const projectCalUid = text(root, "CalendarUID");
-  const cal =
+  return (
     calendars.find((c) => text(c, "UID") === projectCalUid) ??
     calendars.find((c) => text(c, "IsBaseCalendar") === "1") ??
-    calendars[0];
+    calendars[0]
+  );
+}
+
+/** Proje takviminin çalışılan hafta günleri (DayType 1 = pazar … 7 = cumartesi); bulunamazsa pazartesi–cuma */
+function readWorkdays(root: Element): number[] {
+  const cal = projectCalendar(root);
+  if (!cal) return [...DEFAULT_WORKDAYS];
+  const days: number[] = [];
+  let seen = false;
+  for (const wd of children(child(cal, "WeekDays"), "WeekDay")) {
+    const type = Number(text(wd, "DayType"));
+    if (!(type >= 1 && type <= 7) || child(wd, "TimePeriod")) continue;
+    seen = true;
+    if (text(wd, "DayWorking") === "1") days.push(type - 1);
+  }
+  return seen ? normalizeWorkdays(days) : [...DEFAULT_WORKDAYS];
+}
+
+/** Proje takvimindeki çalışılmayan istisna günleri */
+function readHolidays(root: Element): Holiday[] {
+  const cal = projectCalendar(root);
   if (!cal) return [];
   const result = new Map<string, string>();
   const addRange = (from: string, to: string, name: string) => {
@@ -195,7 +216,8 @@ export function toMspXml(project: Project, schedule: Schedule): string {
   out.push(`  <StartDate>${schedule.calendar.base}T08:00:00</StartDate>`);
   out.push(`  <FinishDate>${schedule.finishDate}T17:00:00</FinishDate>`);
   out.push(`  <MinutesPerDay>480</MinutesPerDay>`);
-  out.push(`  <MinutesPerWeek>2400</MinutesPerWeek>`);
+  const workdays = normalizeWorkdays(project.workdays);
+  out.push(`  <MinutesPerWeek>${480 * workdays.length}</MinutesPerWeek>`);
   out.push(`  <DaysPerMonth>20</DaysPerMonth>`);
   out.push(`  <DurationFormat>7</DurationFormat>`);
   out.push(`  <CalendarUID>1</CalendarUID>`);
@@ -206,7 +228,8 @@ export function toMspXml(project: Project, schedule: Schedule): string {
   out.push(`      <IsBaseCalendar>1</IsBaseCalendar>`);
   out.push(`      <WeekDays>`);
   for (let day = 1; day <= 7; day++) {
-    const working = day !== 1 && day !== 7;
+    // DayType 1 = pazar … 7 = cumartesi
+    const working = workdays.includes(day - 1);
     out.push(`        <WeekDay><DayType>${day}</DayType><DayWorking>${working ? 1 : 0}</DayWorking>`);
     if (working) {
       out.push(`          <WorkingTimes>`);
@@ -217,9 +240,11 @@ export function toMspXml(project: Project, schedule: Schedule): string {
     out.push(`        </WeekDay>`);
   }
   out.push(`      </WeekDays>`);
-  if (project.holidays.length) {
+  // Yarım günler (arife) iş günüdür; çalışılmayan istisna olarak yazılmaz
+  const offDays = project.holidays.filter((h) => !h.halfDay);
+  if (offDays.length) {
     out.push(`      <Exceptions>`);
-    for (const h of project.holidays) {
+    for (const h of offDays) {
       out.push(`        <Exception>`);
       out.push(`          <EnteredByOccurrences>0</EnteredByOccurrences>`);
       out.push(`          <TimePeriod><FromDate>${h.date}T00:00:00</FromDate><ToDate>${h.date}T23:59:00</ToDate></TimePeriod>`);

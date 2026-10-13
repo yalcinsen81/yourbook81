@@ -1,20 +1,28 @@
-import { useMemo } from "react";
+import { t, type MessageKey } from "../i18n";
 import { formatShort } from "../model/calendar";
-import { formatMoney, plannedAt, progressCurves, type ResourceUsage } from "../model/resources";
-import type { Project, Schedule } from "../model/types";
+import { formatMoney, plannedAt, projectWeight, type Curves, type ResourceUsage } from "../model/resources";
+import type { ProgressWeight, Project, Schedule } from "../model/types";
 import { BarList, CurveChart, LoadHeatmap } from "./charts";
+import { Icon } from "./icons";
 
 interface Props {
   project: Project;
   schedule: Schedule;
   usage: ResourceUsage[];
   today: string;
+  /** App'te hesaplanan eğriler: başlıktaki ilerleme ile aynı ağırlık */
+  curves: Curves;
+  /** Bilgilendirme notları (ör. maliyeti olmayan görevler) */
+  warnings: string[];
+  onWeight: (w: ProgressWeight) => void;
   onPickResource: (id: string) => void;
 }
 
+const WEIGHTS: ProgressWeight[] = ["cost", "work", "duration"];
+
 /** İş programından grafikler: S eğrisi, maliyet eğrisi, kaynak yük haritası, kaynak başına maliyet */
-export function ChartsView({ project, schedule, usage, today, onPickResource }: Props) {
-  const curves = useMemo(() => progressCurves(project, schedule, today), [project, schedule, today]);
+export function ChartsView({ project, schedule, usage, today, curves, warnings, onWeight, onPickResource }: Props) {
+  const weightLabel = t(`weight.${curves.weight}`);
   const days = schedule.finish;
   const started = curves.todayDay >= 0;
   const todayDay = Math.min(curves.todayDay, days - 1);
@@ -36,9 +44,32 @@ export function ChartsView({ project, schedule, usage, today, onPickResource }: 
 
   return (
     <div className="page">
+      <div className="charts-bar">
+        <div className="segmented" role="radiogroup" aria-label={t("charts.weight")}>
+          <span className="seg-label">{t("charts.weight")}</span>
+          {WEIGHTS.map((w) => (
+            <button
+              key={w}
+              role="radio"
+              aria-checked={projectWeight(project) === w}
+              className={projectWeight(project) === w ? "on" : ""}
+              onClick={() => onWeight(w)}
+              title={t(`weight.hint.${w}` as MessageKey)}
+            >
+              {t(`weight.option.${w}` as MessageKey)}
+            </button>
+          ))}
+        </div>
+        {warnings.map((w) => (
+          <p key={w} className="info-note" role="note">
+            <Icon name="info" size={15} />
+            {w}
+          </p>
+        ))}
+      </div>
       <div className="kpis">
         <Kpi label="Toplam maliyet" value={formatMoney(curves.totalCost)} sub={curves.totalCost ? `Bugüne planlanan ${formatMoney(plannedCostToday)}` : "Kaynaklara ücret girin"} />
-        <Kpi label="Planlanan ilerleme" value={`%${Math.round(plannedToday)}`} sub={`${formatShort(today)} itibarıyla`} />
+        <Kpi label="Planlanan ilerleme" value={`%${Math.round(plannedToday)}`} sub={t("charts.asOf", { date: formatShort(today), weight: weightLabel })} />
         <Kpi label="Gerçekleşen" value={`%${Math.round(curves.earnedPercent)}`} sub={`Kazanılan değer ${formatMoney(curves.earnedCost)}`} />
         <Kpi
           label="Fark"
@@ -59,7 +90,7 @@ export function ChartsView({ project, schedule, usage, today, onPickResource }: 
           <header className="card-head">
             <div>
               <h2>S eğrisi</h2>
-              <p className="card-sub">Süreye göre ağırlıklı planlanan kümülatif ilerleme; nokta, girilen % tamamlanmalara göre bugünkü gerçekleşen.</p>
+              <p className="card-sub">{t("charts.sCurveSub", { weight: weightLabel })}</p>
             </div>
           </header>
           <CurveChart

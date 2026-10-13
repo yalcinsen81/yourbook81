@@ -16,7 +16,11 @@ import { fileLinkSupported, useFileLink } from "./useFileLink";
 import { Icon, type IconName } from "./components/icons";
 import { ResourceView } from "./components/ResourceView";
 import { ChartsView } from "./components/ChartsView";
-import { assignFromText, formatAssignments, formatMoney, overallocatedTasks, resourceUsage } from "./model/resources";
+import { assignFromText, formatAssignments, formatMoney, overallocatedTasks, progressCurves, projectWeight, resourceUsage } from "./model/resources";
+import { progressWarnings } from "./model/ops";
+import { normalizeWorkdays } from "./model/calendar";
+import { ProjectSetupDialog } from "./components/ProjectSetupDialog";
+import { t } from "./i18n";
 
 type View = "gantt" | "resources" | "charts";
 
@@ -29,6 +33,7 @@ export default function App() {
   const [gridWidth, setGridWidth] = useState(() => Math.min(GRID_WIDTH, Math.max(700, Math.round(window.innerWidth * 0.56))));
   const [message, setMessage] = useState<string | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [setupOpen, setSetupOpen] = useState(false);
   const [linkMenu, setLinkMenu] = useState(false);
   const [view, setView] = useState<View>("gantt");
   const [pickedResource, setPickedResource] = useState<string | null>(null);
@@ -57,6 +62,10 @@ export default function App() {
 
   const usage = useMemo(() => resourceUsage(project, schedule), [project, schedule]);
   const overTasks = useMemo(() => overallocatedTasks(usage), [usage]);
+  // İlerleme, S eğrisi ve uyarılar tek ağırlıkla (proje ayarı, varsayılan maliyet)
+  const curves = useMemo(() => progressCurves(project, schedule, today), [project, schedule, today]);
+  const warnings = useMemo(() => progressWarnings(curves, projectWeight(project)), [curves, project]);
+  const noCostRows = useMemo(() => new Set(curves.weight === "cost" ? curves.zeroCostRows : []), [curves]);
 
   // Görünür satırlar: kapalı özetlerin altları gizlenir
   const rows: GridRow[] = useMemo(() => {
@@ -70,13 +79,18 @@ export default function App() {
         predText: formatPredecessors(task.predecessors, project.tasks),
         resText: schedule.rows[i].isSummary ? "" : formatAssignments(task.assignments, project.resources),
         overallocated: overTasks.has(task.id),
+        noCost: noCostRows.has(i + 1),
         collapsed: collapsed.has(task.id),
       }))
       .filter((r) => !(anc.get(r.task.id) ?? []).some((a) => collapsed.has(a)));
-  }, [project.tasks, project.resources, schedule, collapsed, overTasks]);
+  }, [project.tasks, project.resources, schedule, collapsed, overTasks, noCostRows]);
 
   const cycle = useMemo(() => new Set(schedule.cycle), [schedule.cycle]);
-  const holidayMap = useMemo(() => new Map(project.holidays.map((h) => [h.date, h.name])), [project.holidays]);
+  const holidayMap = useMemo(
+    () => new Map(project.holidays.map((h) => [h.date, { name: h.name, halfDay: !!h.halfDay }])),
+    [project.holidays],
+  );
+  const workdays = useMemo(() => normalizeWorkdays(project.workdays), [project.workdays]);
 
   // Gantt'ta sürükleme: taşıma "şundan önce başlamasın" kısıtı koyar (MS Project gibi), sağ uç süreyi değiştirir
   const onDragTask = useCallback(
@@ -369,9 +383,13 @@ export default function App() {
   };
 
   const newProject = (sample: boolean) => {
-    if (!window.confirm(sample ? "Örnek proje yüklensin mi? Mevcut proje değiştirilir (Geri Al ile dönebilirsiniz)." : "Yeni boş proje açılsın mı? (Geri Al ile dönebilirsiniz)")) return;
-    const start = nextWorkday(today);
-    update(() => (sample ? sampleProject(start) : emptyProject(start)));
+    // Boş proje: takvim (çalışma günleri, tatiller) ve ilerleme ağırlığı kullanıcıya sorulur
+    if (!sample) {
+      setSetupOpen(true);
+      return;
+    }
+    if (!window.confirm("Örnek proje yüklensin mi? Mevcut proje değiştirilir (Geri Al ile dönebilirsiniz).")) return;
+    update(() => sampleProject(nextWorkday(today)));
     setSelection(new Set());
     setCollapsed(new Set());
   };
@@ -452,17 +470,7 @@ export default function App() {
   };
 
   const leafCount = schedule.rows.filter((r) => !r.isSummary).length;
-  // Süreye göre ağırlıklı tamamlanma (kilometre taşları sayılmaz)
-  const progress = useMemo(() => {
-    let total = 0;
-    let done = 0;
-    project.tasks.forEach((t, i) => {
-      if (schedule.rows[i].isSummary || t.duration === 0) return;
-      total += t.duration;
-      done += (t.duration * t.percent) / 100;
-    });
-    return total ? Math.round((done / total) * 100) : 0;
-  }, [project.tasks, schedule]);
+  const progress = Math.round(curves.earnedPercent);
   const totalCost = usage.reduce((s, u) => s + u.cost, 0);
   const criticalCount = schedule.rows.filter((r) => !r.isSummary && r.critical).length;
   const hasSel = selection.size > 0;
@@ -504,7 +512,7 @@ export default function App() {
             <span className="stat-label">Süre</span>
             <span className="stat-value">{schedule.finish} iş günü</span>
           </div>
-          <div className="stat">
+          <div className="stat" title={t("stat.progressTitle", { weight: t(`weight.${curves.weight}`) })}>
             <span className="stat-label">İlerleme</span>
             <span className="stat-value">
               <span className="meter" aria-hidden>
@@ -523,6 +531,15 @@ export default function App() {
             <span className="stat-label">Kritik</span>
             <span className="stat-value">{criticalCount} görev</span>
           </div>
+          {warnings.length > 0 && (
+            <div className="stat info" title={warnings.join("\n")} role="note">
+              <span className="stat-label">{t("stat.info")}</span>
+              <span className="stat-value">
+                <Icon name="info" size={14} />
+                {curves.weightFallback ? t("stat.weightFallbackShort") : t("stat.noCostShort", { n: curves.zeroCostRows.length })}
+              </span>
+            </div>
+          )}
         </div>
         {install.available && (
           <button className="chip install" onClick={install.prompt} title="Proje Planlayıcı'yı bilgisayara uygulama olarak yükle; internetsiz de açılır">
@@ -596,7 +613,7 @@ export default function App() {
           <ToolButton icon="redo" onClick={redo} disabled={!canRedo} title="Yinele (Ctrl+Y)" />
         </div>
         <div className="tgroup">
-          <ToolButton icon="file" onClick={() => newProject(false)} title="Yeni boş proje" />
+          <ToolButton icon="file" onClick={() => newProject(false)} title={t("setup.buttonTitle")} />
           <ToolButton icon="open" label="Aç" onClick={() => fileRef.current?.click()} title="Proje dosyası aç: .json ya da MS Project'ten XML olarak kaydedilmiş .xml" />
           <ToolButton icon="share" label="MS Project" onClick={exportMsp} title="MS Project'te açılabilen XML dosyası indir" />
           <ToolButton icon="download" onClick={exportJson} title="Projeyi JSON olarak indir" />
@@ -629,7 +646,7 @@ export default function App() {
               </button>
             ))}
           </div>
-          <ToolButton icon="calendar" label="Takvim" onClick={() => setCalendarOpen(true)} title="Tatil günlerini düzenle" />
+          <ToolButton icon="calendar" label="Takvim" onClick={() => setCalendarOpen(true)} title={t("calendar.buttonTitle")} />
           {view === "gantt" && (
             <ToolButton icon="target" label="Bugün" onClick={() => scrollToDate(today)} title="Gantt'ı bugüne kaydır" />
           )}
@@ -662,6 +679,9 @@ export default function App() {
           schedule={schedule}
           usage={usage}
           today={today}
+          curves={curves}
+          warnings={warnings}
+          onWeight={(progressWeight) => update((p) => ({ ...p, progressWeight }))}
           onPickResource={(id) => {
             setPickedResource(id);
             setView("resources");
@@ -706,6 +726,7 @@ export default function App() {
           onScroll={syncScroll("gantt")}
           onSelect={onSelect}
           holidays={holidayMap}
+          workdays={workdays}
           onDragTask={onDragTask}
         />
       </main>
@@ -713,9 +734,22 @@ export default function App() {
       {calendarOpen && (
         <CalendarDialog
           holidays={project.holidays}
+          workdays={workdays}
           projectStart={project.start}
-          onSave={(holidays) => update((p) => ({ ...p, holidays }))}
+          onSave={(holidays, days) => update((p) => ({ ...p, holidays, workdays: days }))}
           onClose={() => setCalendarOpen(false)}
+        />
+      )}
+      {setupOpen && (
+        <ProjectSetupDialog
+          today={today}
+          onClose={() => setSetupOpen(false)}
+          onCreate={(setup) => {
+            update(() => emptyProject(setup.start, setup));
+            setSelection(new Set());
+            setCollapsed(new Set());
+            setSetupOpen(false);
+          }}
         />
       )}
 

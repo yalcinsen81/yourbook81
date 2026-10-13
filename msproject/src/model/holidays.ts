@@ -1,44 +1,76 @@
-// Türkiye resmî tatilleri (tam gün). Dini bayram tarihleri Diyanet takvimine göre yıllara elle girilir;
-// listede olmayan yıllar için kullanıcı Takvim penceresinden ekleyebilir.
+import { getLang, t } from "../i18n";
+import { FIXED_HOLIDAYS, RELIGIOUS_HOLIDAYS, type HolidayName } from "./holidayData";
+
+// Türkiye resmî tatilleri. Veri yıl bazlı olarak holidayData.ts'tedir; hangi grupların ekleneceğini kullanıcı
+// seçer (MS Project'teki gibi takvimi proje başında kendisi kurar).
 
 export interface Holiday {
   date: string;
   name: string;
+  /** Yarım gün (arife): iş günü sayılır, takvimde işaretlenir. */
+  halfDay?: boolean;
 }
 
-const FIXED: [mmdd: string, name: string][] = [
-  ["01-01", "Yılbaşı"],
-  ["04-23", "Ulusal Egemenlik ve Çocuk Bayramı"],
-  ["05-01", "Emek ve Dayanışma Günü"],
-  ["05-19", "Atatürk'ü Anma, Gençlik ve Spor Bayramı"],
-  ["07-15", "Demokrasi ve Millî Birlik Günü"],
-  ["08-30", "Zafer Bayramı"],
-  ["10-29", "Cumhuriyet Bayramı"],
-];
+export interface HolidayOptions {
+  /** Sabit resmî tatiller (Yılbaşı, 23 Nisan, …) */
+  official: boolean;
+  /** Ramazan ve Kurban bayramları (yalnızca verisi olan yıllar) */
+  religious: boolean;
+  /** Arifeler (yarım gün olarak işaretlenir) */
+  halfDays: boolean;
+}
 
-// [ilk gün, gün sayısı, ad]
-const RELIGIOUS: [string, number, string][] = [
-  ["2026-03-20", 3, "Ramazan Bayramı"],
-  ["2026-05-27", 4, "Kurban Bayramı"],
-  ["2027-03-09", 3, "Ramazan Bayramı"],
-  ["2027-05-16", 4, "Kurban Bayramı"],
-];
+export const DEFAULT_HOLIDAY_OPTIONS: HolidayOptions = { official: true, religious: true, halfDays: false };
 
-export function turkishHolidays(fromYear: number, toYear: number): Holiday[] {
+const label = (n: HolidayName) => (getLang() === "en" ? n.en : n.tr);
+
+/** Dini bayram verisi bulunmayan yıllar (kullanıcı bu yılların bayramlarını elle girmeli) */
+export function yearsWithoutReligiousData(fromYear: number, toYear: number): number[] {
+  const years: number[] = [];
+  for (let y = fromYear; y <= toYear; y++) if (!RELIGIOUS_HOLIDAYS[y]) years.push(y);
+  return years;
+}
+
+export function turkishHolidays(fromYear: number, toYear: number, options: HolidayOptions = DEFAULT_HOLIDAY_OPTIONS): Holiday[] {
   const list: Holiday[] = [];
   for (let y = fromYear; y <= toYear; y++) {
-    for (const [mmdd, name] of FIXED) list.push({ date: `${y}-${mmdd}`, name });
-  }
-  for (const [first, days, name] of RELIGIOUS) {
-    const y = Number(first.slice(0, 4));
-    if (y < fromYear || y > toYear) continue;
-    const d0 = new Date(`${first}T00:00:00Z`).getTime();
-    for (let i = 0; i < days; i++) {
-      list.push({ date: new Date(d0 + i * 86_400_000).toISOString().slice(0, 10), name: `${name} ${i + 1}. gün` });
+    for (const f of FIXED_HOLIDAYS) {
+      if (f.halfDay ? !(options.official && options.halfDays) : !options.official) continue;
+      list.push({ date: `${y}-${f.mmdd}`, name: label(f), ...(f.halfDay ? { halfDay: true } : {}) });
+    }
+    if (!options.religious) continue;
+    for (const r of RELIGIOUS_HOLIDAYS[y] ?? []) {
+      const d0 = new Date(`${r.start}T00:00:00Z`).getTime();
+      const day = (i: number) => new Date(d0 + i * 86_400_000).toISOString().slice(0, 10);
+      if (options.halfDays) list.push({ date: day(-1), name: label(r.eve), halfDay: true });
+      for (let i = 0; i < r.days; i++) list.push({ date: day(i), name: `${label(r)} ${i + 1}. ${t("common.day")}` });
     }
   }
-  // Aynı güne denk gelen tatiller tek satırda birleşir (ör. 19 Mayıs 2027 Kurban Bayramı'na denk gelir)
-  const byDate = new Map<string, string>();
-  for (const h of list) byDate.set(h.date, byDate.has(h.date) ? `${byDate.get(h.date)} / ${h.name}` : h.name);
-  return [...byDate].map(([date, name]) => ({ date, name })).sort((a, b) => a.date.localeCompare(b.date));
+  return mergeHolidays([], list);
+}
+
+/**
+ * Tatil listelerini birleştirir. `existing` (kullanıcının listesi) hiç ezilmez: aynı güne denk gelen yeni kayıt
+ * eklenmez. Yeni kayıtlar kendi aralarında aynı güne denk gelirse adları birleşir (ör. 19 Mayıs 2027 Kurban
+ * Bayramı'na denk gelir); tam gün tatil yarım günü örter.
+ */
+export function mergeHolidays(existing: Holiday[], incoming: Holiday[]): Holiday[] {
+  const known = new Set(existing.map((h) => h.date));
+  const added = new Map<string, Holiday>();
+  for (const h of incoming) {
+    if (known.has(h.date)) continue;
+    const prev = added.get(h.date);
+    if (!prev) {
+      added.set(h.date, { ...h });
+      continue;
+    }
+    const halfDay = !!prev.halfDay && !!h.halfDay;
+    added.set(h.date, { date: h.date, name: `${prev.name} / ${h.name}`, ...(halfDay ? { halfDay: true } : {}) });
+  }
+  return [...existing, ...added.values()].sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/** Zamanlamada çalışılmayan günler: yarım günler (arife) iş günü sayılır. */
+export function nonWorkingDates(holidays: Holiday[]): string[] {
+  return holidays.filter((h) => !h.halfDay).map((h) => h.date);
 }

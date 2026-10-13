@@ -10,7 +10,8 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { z } from "zod";
-import { formatDate, isValidDate } from "../src/model/calendar";
+import { formatDate, isValidDate, normalizeWorkdays } from "../src/model/calendar";
+import { mergeHolidays, turkishHolidays, yearsWithoutReligiousData } from "../src/model/holidays";
 import { toMspXml } from "../src/model/mspXml";
 import {
   addTask,
@@ -21,12 +22,13 @@ import {
   linkTasks,
   listTasks,
   OpError,
+  progressWarnings,
   projectSummary,
   shiftTask,
   unlinkTasks,
   updateTask,
 } from "../src/model/ops";
-import { progressCurves } from "../src/model/resources";
+import { curveSamples, plannedAt, progressCurves, projectWeight } from "../src/model/resources";
 import { emptyProject } from "../src/model/sample";
 import { schedule } from "../src/model/schedule";
 import { sanitizeProject } from "../src/model/storage";
@@ -92,7 +94,7 @@ const resourcesArg = z
   .describe("Kaynak atamaları: 'Ali', 'Ali[50%]; Vinç', 'Kalıp ekibi[200%]'. Listede olmayan ad yeni kaynak olur.");
 const linkType = z.enum(["FS", "SS", "FF", "SF"]).describe("FS bitiş-başlangıç (varsayılan), SS, FF, SF");
 
-const server = new McpServer({ name: "proje-planlayici", version: "0.2.0" });
+const server = new McpServer({ name: "proje-planlayici", version: "0.4.0" });
 
 server.registerTool(
   "get_project_summary",
@@ -299,13 +301,21 @@ server.registerTool(
     }),
 );
 
+const weightArg = z
+  .enum(["cost", "work", "duration"])
+  .describe("İlerleme ağırlığı: cost = maliyet (varsayılan), work = iş (adam-gün), duration = süre (iş günü)");
+
 server.registerTool(
   "get_progress_curve",
   {
     title: "S eğrisi ve maliyet eğrisi",
     description:
-      "Planlanan kümülatif ilerleme (%) ve maliyet; haftalık örneklenmiş. Ayrıca bugüne planlanan ile girilen % tamamlanmalara göre gerçekleşen ilerleme ve kazanılan değer.",
-    inputSchema: { today: z.string().optional().describe("YYYY-AA-GG; varsayılan bugün") },
+      "Planlanan kümülatif ilerleme (%) ve maliyet; noktalar proje başlangıcı, her cuma, proje bitişi ve bugündür. " +
+      "Planlanan %, gerçekleşen % ve sapma projenin ilerleme ağırlığıyla (varsayılan maliyet) hesaplanır; kazanılan değer ₺'dir.",
+    inputSchema: {
+      today: z.string().optional().describe("YYYY-AA-GG; varsayılan bugün"),
+      weight: weightArg.optional().describe("Verilmezse projenin ayarı (set_calendar ile değişir)"),
+    },
     annotations: { readOnlyHint: true },
   },
   async (a) =>
@@ -313,20 +323,81 @@ server.registerTool(
       const p = load();
       const s = schedule(p);
       const today = a.today && isValidDate(a.today) ? a.today : formatDate(new Date());
-      const c = progressCurves(p, s, today);
+      const c = progressCurves(p, s, today, a.weight ?? projectWeight(p));
       const at = Math.min(Math.max(c.todayDay, -1), s.finish - 1);
-      const plannedToday = at < 0 ? 0 : c.points[at + 1]?.planned ?? 0;
+      const plannedToday = at < 0 ? 0 : plannedAt(c, at);
       const plannedCostToday = at < 0 ? 0 : c.points[at + 1]?.cost ?? 0;
-      // Haftalık (5 iş günü) örnek, son nokta her zaman dahil
-      const weekly = c.points.filter((_, i) => i % 5 === 0 || i === c.points.length - 1);
+      const r1 = (n: number) => Math.round(n * 10) / 10;
       return {
         today,
+        progressWeight: c.weight,
         totalCost: Math.round(c.totalCost),
-        plannedPercentToday: Math.round(plannedToday * 10) / 10,
-        actualPercent: Math.round(c.earnedPercent * 10) / 10,
+        plannedPercentToday: r1(plannedToday),
+        actualPercent: r1(c.earnedPercent),
+        variancePercent: r1(c.earnedPercent - plannedToday),
         plannedCostToday: Math.round(plannedCostToday),
         earnedValue: Math.round(c.earnedCost),
-        curve: weekly.map((x) => ({ date: x.date, plannedPercent: Math.round(x.planned * 10) / 10, plannedCost: Math.round(x.cost) })),
+        warnings: progressWarnings(c, a.weight ?? projectWeight(p)),
+        curve: curveSamples(c, s, today).map((x) => ({
+          date: x.date,
+          plannedPercent: Math.round(x.plannedPercent * 100) / 100,
+          plannedCost: Math.round(x.plannedCost),
+        })),
+      };
+    }),
+);
+
+server.registerTool(
+  "set_calendar",
+  {
+    title: "Proje takvimi ayarları",
+    description:
+      "Haftanın çalışılan günlerini ve/veya ilerleme ağırlığını değiştirir. workdays: 0 = pazar, 1 = pazartesi … 6 = cumartesi " +
+      "(ör. Pzt–Cmt için [1,2,3,4,5,6]).",
+    inputSchema: {
+      workdays: z.array(z.number().int().min(0).max(6)).min(1).optional(),
+      progress_weight: weightArg.optional(),
+    },
+  },
+  async (a) =>
+    mutate((p) => ({
+      project: {
+        ...p,
+        ...(a.workdays ? { workdays: normalizeWorkdays(a.workdays) } : {}),
+        ...(a.progress_weight ? { progressWeight: a.progress_weight } : {}),
+      },
+      message: "Takvim ayarları güncellendi.",
+    })),
+);
+
+server.registerTool(
+  "add_turkish_holidays",
+  {
+    title: "Türkiye tatillerini ekle",
+    description:
+      "Proje başlangıç yılından itibaren 4 yılın seçilen Türkiye tatillerini ekler; var olan tatillere dokunmaz. " +
+      "Dini bayram verisi yalnızca Diyanet takviminden girilmiş yıllar içindir; diğer yıllar set_holiday ile kullanıcıya sorularak girilmeli.",
+    inputSchema: {
+      official: z.boolean().optional().describe("Sabit resmî tatiller; varsayılan true"),
+      religious: z.boolean().optional().describe("Ramazan ve Kurban bayramları; varsayılan true"),
+      half_days: z.boolean().optional().describe("Arifeleri yarım gün olarak işaretle; varsayılan false"),
+    },
+  },
+  async (a) =>
+    mutate((p) => {
+      const y = Number(p.start.slice(0, 4));
+      const incoming = turkishHolidays(y, y + 3, {
+        official: a.official ?? true,
+        religious: a.religious ?? true,
+        halfDays: a.half_days ?? false,
+      });
+      const holidays = mergeHolidays(p.holidays, incoming);
+      const missing = a.religious === false ? [] : yearsWithoutReligiousData(y, y + 3);
+      return {
+        project: { ...p, holidays },
+        message:
+          `${holidays.length - p.holidays.length} tatil eklendi.` +
+          (missing.length ? ` ${missing.join(", ")} için dini bayram verisi yok; tarihleri kullanıcıdan alıp set_holiday ile ekleyin.` : ""),
       };
     }),
 );
@@ -346,14 +417,19 @@ server.registerTool(
   "set_holiday",
   {
     title: "Tatil ekle / kaldır",
-    description: "Tarihi tatil olarak ekler (remove=true ise kaldırır). Görevler tatilleri atlar.",
-    inputSchema: { date: z.string().describe("YYYY-AA-GG"), name: z.string().optional(), remove: z.boolean().optional() },
+    description: "Tarihi tatil olarak ekler (remove=true ise kaldırır). Görevler tam gün tatilleri atlar; half_day yalnızca işarettir.",
+    inputSchema: {
+      date: z.string().describe("YYYY-AA-GG"),
+      name: z.string().optional(),
+      remove: z.boolean().optional(),
+      half_day: z.boolean().optional().describe("Yarım gün (arife): iş günü sayılır, takvimde işaretlenir"),
+    },
   },
   async (a) =>
     mutate((p) => {
       if (!isValidDate(a.date)) throw new OpError(`Geçersiz tarih: ${a.date}`);
       const rest = p.holidays.filter((h) => h.date !== a.date);
-      const holidays = a.remove ? rest : [...rest, { date: a.date, name: a.name ?? "Tatil" }];
+      const holidays = a.remove ? rest : [...rest, { date: a.date, name: a.name ?? "Tatil", ...(a.half_day ? { halfDay: true } : {}) }];
       holidays.sort((x, y) => x.date.localeCompare(y.date));
       return { project: { ...p, holidays }, message: a.remove ? `${a.date} tatilden çıkarıldı.` : `${a.date} tatil olarak eklendi.` };
     }),

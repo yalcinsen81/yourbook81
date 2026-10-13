@@ -1,8 +1,8 @@
-import { isValidDate } from "./calendar";
+import { isValidDate, normalizeWorkdays } from "./calendar";
 import type { Holiday } from "./holidays";
 import { normalizeOutline } from "./outline";
 import { defaultHolidays } from "./sample";
-import type { Assignment, LinkType, Predecessor, Project, Resource, Task } from "./types";
+import { PROJECT_VERSION, type Assignment, type LinkType, type Predecessor, type ProgressWeight, type Project, type Resource, type Task } from "./types";
 
 const KEY = "msproject.project.v1";
 const LINK_TYPES: LinkType[] = ["FS", "SS", "FF", "SF"];
@@ -64,11 +64,12 @@ export function sanitizeProject(raw: unknown): Project | null {
     ? (r.holidays as unknown[]).flatMap((h) => {
         const o = h as Record<string, unknown> | null;
         return o && typeof o.date === "string" && isValidDate(o.date)
-          ? [{ date: o.date, name: typeof o.name === "string" ? o.name : "" }]
+          ? [{ date: o.date, name: typeof o.name === "string" ? o.name : "", ...(o.halfDay === true ? { halfDay: true } : {}) }]
           : [];
       })
     : defaultHolidays(r.start);
   return {
+    ...migrate(r),
     name: typeof r.name === "string" ? r.name : "Proje",
     start: r.start,
     tasks: normalizeOutline(tasks),
@@ -76,6 +77,20 @@ export function sanitizeProject(raw: unknown): Project | null {
     resources,
   };
 }
+
+/**
+ * Sürüm yükseltme. Sürüm alanı olmayan dosyalar 1. sürümdür: pazartesi–cuma çalışılır, tatil listesi olduğu gibi
+ * kalır (kullanıcının tatillerine dokunulmaz). İlerleme ağırlığı yoksa maliyettir.
+ */
+function migrate(r: Record<string, unknown>): Pick<Project, "version" | "workdays" | "progressWeight"> {
+  return {
+    version: PROJECT_VERSION,
+    workdays: normalizeWorkdays(r.workdays),
+    progressWeight: WEIGHTS.includes(r.progressWeight as ProgressWeight) ? (r.progressWeight as ProgressWeight) : "cost",
+  };
+}
+
+const WEIGHTS: ProgressWeight[] = ["cost", "work", "duration"];
 
 function toPredecessor(raw: unknown): Predecessor[] {
   if (!raw || typeof raw !== "object") return [];

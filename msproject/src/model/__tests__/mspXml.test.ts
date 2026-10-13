@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import { parseDurationHours, parseMspXml, toMspXml } from "../mspXml";
-import { sampleProject } from "../sample";
+import { emptyProject, sampleProject } from "../sample";
 import { schedule } from "../schedule";
 
 // MS Project 2019'un "XML olarak kaydet" çıktısından kısaltılmış örnek
@@ -97,5 +97,19 @@ describe("MS Project XML", () => {
       (p.tasks[i].assignments ?? []).map((a) => [p.resources.find((r) => r.id === a.resourceId)!.name, a.units]);
     original.tasks.forEach((_, i) => expect(names(project, i)).toEqual(names(original, i)));
     expect(xml).toContain("<Work>PT160H0M0S</Work>"); // Temel: 10 gün × %200 kaba inşaat ekibi
+  });
+});
+
+describe("MS Project XML: çalışma haftası ve yarım günler", () => {
+  it("Pzt–Cmt haftası yazılır ve geri okunur; arife istisna olarak yazılmaz", () => {
+    const p = {
+      ...emptyProject("2026-10-26", { workdays: [1, 2, 3, 4, 5, 6], holidays: { official: true, religious: false, halfDays: true } }),
+      tasks: [{ id: "a", name: "A", duration: 3, outline: 0, percent: 0, predecessors: [] }],
+    };
+    const xml = toMspXml(p, schedule(p));
+    expect(xml).toContain("<MinutesPerWeek>2880</MinutesPerWeek>");
+    expect(xml).not.toContain("arifesi");
+    const back = parseMspXml(xml).project;
+    expect(back.workdays).toEqual([1, 2, 3, 4, 5, 6]);
   });
 });

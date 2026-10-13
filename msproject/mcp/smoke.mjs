@@ -50,5 +50,14 @@ const saved = JSON.parse(readFileSync(file, "utf8"));
 if (saved.tasks.length !== 5 || !readFileSync(join(dir, "proje.xml"), "utf8").includes("<Assignment>") || !existsSync(join(dir, "proje.xml")) || tasks[3].start !== "2026-11-02" || tasks[2].finish !== "2026-11-02" || !bad.isError) {
   throw new Error("Beklenen sonuç alınamadı");
 }
+// Faz 1: eğri noktaları cuma günleri, aynı şema, takvim ayarı
+const fridays = curve.curve.slice(1, -1).every((x) => x.date === curve.today || new Date(`${x.date}T00:00:00Z`).getUTCDay() === 5);
+const rows = JSON.parse(await call("get_tasks"));
+const sameKeys = rows.every((r) => Object.keys(r).sort().join() === Object.keys(rows[0]).sort().join());
+await call("set_calendar", { workdays: [1, 2, 3, 4, 5, 6], progress_weight: "duration" });
+const summary = JSON.parse(await call("get_project_summary"));
+if (!fridays || curve.curve[0].plannedPercent !== 0 || !sameKeys || summary.progressWeight !== "duration" || summary.workdays.length !== 6) {
+  throw new Error(`Faz 1 sonucu beklenen gibi değil: ${JSON.stringify({ fridays, first: curve.curve[0], sameKeys, w: summary.progressWeight, d: summary.workdays })}`);
+}
 console.log("Tamam:", file);
 await client.close();

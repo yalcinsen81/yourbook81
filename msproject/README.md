@@ -12,18 +12,22 @@ veri tarayıcıda (localStorage) otomatik saklanır, JSON olarak indirilip geri 
 - Döngü ve özet–alt görev bağı engellenir
 - Gantt şeması: gün/hafta/ay ölçeği, hafta sonu gölgesi, bugün çizgisi, bağlantı okları, ilerleme çubuğu
 - Gantt'ta sürükle-bırak: çubuğu taşımak başlangıç kısıtı koyar, sağ ucundan çekmek süreyi değiştirir
-- Tatil takvimi: Türkiye resmî tatilleri hazır (dini bayramlar 2026–2027), Takvim penceresinden eklenip silinir
+- Proje takvimi kullanıcı tarafından kurulur (MS Project gibi): "Yeni proje" penceresinde çalışma günleri (ör. Pzt–Cmt),
+  resmî tatiller, dini bayramlar (hazır veri 2026–2027; diğer yıllar elle girilir) ve arifelerin yarım gün işareti seçilir;
+  hepsi Takvim penceresinden değiştirilebilir. Yarım gün iş günü sayılır, yalnızca Gantt ve takvimde işaretlenir.
 - MS Project XML aç/kaydet: MS Project'te "Farklı Kaydet > XML Biçimi" ile kaydedilen dosya açılır; "MS Project'e" düğmesi MS Project'te açılan .xml indirir (.mpp doğrudan okunamaz)
 - Kaynaklar: kişi, ekip ya da makine; kapasite (%300 = üç kişilik ekip) ve günlük ücret. Görev tablosundaki Kaynaklar
   sütununa `Ali[50%]; Vinç` yazılır; yeni ad kaynak listesine eklenir. Aşırı yüklenen kaynak kırmızı ünlemle işaretlenir.
 - Kaynaklar sayfası: iş (adam-gün), maliyet, en yüksek yük ve seçili kaynağın günlük yük histogramı
 - Grafikler sayfası: S eğrisi (planlanan / gerçekleşen), maliyet eğrisi ve kazanılan değer, haftalık kaynak yük haritası,
-  kaynak başına maliyet ve iş
+  kaynak başına maliyet ve iş. İlerleme ağırlığı seçilir: maliyet (varsayılan), iş (adam-gün) ya da süre; planlanan %,
+  gerçekleşen % ve sapma aynı ağırlıkla hesaplanır. Maliyeti olmayan görevler bilgi notuyla gösterilir.
 - Kaynaklar ve atamalar MS Project XML'ine yazılır ve oradan okunur
 - Geri al / yinele, JSON aç/kaydet, örnek inşaat projesi
 - Kısayollar: Insert (görev ekle), Delete (sil), Alt+Shift+→/← (girinti), Ctrl+F2 (bağla), Ctrl+Z / Ctrl+Y
 
-Takvim: Pazartesi–Cuma iş günü, projeye tanımlı tatiller hariç.
+Takvim: varsayılan Pazartesi–Cuma iş günü, projeye tanımlı tam gün tatiller hariç. Dosya biçimi sürümlüdür (`version`);
+eski `proje.json` dosyaları açılırken otomatik yükseltilir (Pzt–Cum, maliyet ağırlığı, tatil listesi aynen).
 
 ## Bilgisayara kurulum (uygulama olarak)
 
@@ -53,10 +57,11 @@ npm run build
 ```
 
 ## Yapı
-- `src/model/` saf mantık (testli): `calendar.ts` iş günü takvimi (`WorkCalendar`), `holidays.ts` Türkiye tatilleri, `schedule.ts` CPM motoru,
+- `src/model/` saf mantık (testli): `calendar.ts` iş günü takvimi (`WorkCalendar`), `holidays.ts` + `holidayData.ts` Türkiye tatilleri (yıl bazlı veri, tr + en adlar), `schedule.ts` CPM motoru,
   `predecessors.ts` öncül metni, `outline.ts` girinti/WBS, `storage.ts` kayıt ve dosya doğrulama, `mspXml.ts` MS Project XML okuma/yazma,
   `resources.ts` kaynak atama, yük, maliyet ve S eğrisi, `ops.ts` MCP'nin kullandığı işlemler
 - `src/components/` `TaskGrid` (tablo), `Gantt` (SVG şema), `ResourceView` (kaynaklar), `ChartsView` + `charts.tsx` (bağımlılıksız SVG grafikler), `EditableCell`
+- `src/i18n/` arayüz metinleri (`t("anahtar")`, `tr.ts` + `en.ts`); yeni metinler buradan eklenir
 - `src/useProject.ts` durum + geri al geçmişi
 
 ## Claude'a bağlama (MCP)

@@ -111,7 +111,8 @@ describe("eğriler", () => {
       task("a", 2, { percent: 50, assignments: [{ resourceId: "ali", units: 100 }] }),
       task("b", 2, { predecessors: [{ taskId: "a", type: "FS", lag: 0 }], assignments: [{ resourceId: "vinc", units: 100 }] }),
     ]);
-    const c = progressCurves(p, schedule(p), "2026-10-13");
+    // Süre ağırlığı (eski varsayılan); maliyet ağırlığı progress.test.ts'te
+    const c = progressCurves(p, schedule(p), "2026-10-13", "duration");
     expect(c.points.map((x) => x.planned)).toEqual([0, 25, 50, 75, 100]);
     expect(c.points.map((x) => x.cost)).toEqual([0, 1000, 2000, 7000, 12000]);
     expect(c.totalCost).toBe(12_000);

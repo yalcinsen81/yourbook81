@@ -63,7 +63,8 @@ const TR_DAYS = ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"];
 const TR_MONTHS = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
 
 /** Tablo için kısa Türkçe gösterim: "Pzt 12.10.26" */
-export function formatShort(iso: string): string {
+export function formatShort(iso: string | null | undefined): string {
+  if (!iso || !isValidDate(iso)) return "—";
   const d = parseDate(iso);
   const dd = String(d.getUTCDate()).padStart(2, "0");
   const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
@@ -80,6 +81,16 @@ export function dayOfWeekLetter(iso: string): string {
   return ["P", "P", "S", "Ç", "P", "C", "C"][parseDate(iso).getUTCDay()];
 }
 
+/** Varsayılan çalışma haftası: pazartesi–cuma (0 = pazar … 6 = cumartesi) */
+export const DEFAULT_WORKDAYS = [1, 2, 3, 4, 5];
+
+/** Geçerli çalışma günü listesi; boşsa ya da bozuksa pazartesi–cuma */
+export function normalizeWorkdays(days: unknown): number[] {
+  if (!Array.isArray(days)) return [...DEFAULT_WORKDAYS];
+  const set = [...new Set(days.filter((d): d is number => Number.isInteger(d) && d >= 0 && d <= 6))].sort((a, b) => a - b);
+  return set.length ? set : [...DEFAULT_WORKDAYS];
+}
+
 /**
  * Tatil günlerini de bilen iş takvimi. Ofsetler `base`'den (ilk iş günü) sayılır.
  * İş günleri ihtiyaç oldukça ileri/geri doğru önbelleğe eklenir.
@@ -87,19 +98,26 @@ export function dayOfWeekLetter(iso: string): string {
 export class WorkCalendar {
   readonly base: string;
   private readonly off: Set<string>;
+  private readonly week: Set<number>;
   private readonly forward: string[];
   private readonly backward: string[] = [""]; // backward[k] = base'den k iş günü önce (k >= 1)
   private readonly index = new Map<string, number>();
 
-  constructor(start: string, holidays: Iterable<string> = []) {
+  constructor(start: string, holidays: Iterable<string> = [], workdays: number[] = DEFAULT_WORKDAYS) {
     this.off = new Set(holidays);
+    this.week = new Set(normalizeWorkdays(workdays));
     this.base = this.nextWorkday(start);
     this.forward = [this.base];
     this.index.set(this.base, 0);
   }
 
   isWorkday(iso: string): boolean {
-    return isWorkday(iso) && !this.off.has(iso);
+    return this.isWorkingWeekday(iso) && !this.off.has(iso);
+  }
+
+  /** Haftanın çalışılan günlerinden mi (tatiller hariç tutulmadan) */
+  isWorkingWeekday(iso: string): boolean {
+    return this.week.has(parseDate(iso).getUTCDay());
   }
 
   isHoliday(iso: string): boolean {

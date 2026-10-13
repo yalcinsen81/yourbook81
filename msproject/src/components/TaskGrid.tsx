@@ -1,4 +1,5 @@
 import type { MouseEvent, RefObject, UIEvent } from "react";
+import { t } from "../i18n";
 import { formatShort } from "../model/calendar";
 import type { ScheduledTask, Task } from "../model/types";
 import { EditableCell } from "./EditableCell";
@@ -13,6 +14,8 @@ export interface GridRow {
   resText: string;
   /** Atandığı kaynaklardan biri bu görev sırasında kapasitesini aşıyor */
   overallocated: boolean;
+  /** Maliyet ağırlığında maliyeti olmayan görev (ilerleme ağırlığı 0) */
+  noCost?: boolean;
   collapsed: boolean;
 }
 
@@ -148,13 +151,19 @@ export function TaskGrid(props: Props) {
                 />
               </div>
               <div className={`gc gc-res ${r.overallocated ? "over" : ""}`}>
+                {r.noCost && !r.overallocated && (
+                  <span className="info-flag" title={t("warn.taskNoCost")} aria-label={t("warn.taskNoCost")}>
+                    i
+                  </span>
+                )}
                 {r.overallocated && (
                   <span className="over-flag" title="Atanan kaynaklardan biri bu görev sırasında kapasitesini aşıyor">
                     !
                   </span>
                 )}
                 <EditableCell
-                  value={r.resText}
+                  value={r.resText ?? ""}
+                  placeholder={t("common.empty")}
                   readOnly={sched.isSummary}
                   row={i}
                   col="resources"

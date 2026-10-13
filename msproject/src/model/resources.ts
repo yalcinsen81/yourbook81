@@ -1,4 +1,5 @@
-import type { Assignment, Project, Resource, Schedule, Task } from "./types";
+import { addDays, parseDate, type WorkCalendar } from "./calendar";
+import type { Assignment, ProgressWeight, Project, Resource, Schedule, Task } from "./types";
 
 // Kaynak atama, kaynak yükü (histogram), maliyet ve ilerleme eğrileri. Hepsi saf hesaplamadır.
 // Yük iş günü ofsetleri üzerinden tutulur: görev es..ef-1 günlerinde atandığı birimi harcar.
@@ -162,7 +163,7 @@ export interface CurvePoint {
   /** İş günü ofseti; nokta o günün sonunu gösterir */
   day: number;
   date: string;
-  /** Planlanan kümülatif ilerleme (%) */
+  /** Planlanan kümülatif ilerleme (%), seçili ağırlığa göre */
   planned: number;
   /** Planlanan kümülatif maliyet */
   cost: number;
@@ -171,63 +172,139 @@ export interface CurvePoint {
 export interface Curves {
   points: CurvePoint[];
   totalCost: number;
-  /** Bugüne kadar gerçekleşen (girilen yüzdelere göre) ilerleme ve kazanılan değer */
+  /** Bugüne kadar gerçekleşen (girilen yüzdelere göre, planlananla aynı ağırlıkla) ilerleme */
   earnedPercent: number;
+  /** Kazanılan değer: Σ görev maliyeti × % tamamlanma (para; ağırlık seçiminden bağımsız) */
   earnedCost: number;
   /** Bugünün iş günü ofseti (projenin dışında olabilir) */
   todayDay: number;
+  /** Kullanılan ağırlık; seçilen ağırlığın toplamı 0 ise süreye düşülür */
+  weight: ProgressWeight;
+  /** Seçilen ağırlık kullanılamadı (toplamı 0), süreye düşüldü */
+  weightFallback: boolean;
+  /** Maliyeti 0 olan süreli yaprak görevlerin satır numaraları (maliyet ağırlığında ilerleme ağırlıkları 0) */
+  zeroCostRows: number[];
+}
+
+interface WeightedTask {
+  row: number;
+  es: number;
+  ef: number;
+  cost: number;
+  work: number;
+  percent: number;
+}
+
+/** Ağırlığa göre görev değeri: maliyet (₺), iş (adam-gün) ya da süre (iş günü) */
+function weightOf(t: WeightedTask, mode: ProgressWeight): number {
+  return mode === "cost" ? t.cost : mode === "work" ? t.work : t.ef - t.es;
+}
+
+export function projectWeight(project: Project): ProgressWeight {
+  return project.progressWeight ?? "cost";
 }
 
 /**
- * S eğrisi: süreye göre ağırlıklı planlanan ilerleme (MS Project'teki % tamamlanma ile aynı ağırlık) ve
- * kümülatif maliyet. Görevin işi ve maliyeti süresine eşit dağılır.
+ * S eğrisi ve ilerleme: planlanan %, gerçekleşen % ve sapma tek bir ağırlıkla hesaplanır (varsayılan maliyet).
+ * Görevin ağırlığı ve maliyeti süresinin iş günlerine eşit dağılır. Özet görevler ve kilometre taşları sayılmaz.
  */
-export function progressCurves(project: Project, schedule: Schedule, today: string): Curves {
+export function progressCurves(project: Project, schedule: Schedule, today: string, mode: ProgressWeight = projectWeight(project)): Curves {
   const days = schedule.finish;
-  const dailyWork = new Array<number>(days).fill(0);
-  const dailyCost = new Array<number>(days).fill(0);
-  let totalWork = 0;
-  let totalCost = 0;
-  let earnedWork = 0;
-  let earnedCost = 0;
+  const items: WeightedTask[] = [];
+  const byId = new Map(project.resources.map((r) => [r.id, r]));
   project.tasks.forEach((t, i) => {
     const r = schedule.rows[i];
     if (!r || r.isSummary || r.ef <= r.es) return;
     const len = r.ef - r.es;
-    const cost = taskCost(t, project.resources, len);
-    totalWork += len;
-    totalCost += cost;
-    earnedWork += (len * t.percent) / 100;
-    earnedCost += (cost * t.percent) / 100;
-    for (let d = r.es; d < r.ef && d < days; d++) {
-      dailyWork[d] += 1;
-      dailyCost[d] += cost / len;
-    }
+    const work = (t.assignments ?? []).reduce((sum, a) => sum + (byId.has(a.resourceId) ? (a.units * len) / 100 : 0), 0);
+    items.push({ row: i + 1, es: r.es, ef: r.ef, cost: taskCost(t, project.resources, len), work, percent: t.percent });
   });
+  let weight = mode;
+  if (!items.some((t) => weightOf(t, mode) > 0)) weight = "duration";
+
+  const dailyWeight = new Array<number>(days).fill(0);
+  const dailyCost = new Array<number>(days).fill(0);
+  let totalWeight = 0;
+  let totalCost = 0;
+  let earnedWeight = 0;
+  let earnedCost = 0;
+  for (const t of items) {
+    const len = t.ef - t.es;
+    const w = weightOf(t, weight);
+    totalWeight += w;
+    totalCost += t.cost;
+    earnedWeight += (w * t.percent) / 100;
+    earnedCost += (t.cost * t.percent) / 100;
+    for (let d = t.es; d < t.ef && d < days; d++) {
+      dailyWeight[d] += w / len;
+      dailyCost[d] += t.cost / len;
+    }
+  }
   const points: CurvePoint[] = [{ day: -1, date: schedule.calendar.toDate(0), planned: 0, cost: 0 }];
   let w = 0;
   let c = 0;
   for (let d = 0; d < days; d++) {
-    w += dailyWork[d];
+    w += dailyWeight[d];
     c += dailyCost[d];
-    points.push({ day: d, date: schedule.calendar.toDate(d), planned: totalWork ? (w / totalWork) * 100 : 0, cost: c });
+    points.push({ day: d, date: schedule.calendar.toDate(d), planned: totalWeight ? (w / totalWeight) * 100 : 0, cost: c });
   }
+  // Kayan nokta birikimi son noktada tam %100 / toplam maliyet olsun
+  if (days > 0 && totalWeight) points[points.length - 1] = { ...points[points.length - 1], planned: 100, cost: totalCost };
   return {
     points,
     totalCost,
-    earnedPercent: totalWork ? (earnedWork / totalWork) * 100 : 0,
+    earnedPercent: totalWeight ? (earnedWeight / totalWeight) * 100 : 0,
     earnedCost,
     todayDay: schedule.calendar.toOffset(today),
+    weight,
+    weightFallback: weight !== mode && items.length > 0,
+    zeroCostRows: items.filter((t) => t.cost <= 0).map((t) => t.row),
   };
 }
 
-/** Bir tarihte planlanan ilerleme (gün sonu) */
+/** Bir iş günü ofsetinde (gün sonu) planlanan ilerleme */
 export function plannedAt(curves: Curves, day: number): number {
   if (day < 0) return 0;
   const p = curves.points[Math.min(day + 1, curves.points.length - 1)];
   return p?.planned ?? 0;
 }
 
-export function formatMoney(n: number): string {
+/** Takvim tarihinin gün sonundaki eğri noktası (tatil / hafta sonu ise önceki iş gününün sonu) */
+export function curveAtDate(curves: Curves, calendar: WorkCalendar, date: string): { planned: number; cost: number } {
+  // date dahil o güne kadarki iş günü sayısı = date'ten sonraki ilk iş gününün ofseti
+  const done = calendar.toOffset(addDays(date, 1));
+  const p = curves.points[Math.max(0, Math.min(done, curves.points.length - 1))];
+  return { planned: p?.planned ?? 0, cost: p?.cost ?? 0 };
+}
+
+export interface CurveSample {
+  date: string;
+  plannedPercent: number;
+  plannedCost: number;
+}
+
+/**
+ * Eğri örnekleri takvim haftasına sabitlenir: proje başlangıcı (%0), aradaki her cuma (tatil olsa da takvim
+ * tarihi), proje bitişi (%100) ve aralıktaysa bugün. Tarihler artan sırada ve tekrarsızdır.
+ */
+export function curveSamples(curves: Curves, schedule: Schedule, today?: string): CurveSample[] {
+  if (schedule.finish <= 0) return [];
+  const start = schedule.calendar.base;
+  const finish = schedule.finishDate;
+  const dates = new Set<string>([start, finish]);
+  // İlk cuma: başlangıçtan sonraki (ya da başlangıç günü olan) cuma
+  let friday = addDays(start, (5 - parseDate(start).getUTCDay() + 7) % 7);
+  for (; friday < finish; friday = addDays(friday, 7)) dates.add(friday);
+  if (today && today > start && today < finish) dates.add(today);
+  return [...dates].sort().map((date) => {
+    if (date === start) return { date, plannedPercent: 0, plannedCost: 0 };
+    const v = date === finish ? curves.points[curves.points.length - 1] : curveAtDate(curves, schedule.calendar, date);
+    return { date, plannedPercent: v.planned, plannedCost: v.cost };
+  });
+}
+
+/** Boş ya da geçersiz değer "—" gösterilir (arayüz çökmesin) */
+export function formatMoney(n: number | null | undefined): string {
+  if (typeof n !== "number" || !Number.isFinite(n)) return "—";
   return `${Math.round(n).toLocaleString("tr-TR")} ₺`;
 }

@@ -1,4 +1,5 @@
 import { isValidDate, WorkCalendar } from "./calendar";
+import { nonWorkingDates } from "./holidays";
 import { ancestorsOf, isSummaryAt, subtreeEnd } from "./outline";
 import type { LinkType, Project, Schedule, ScheduledTask, Task } from "./types";
 
@@ -18,7 +19,8 @@ export function schedule(project: Project): Schedule {
   const { tasks } = project;
   const cal = new WorkCalendar(
     isValidDate(project.start) ? project.start : "2026-01-05",
-    (project.holidays ?? []).map((h) => h.date),
+    nonWorkingDates(project.holidays ?? []),
+    project.workdays,
   );
 
   const summary = new Set<string>();

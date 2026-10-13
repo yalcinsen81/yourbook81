@@ -1,10 +1,22 @@
-import { isValidDate } from "./calendar";
+import { t } from "../i18n";
+import { formatDate, isValidDate, normalizeWorkdays } from "./calendar";
 import { indent, normalizeOutline, outdent, subtreeEnd, wbsCodes, ancestorsOf } from "./outline";
 import { formatPredecessors, parsePredecessors } from "./predecessors";
 import { schedule, wouldCreateCycle } from "./schedule";
 import { newId } from "./storage";
-import { assignFromText, formatAssignments, newResourceId, removeResource, resourceUsage, taskCost } from "./resources";
-import type { LinkType, Project, Resource, Task } from "./types";
+import {
+  assignFromText,
+  formatAssignments,
+  newResourceId,
+  plannedAt,
+  progressCurves,
+  projectWeight,
+  removeResource,
+  resourceUsage,
+  taskCost,
+  type Curves,
+} from "./resources";
+import type { LinkType, ProgressWeight, Project, Resource, Task } from "./types";
 
 // Projeyi değiştiren saf işlemler. Satır numaraları 1'den başlar (tablodaki # sütunu, öncüllerdeki numaralar).
 // MCP sunucusu (Claude bağlantısı) bunları kullanır; hatalar kullanıcıya gösterilecek Türkçe mesajla fırlatılır.
@@ -166,6 +178,7 @@ export function unlinkTasks(p: Project, fromRow: number, toRow: number): Project
   };
 }
 
+/** Görev çıktısı: her satırda aynı alanlar bulunur (boş değerler "" / 0 / false). */
 export interface TaskRow {
   row: number;
   wbs: string;
@@ -180,68 +193,90 @@ export interface TaskRow {
   percent: number;
   slack: number;
   critical: boolean;
-  constraint?: string;
-  resources?: string;
-  cost?: number;
-  overallocated?: boolean;
+  /** "şundan önce başlamasın: YYYY-AA-GG" ya da "" */
+  constraint: string;
+  /** "Ali[50%]; Vinç" ya da ""; özet görevlerde "" */
+  resources: string;
+  /** Görev maliyeti; özet görevde alt görevlerin toplamı */
+  cost: number;
+  overallocated: boolean;
+  /** Bilgi notu (ör. maliyet ağırlığında maliyeti olmayan görev) ya da "" */
+  info: string;
 }
 
 export function listTasks(p: Project): TaskRow[] {
   const s = schedule(p);
   const wbs = wbsCodes(p.tasks);
   const over = new Set(resourceUsage(p, s).flatMap((u) => u.overTasks));
-  return p.tasks.map((t, i) => {
+  const curves = progressCurves(p, s, formatDate(new Date()));
+  const zeroCost = new Set(curves.weight === "cost" ? curves.zeroCostRows : []);
+  const leafCost = p.tasks.map((task, i) => (s.rows[i].isSummary ? 0 : Math.round(taskCost(task, p.resources))));
+  return p.tasks.map((task, i) => {
     const r = s.rows[i];
+    const cost = r.isSummary ? leafCost.slice(i + 1, subtreeEnd(p.tasks, i)).reduce((a, b) => a + b, 0) : leafCost[i];
     return {
       row: i + 1,
       wbs: wbs[i],
-      name: t.name,
-      level: t.outline,
+      name: task.name,
+      level: task.outline,
       summary: r.isSummary,
       milestone: r.isMilestone,
-      duration: r.isSummary ? r.duration : t.duration,
+      duration: r.isSummary ? r.duration : task.duration,
       start: r.startDate,
       finish: r.finishDate,
-      predecessors: formatPredecessors(t.predecessors, p.tasks),
-      percent: t.percent,
+      predecessors: formatPredecessors(task.predecessors, p.tasks),
+      percent: task.percent,
       slack: r.slack,
       critical: r.critical,
-      ...(t.startNoEarlierThan ? { constraint: `şundan önce başlamasın: ${t.startNoEarlierThan}` } : {}),
-      ...(!r.isSummary && t.assignments?.length
-        ? {
-            resources: formatAssignments(t.assignments, p.resources),
-            cost: Math.round(taskCost(t, p.resources)),
-            ...(over.has(t.id) ? { overallocated: true } : {}),
-          }
-        : {}),
+      constraint: task.startNoEarlierThan ? `şundan önce başlamasın: ${task.startNoEarlierThan}` : "",
+      resources: r.isSummary ? "" : formatAssignments(task.assignments, p.resources),
+      cost,
+      overallocated: over.has(task.id),
+      info: zeroCost.has(i + 1) ? t("warn.taskNoCost") : "",
     };
   });
 }
 
-export function projectSummary(p: Project) {
+export function projectSummary(p: Project, today = formatDate(new Date())) {
   const s = schedule(p);
   const leaves = p.tasks.filter((_, i) => !s.rows[i].isSummary);
-  let total = 0;
-  let done = 0;
-  for (const t of leaves) {
-    total += t.duration;
-    done += (t.duration * t.percent) / 100;
-  }
+  const usage = resourceUsage(p, s);
+  const curves = progressCurves(p, s, today);
+  const plannedToday = curves.todayDay < 0 ? 0 : plannedAt(curves, Math.min(curves.todayDay, s.finish - 1));
   return {
     name: p.name,
     start: s.calendar.base,
     finish: s.finishDate,
     durationWorkdays: s.finish,
+    workdays: normalizeWorkdays(p.workdays),
     tasks: leaves.length,
     criticalTasks: leaves.filter((t) => s.byId.get(t.id)!.critical).length,
-    progressPercent: total ? Math.round((done / total) * 100) : 0,
+    /** İlerleme ağırlığı: cost (maliyet), work (iş, adam-gün) ya da duration (süre) */
+    progressWeight: curves.weight,
+    progressPercent: round1(curves.earnedPercent),
+    plannedPercentToday: round1(plannedToday),
+    varianceToday: round1(curves.earnedPercent - plannedToday),
+    earnedValue: Math.round(curves.earnedCost),
     holidays: p.holidays.length,
     resources: p.resources.length,
-    totalCost: Math.round(resourceUsage(p, s).reduce((sum, u) => sum + u.cost, 0)),
-    overallocatedResources: resourceUsage(p, s).filter((u) => u.overDays.length).map((u) => u.resource.name),
-    cycleWarning: s.cycle.length ? `Döngüsel bağ var: ${s.cycle.map((id) => p.tasks.findIndex((t) => t.id === id) + 1).join(", ")}. satırlar` : undefined,
+    totalCost: Math.round(usage.reduce((sum, u) => sum + u.cost, 0)),
+    overallocatedResources: usage.filter((u) => u.overDays.length).map((u) => u.resource.name),
+    cycleWarning: s.cycle.length ? `Döngüsel bağ var: ${s.cycle.map((id) => p.tasks.findIndex((t) => t.id === id) + 1).join(", ")}. satırlar` : "",
+    /** Bilgilendirme (hata değil): ör. maliyeti olmayan görevler */
+    warnings: progressWarnings(curves, projectWeight(p)),
   };
 }
+
+/** İlerleme ağırlığıyla ilgili bilgi notları (arayüz ve MCP aynı metni kullanır) */
+export function progressWarnings(curves: Curves, requested: ProgressWeight): string[] {
+  const out: string[] = [];
+  if (curves.weightFallback) out.push(t("warn.weightFallback", { weight: t(`weight.${requested}`) }));
+  else if (curves.weight === "cost" && curves.zeroCostRows.length)
+    out.push(t("warn.zeroCostTasks", { n: curves.zeroCostRows.length, rows: curves.zeroCostRows.join(", ") }));
+  return out;
+}
+
+const round1 = (n: number) => Math.round(n * 10) / 10;
 
 function clampDuration(n: number): number {
   if (!Number.isFinite(n) || n < 0) throw new OpError("Süre 0 ya da pozitif bir iş günü sayısı olmalı.");

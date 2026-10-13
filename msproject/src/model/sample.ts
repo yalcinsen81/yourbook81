@@ -1,6 +1,7 @@
-import { turkishHolidays } from "./holidays";
+import { DEFAULT_WORKDAYS, normalizeWorkdays } from "./calendar";
+import { DEFAULT_HOLIDAY_OPTIONS, turkishHolidays, type HolidayOptions } from "./holidays";
 import { parseAssignments } from "./resources";
-import type { LinkType, Project, Resource, Task } from "./types";
+import { PROJECT_VERSION, type LinkType, type ProgressWeight, type Project, type Resource, type Task } from "./types";
 
 // İlk açılışta gösterilen örnek proje: küçük bir konut inşaatı.
 
@@ -52,15 +53,47 @@ export function sampleProject(start: string): Project {
       }),
     ...(res ? { assignments: parseAssignments(res, RESOURCES).assignments } : {}),
   }));
-  return { name: "Örnek: Konut İnşaatı", start, tasks, holidays: defaultHolidays(start), resources: RESOURCES.map((r) => ({ ...r })) };
+  return {
+    ...emptyProject(start),
+    name: "Örnek: Konut İnşaatı",
+    tasks,
+    resources: RESOURCES.map((r) => ({ ...r })),
+  };
 }
 
-export function emptyProject(start: string): Project {
-  return { name: "Yeni Proje", start, tasks: [], holidays: defaultHolidays(start), resources: [] };
+export interface ProjectSetup {
+  name: string;
+  start: string;
+  /** 0 = pazar … 6 = cumartesi */
+  workdays: number[];
+  holidays: HolidayOptions;
+  progressWeight: ProgressWeight;
 }
 
-/** Proje başlangıç yılından itibaren 4 yılın Türkiye resmî tatilleri */
-export function defaultHolidays(start: string) {
+export const DEFAULT_SETUP: Omit<ProjectSetup, "start"> = {
+  name: "Yeni Proje",
+  workdays: DEFAULT_WORKDAYS,
+  holidays: DEFAULT_HOLIDAY_OPTIONS,
+  progressWeight: "cost",
+};
+
+/** Kullanıcının proje başında seçtiği takvimle boş proje (MS Project'teki "Proje bilgileri" gibi) */
+export function emptyProject(start: string, setup: Partial<Omit<ProjectSetup, "start">> = {}): Project {
+  const s = { ...DEFAULT_SETUP, ...setup };
+  return {
+    version: PROJECT_VERSION,
+    name: s.name,
+    start,
+    tasks: [],
+    holidays: defaultHolidays(start, s.holidays),
+    resources: [],
+    workdays: normalizeWorkdays(s.workdays),
+    progressWeight: s.progressWeight,
+  };
+}
+
+/** Proje başlangıç yılından itibaren 4 yılın seçilen Türkiye tatilleri */
+export function defaultHolidays(start: string, options: HolidayOptions = DEFAULT_HOLIDAY_OPTIONS) {
   const y = Number(start.slice(0, 4));
-  return turkishHolidays(y, y + 3);
+  return turkishHolidays(y, y + 3, options);
 }

@@ -1307,3 +1307,200 @@ button {
   color: var(--crit);
   background: var(--holiday);
 }
+
+/* Yarım gün (arife): iş günü, yalnızca işaret */
+.holiday-shade.half {
+  fill: var(--holiday);
+  opacity: 0.45;
+}
+.gh-band.half {
+  box-shadow: inset 0 -2px 0 var(--crit);
+}
+.pill.half {
+  margin-inline-start: 8px;
+  padding: 1px 7px;
+  background: var(--holiday);
+  color: var(--crit);
+  font-size: 10.5px;
+}
+
+/* Bilgi notları (hata değil): maliyeti olmayan görev, ağırlık geri düşüşü */
+.info-flag {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  margin-inline-start: 4px;
+  border-radius: 50%;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-size: 10.5px;
+  font-weight: 700;
+  font-style: italic;
+  cursor: help;
+}
+.stat.info .stat-value {
+  color: var(--accent);
+  font-weight: 550;
+  font-size: 13px;
+}
+.cell-input::placeholder {
+  color: var(--faint);
+}
+.charts-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.charts-bar .segmented {
+  align-items: center;
+}
+.seg-label {
+  padding: 0 8px 0 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.info-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--ink);
+  font-size: 12.5px;
+}
+.info-note svg {
+  color: var(--accent);
+  flex: none;
+}
+
+/* Yeni proje ve takvim ayarları */
+.settings {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 16px 12px;
+  overflow: auto;
+}
+.settings .field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.settings .field input,
+.settings .field select {
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+.setting {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin: 0;
+  padding: 8px 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.setting legend {
+  padding: 0 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.day-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.day-toggle {
+  position: relative;
+  min-width: 44px;
+  padding: 5px 8px;
+  text-align: center;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--muted);
+  user-select: none;
+}
+.day-toggle input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.day-toggle.on {
+  background: var(--accent-soft);
+  border-color: var(--select-line);
+  color: var(--ink);
+  font-weight: 600;
+}
+.day-toggle:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.check input {
+  margin-top: 2px;
+}
+.check span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.check small {
+  color: var(--muted);
+  font-size: 11.5px;
+}
+.check.inline {
+  align-items: center;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.check.inline input {
+  margin-top: 0;
+}
+.preset {
+  border-top: 1px solid var(--line);
+}
+.preset summary {
+  padding: 10px 16px 6px;
+  cursor: pointer;
+  font-size: 12.5px;
+  color: var(--accent);
+}
+.preset .settings > button {
+  align-self: flex-start;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 3px;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+.modal .holiday-list {
+  min-height: 120px;
+  flex: 1 1 auto;
+}
+.modal-actions button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.modal > .settings {
+  flex: none;
+}

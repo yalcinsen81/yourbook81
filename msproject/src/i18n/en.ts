@@ -1,0 +1,67 @@
+import type { MessageKey } from "./tr";
+
+// İngilizce metinler (Faz 2'de dil seçimiyle açılacak)
+export const en: Record<MessageKey, string> = {
+  "common.day": "day",
+  "common.empty": "—",
+  "common.cancel": "Cancel",
+
+  "day.short.0": "Sun",
+  "day.short.1": "Mon",
+  "day.short.2": "Tue",
+  "day.short.3": "Wed",
+  "day.short.4": "Thu",
+  "day.short.5": "Fri",
+  "day.short.6": "Sat",
+  "day.long.0": "Sunday",
+  "day.long.1": "Monday",
+  "day.long.2": "Tuesday",
+  "day.long.3": "Wednesday",
+  "day.long.4": "Thursday",
+  "day.long.5": "Friday",
+  "day.long.6": "Saturday",
+
+  "weight.cost": "cost",
+  "weight.work": "work (person-days)",
+  "weight.duration": "duration",
+  "weight.option.cost": "Cost",
+  "weight.option.work": "Work (person-days)",
+  "weight.option.duration": "Duration",
+  "weight.hint.cost": "Planned % = planned cost / total cost",
+  "weight.hint.work": "Tasks are weighted by assigned work (units × duration)",
+  "weight.hint.duration": "Tasks are weighted by duration in workdays",
+
+  "warn.taskNoCost": "No cost, progress weight 0",
+  "warn.zeroCostTasks": "{n} tasks have no cost, progress weight 0 (rows {rows}).",
+  "warn.weightFallback": "No task has any {weight}; progress is weighted by duration.",
+
+  "stat.info": "Info",
+  "stat.progressTitle": "Entered % complete, weighted by {weight}",
+  "stat.noCostShort": "{n} tasks without cost",
+  "stat.weightFallbackShort": "Weight: duration",
+
+  "charts.weight": "Progress weighting",
+  "charts.asOf": "as of {date} · weighted by {weight}",
+  "charts.sCurveSub": "Planned cumulative progress (weighted by {weight}); the dot is today's actual from entered % complete (same weighting).",
+
+  "setup.title": "New project",
+  "setup.note": "Choose the calendar at project start, as in MS Project. Everything can be changed later in the Calendar window.",
+  "setup.name": "Project name",
+  "setup.start": "Start date",
+  "setup.weight": "Progress weighting",
+  "setup.create": "Create project",
+  "setup.buttonTitle": "New project: choose calendar and holidays",
+
+  "calendar.buttonTitle": "Project calendar: working days and holidays",
+  "calendar.note": "Selected days are worked; tasks skip full-day holidays in the list. Half days (eves) count as workdays and are only marked.",
+  "calendar.workdays": "Working days",
+  "calendar.holidays": "Turkish holidays ({from}–{to})",
+  "calendar.official": "Public holidays (New Year, 23 April, 1 May, 19 May, 15 July, 30 August, 29 October)",
+  "calendar.religious": "Religious holidays (Eid al-Fitr 3 days, Eid al-Adha 4 days)",
+  "calendar.religiousMissing": "No built-in data for {years}; add those years' holidays yourself in the Calendar window.",
+  "calendar.halfDays": "Mark holiday eves as half days",
+  "calendar.halfDaysHint": "A half day counts as a workday; it is marked on the Gantt and calendar.",
+  "calendar.halfDay": "half day",
+  "calendar.addPreset": "Add from built-in Turkish holidays",
+  "calendar.addSelected": "Add selected",
+};

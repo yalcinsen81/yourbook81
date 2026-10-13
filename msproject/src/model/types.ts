@@ -43,7 +43,15 @@ export interface Assignment {
   units: number;
 }
 
+/** İlerleme ağırlığı: planlanan %, gerçekleşen %, kazanılan değer ve sapma aynı ağırlıkla hesaplanır. */
+export type ProgressWeight = "cost" | "work" | "duration";
+
+/** Dosya biçimi sürümü. 1: sürüm alanı olmayan ilk biçim. 2: çalışma günleri ve ilerleme ağırlığı eklendi. */
+export const PROJECT_VERSION = 2;
+
 export interface Project {
+  /** Dosya biçimi sürümü (sanitizeProject eski dosyaları otomatik yükseltir) */
+  version?: number;
   name: string;
   /** Proje başlangıç tarihi (YYYY-MM-DD). */
   start: string;
@@ -51,6 +59,10 @@ export interface Project {
   /** Çalışılmayan günler (resmî tatil vb.); hafta sonları zaten tatildir. */
   holidays: Holiday[];
   resources: Resource[];
+  /** Haftanın çalışılan günleri (0 = pazar … 6 = cumartesi). Yoksa pazartesi–cuma. */
+  workdays?: number[];
+  /** Yoksa "cost" (maliyet) */
+  progressWeight?: ProgressWeight;
 }
 
 /** Hesaplanmış satır: zamanlama motorunun her görev için ürettiği sonuç. */

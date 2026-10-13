@@ -11,10 +11,12 @@ interface Props {
   className?: string;
   title?: string;
   ariaLabel: string;
+  /** Boş değerde gösterilen yer tutucu (ör. "—") */
+  placeholder?: string;
 }
 
 /** Tablo hücresi: her zaman düzenlenebilir düz giriş kutusu; Enter/Tab/odak kaybında kaydeder, Esc vazgeçer. */
-export function EditableCell({ value, onCommit, type = "text", readOnly, row, col, className, title, ariaLabel }: Props) {
+export function EditableCell({ value, onCommit, type = "text", readOnly, row, col, className, title, ariaLabel, placeholder }: Props) {
   const [draft, setDraft] = useState(value);
   const [focused, setFocused] = useState(false);
   const [invalid, setInvalid] = useState(false);
@@ -57,7 +59,8 @@ export function EditableCell({ value, onCommit, type = "text", readOnly, row, co
     <input
       className={`cell-input ${invalid ? "invalid" : ""} ${className ?? ""}`}
       type={type}
-      value={draft}
+      value={draft ?? ""}
+      placeholder={placeholder}
       readOnly={readOnly}
       tabIndex={readOnly ? -1 : 0}
       title={invalid ? "Geçersiz değer" : title}
