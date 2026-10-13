@@ -1650,8 +1650,15 @@ button {
   min-width: 0;
 }
 .date-cell .cell-input {
-  padding-inline-end: 24px;
+  padding-inline: 3px 24px;
   font-variant-numeric: tabular-nums;
+}
+/* Başlangıç hücresinde salt okunur gün kısaltması (bitiş sütunuyla aynı görünüm) */
+.date-cell .dow {
+  flex: none;
+  padding-inline-start: 8px;
+  color: var(--ink-2);
+  pointer-events: none;
 }
 .date-pick {
   display: inline-flex;
@@ -3039,4 +3046,76 @@ kbd {
   margin: 2px 0 0;
   color: var(--muted);
   font-size: 12px;
+}
+
+/* Kazanılmış değer: eksik gerçekleşen maliyet listesi */
+.ac-missing {
+  margin-top: 10px;
+  font-size: 13px;
+}
+.ac-missing summary {
+  cursor: pointer;
+  color: var(--accent);
+  width: fit-content;
+}
+.ac-missing summary:hover {
+  text-decoration: underline;
+}
+.ac-missing ul {
+  margin: 4px 0 0;
+  padding-inline-start: 20px;
+  columns: 2 240px;
+}
+.ac-missing .hint {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
+/* Pencereler küçük ekranda (≈600 px yükseklik): başlık ve düğmeler sabit, arası kaydırılır.
+   Pencere ekranın 1rem içinde kalır; çocuklar sıkışmaz (başlık bilgi satırının üstüne binmez). */
+.modal-backdrop {
+  padding: 1rem;
+}
+.modal {
+  max-height: calc(100vh - 2rem);
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.modal > * {
+  flex-shrink: 0;
+}
+.modal > h2 {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--surface);
+  padding-bottom: 8px;
+  border-start-start-radius: inherit;
+  border-start-end-radius: inherit;
+}
+.modal > .modal-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  margin-top: auto;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  border-end-start-radius: inherit;
+  border-end-end-radius: inherit;
+}
+.modal > .settings,
+.modal > .help-body {
+  flex: none;
+  min-height: auto;
+  max-height: none;
+  overflow: visible;
+}
+.modal .holiday-list {
+  flex: none;
+  min-height: 0;
+  max-height: 40vh;
+}
+.modal > .info-note {
+  margin: 0 16px 8px;
 }

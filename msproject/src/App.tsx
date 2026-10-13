@@ -26,7 +26,8 @@ import { normalizeWorkdays } from "./model/calendar";
 import { ProjectSetupDialog } from "./components/ProjectSetupDialog";
 import { SettingsDialog } from "./components/SettingsDialog";
 import { DateInput } from "./components/DateInput";
-import { formatMoney, formatNumber, setCurrency, t, weekStartDay, type MessageKey } from "./i18n";
+import { formatMoney, formatNumber, invalidDateMessage, msgText, parseDateLocal, setCurrency, t, weekStartDay, type MessageKey, type Msg } from "./i18n";
+import { parsePercentCell } from "./model/cellInput";
 import { useLocale } from "./i18n/react";
 import { holidayLabel } from "./model/holidays";
 import { parseDuration } from "./model/duration";
@@ -68,7 +69,8 @@ export default function App() {
   /** Proje bütünüyle değişti (dosya açıldı, yeni proje): kayıtlı Gantt görünümü geri yüklenir */
   const [loadToken, setLoadToken] = useState(0);
   const [gridWidth, setGridWidth] = useState(() => Math.min(GRID_WIDTH, Math.max(700, Math.round(window.innerWidth * 0.56))));
-  const [message, setMessage] = useState<string | null>(null);
+  // Bildirim metni işlev olarak saklanır; dil değişince yeni dilde yeniden üretilir
+  const [message, setMessage] = useState<Msg | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [setupOpen, setSetupOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -104,8 +106,9 @@ export default function App() {
   const today = todayIso();
 
   const flashTimer = useRef<number | undefined>(undefined);
-  const flash = useCallback((text: string) => {
-    setMessage(text);
+  const flash = useCallback((text: Msg) => {
+    // İşlev, React'te güncelleyici sayılmasın diye sarılır
+    setMessage(() => text);
     window.clearTimeout(flashTimer.current);
     flashTimer.current = window.setTimeout(() => setMessage(null), 4000);
   }, []);
@@ -149,7 +152,13 @@ export default function App() {
   const overTasks = useMemo(() => overallocatedTasks(usage), [usage]);
   // İlerleme, S eğrisi ve uyarılar tek ağırlıkla (proje ayarı, varsayılan maliyet)
   const curves = useMemo(() => progressCurves(project, schedule, today), [project, schedule, today]);
-  const warnings = useMemo(() => progressWarnings(curves, projectWeight(project)), [curves, project]);
+  const warnings = useMemo(() => progressWarnings(curves, projectWeight(project)), [curves, project, loc]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sekme başlığı dile ve proje adına uyar
+  useEffect(() => {
+    const app = t("app.title");
+    document.title = project.name.trim() ? `${project.name.trim()} · ${app}` : app;
+  }, [project.name, loc]);
   const noCostRows = useMemo(() => new Set(curves.weight === "cost" ? curves.zeroCostRows : []), [curves]);
 
   // Referans plan sapması (gösterilen referans plana göre)
@@ -411,7 +420,7 @@ export default function App() {
       })
       .join("\n");
     void navigator.clipboard?.writeText(text).catch(() => undefined);
-    flash(t("msg.copied", { n }));
+    flash(() => t("msg.copied", { n }));
   }, [flash, project.tasks, schedule.rows, selectedIndexes]);
 
   const pasteRows = useCallback(
@@ -442,7 +451,7 @@ export default function App() {
         const to = beforeId === null ? p.tasks.length : p.tasks.findIndex((x) => x.id === beforeId);
         const tasks = moveBlockTo(p.tasks, from, to);
         if (tasks === p.tasks) {
-          flash(t("msg.cannotMoveInto"));
+          flash(() => t("msg.cannotMoveInto"));
           return p;
         }
         return { ...p, tasks };
@@ -452,7 +461,7 @@ export default function App() {
 
   const linkSelected = useCallback(() => {
     if (selectedIndexes.length < 2) {
-      flash(t("msg.linkNeedTwo"));
+      flash(() => t("msg.linkNeedTwo"));
       return;
     }
     let skipped = 0;
@@ -476,7 +485,7 @@ export default function App() {
       }
       return next;
     });
-    if (skipped) flash(t("msg.linksSkipped", { n: skipped }));
+    if (skipped) flash(() => t("msg.linksSkipped", { n: skipped }));
   }, [flash, selectedIndexes, update]);
 
   const unlinkSelected = useCallback(() => {
@@ -499,23 +508,29 @@ export default function App() {
     // 5, 5g, 5d (iş günü) · 2w (hafta) · 4h (saat, güne yukarı yuvarlanır)
     const parsed = parseDuration(text, workdays.length);
     if (!parsed) {
-      flash(/^\s*[-−]/.test(text) ? t("valid.negativeDuration") : t("err.duration"));
+      const negative = /^\s*[-−]/.test(text);
+      flash(() => (negative ? t("valid.negativeDuration") : t("err.duration")));
       return false;
     }
-    if (parsed.hours !== undefined) flash(t("msg.hoursRounded", { hours: formatNumber(parsed.hours), days: String(parsed.days) }));
+    const hours = parsed.hours;
+    if (hours !== undefined) flash(() => t("msg.hoursRounded", { hours: formatNumber(hours), days: String(parsed.days) }));
     patchTask(id, { duration: Math.min(10_000, parsed.days) });
     return true;
   };
 
-  const onStart = (id: string, iso: string) => {
-    if (!iso) {
+  const onStart = (id: string, text: string) => {
+    if (!text.trim()) {
       patchTask(id, { constraint: undefined });
       return true;
     }
-    if (!isValidDate(iso)) return false;
+    const iso = parseDateLocal(text);
+    if (!iso) {
+      flash(invalidDateMessage);
+      return false;
+    }
     // Proje başlangıcından önceki tarih kısıt olamaz (görev zaten proje başında başlar)
     if (iso < project.start) {
-      flash(t("valid.startBeforeProject", { date: formatShort(iso), start: formatShort(project.start) }));
+      flash(() => t("valid.startBeforeProject", { date: formatShort(iso), start: formatShort(project.start) }));
       return false;
     }
     patchTask(id, { constraint: { type: "SNET", date: iso } });
@@ -525,7 +540,7 @@ export default function App() {
   const onPredecessors = (id: string, text: string) => {
     const { predecessors, errors } = parsePredecessors(text, project.tasks, id);
     if (errors.length) {
-      flash(t("err.predecessor", { parts: errors.join(", ") }));
+      flash(() => t("err.predecessor", { parts: errors.join(", ") }));
       return false;
     }
     const base: Project = {
@@ -533,9 +548,8 @@ export default function App() {
       tasks: project.tasks.map((t) => (t.id === id ? { ...t, predecessors: [] } : t)),
     };
     for (const pr of predecessors) {
-      const msg = cycleError(base, id, pr.taskId);
-      if (msg) {
-        flash(msg);
+      if (cycleError(base, id, pr.taskId)) {
+        flash(() => cycleError(base, id, pr.taskId) ?? "");
         return false;
       }
     }
@@ -545,11 +559,15 @@ export default function App() {
 
   const onPercent = (id: string, text: string) => {
     // "45", "%45", "45%"; gerçekleşen başlangıç/bitiş MS Project'teki gibi güncellenir
-    const m = /^\s*%?\s*(\d+)\s*%?\s*$/.exec(text);
-    if (!m) return false;
+    const parsed = parsePercentCell(text);
+    if (!parsed) {
+      flash(() => t("valid.percent"));
+      return false;
+    }
     const task = project.tasks.find((x) => x.id === id);
     if (!task) return false;
-    const next = withPercent(task, Math.min(100, Number(m[1])), schedule);
+    if (parsed.clamped) flash(() => t("valid.percentClamped"));
+    const next = withPercent(task, parsed.value, schedule);
     update((p) => ({ ...p, tasks: p.tasks.map((x) => (x.id === id ? next : x)) }));
     return true;
   };
@@ -557,7 +575,7 @@ export default function App() {
   const onEstimate = (id: string, text: string) => {
     const e = parseEstimate(text);
     if (e === undefined) {
-      flash(t("err.estimate"));
+      flash(() => t("err.estimate"));
       return false;
     }
     update((p) => ({
@@ -576,12 +594,12 @@ export default function App() {
   const onResources = (id: string, text: string) => {
     const result = assignFromText(project, id, text);
     if (result.errors.length) {
-      flash(t("err.resource", { parts: result.errors.join(", ") }));
+      flash(() => t("err.resource", { parts: result.errors.join(", ") }));
       return false;
     }
     update(() => result.project);
     if (result.created.length) {
-      flash(t("msg.resourcesCreated", { names: result.created.map((r) => r.name).join(", ") }));
+      flash(() => t("msg.resourcesCreated", { names: result.created.map((r) => r.name).join(", ") }));
     }
     return true;
   };
@@ -598,7 +616,7 @@ export default function App() {
     setSelection(new Set());
     setCollapsed(new Set());
     setLoadToken((n) => n + 1);
-    flash([t("msg.opened", { name: opened.name, n: opened.tasks.length }), ...warnings].join(" "));
+    flash(() => [t("msg.opened", { name: opened.name, n: opened.tasks.length }), ...warnings].join(" "));
     void addRecent({ name: fileName, at: new Date().toISOString(), projectName: opened.name, text: serializeProject(opened) }).then(setRecents);
   };
 
@@ -620,7 +638,7 @@ export default function App() {
       if (!parsed) throw new Error(t("recovery.notProject"));
       loadOpened(parsed, fileName, warnings);
     } catch (e) {
-      if (isXml) flash(t("msg.xmlFailed", { detail: e instanceof Error && e.message ? `: ${e.message}` : "." }));
+      if (isXml) flash(() => t("msg.xmlFailed", { detail: e instanceof Error && e.message ? `: ${e.message}` : "." }));
       else setRecovery({ problem: { name: fileName, detail: e instanceof Error ? e.message : String(e) } });
     }
   };
@@ -633,10 +651,10 @@ export default function App() {
     if (r.handle && (await fileLink.openHandle(r.handle))) return;
     if (r.text) {
       openText(r.text, r.name);
-      if (r.handle) flash(t("file.recentCopy", { name: r.name }));
+      if (r.handle) flash(() => t("file.recentCopy", { name: r.name }));
     } else {
       setRecents(await removeRecent(index));
-      flash(t("file.recentMissing", { name: r.name }));
+      flash(() => t("file.recentMissing", { name: r.name }));
     }
   };
 
@@ -1219,6 +1237,7 @@ export default function App() {
           today={today}
           baselineIndex={baseline ? baseline.index : -1}
           onHelp={(topic) => setHelp(topic)}
+          onOpenTask={setInfoId}
         />
         </Suspense>
       )}
@@ -1360,7 +1379,7 @@ export default function App() {
           schedule={schedule}
           onApply={(next) => {
             update(() => next);
-            flash(t("msg.leveled"));
+            flash(() => t("msg.leveled"));
           }}
           onClose={() => setLevelOpen(false)}
         />
@@ -1411,7 +1430,7 @@ export default function App() {
           onClose={() => setImportOpen(false)}
           onImport={(next, n) => {
             update(() => next);
-            flash(t("import.done", { n }));
+            flash(() => t("import.done", { n }));
           }}
         />
         </Suspense>
@@ -1423,7 +1442,7 @@ export default function App() {
           onRestore={(p, label) => {
             replaceProject(p);
             setCollapsed(new Set());
-            flash(t("recovery.restored", { name: label }));
+            flash(() => t("recovery.restored", { name: label }));
           }}
         />
       )}
@@ -1437,7 +1456,7 @@ export default function App() {
           onClose={() => setSaveTplOpen(false)}
           onOk={(name) => {
             const ok = addTemplate(projectToTemplate(project, name, today));
-            flash(ok ? t("tpl.saved", { name }) : t("tpl.saveFailed"));
+            flash(() => (ok ? t("tpl.saved", { name }) : t("tpl.saveFailed")));
             setSaveTplOpen(false);
           }}
         />
@@ -1478,7 +1497,7 @@ export default function App() {
       </footer>
       {message && (
         <div className="toast" role="status">
-          {message}
+          {msgText(message)}
         </div>
       )}
     </div>

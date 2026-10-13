@@ -108,7 +108,9 @@ describe("MS Project XML: çalışma haftası ve yarım günler", () => {
     };
     const xml = toMspXml(p, schedule(p));
     expect(xml).toContain("<MinutesPerWeek>2880</MinutesPerWeek>");
-    expect(xml).not.toContain("arifesi");
+    // Yarım gün (arife) istisna yazılmaz; 23 Nisan 2029 tam gün tatil olduğu için Kurban arifesi adıyla birleşik yazılır
+    expect(xml).not.toContain("Cumhuriyet Bayramı arifesi");
+    expect(xml).not.toContain("Ramazan Bayramı arifesi");
     const back = parseMspXml(xml).project;
     expect(back.workdays).toEqual([1, 2, 3, 4, 5, 6]);
   });

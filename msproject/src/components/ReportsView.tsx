@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
 import { formatDateLocal, formatMoney, formatMoneyShort, formatNumber, formatPercent, t, type MessageKey } from "../i18n";
+import { useLocale } from "../i18n/react";
 import { formatShort } from "../model/calendar";
 import type { Orientation } from "../model/ganttSvg";
-import { buildReport, cashFlow, earnedValue, REPORT_KINDS, sCurveSeries, type CashPeriod, type Cell, type CellKind, type ReportKind, type ReportTable } from "../model/reports";
+import { buildReport, cashFlow, earnedValue, noActualCost, REPORT_KINDS, sCurveSeries, type CashPeriod, type Cell, type CellKind, type ReportKind, type ReportTable } from "../model/reports";
 import type { Curves, ResourceUsage } from "../model/resources";
 import { reportToCsv, reportToSheet } from "../model/tabular";
 import type { Project, Schedule } from "../model/types";
@@ -22,6 +23,8 @@ interface Props {
   /** Gantt'ta gösterilen referans plan (-1 yok); raporlar varsayılan olarak onu kullanır */
   baselineIndex: number;
   onHelp: (topic: "evm") => void;
+  /** Görev bilgisi penceresini açar (eksik gerçekleşen maliyet listesinden) */
+  onOpenTask?: (id: string) => void;
 }
 
 const ICONS: Record<ReportKind, string> = {
@@ -39,7 +42,7 @@ const ICONS: Record<ReportKind, string> = {
 };
 
 /** Raporlar: kazanılmış değer, S eğrisi, kritik yol, kaynak, histogram, nakit akışı, görev ve kilometre taşı listeleri */
-export function ReportsView({ project, schedule, usage, curves, today, baselineIndex, onHelp }: Props) {
+export function ReportsView({ project, schedule, usage, curves, today, baselineIndex, onHelp, onOpenTask }: Props) {
   const [kind, setKind] = useState<ReportKind>("evm");
   const [period, setPeriod] = useState<CashPeriod>("month");
   const [base, setBase] = useState<number>(baselineIndex >= 0 ? baselineIndex : (project.baselines?.[0]?.index ?? -1));
@@ -50,7 +53,8 @@ export function ReportsView({ project, schedule, usage, curves, today, baselineI
   const baselines = project.baselines ?? [];
   const baseIdx = baselines.some((b) => b.index === base) ? base : -1;
   const opts = { today, baselineIndex: baseIdx >= 0 ? baseIdx : undefined, period };
-  const table = useMemo(() => buildReport(kind, project, schedule, opts), [kind, project, schedule, today, baseIdx, period]); // eslint-disable-line react-hooks/exhaustive-deps
+  const loc = useLocale();
+  const table = useMemo(() => buildReport(kind, project, schedule, opts), [kind, project, schedule, today, baseIdx, period, loc]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fileBase = [project.name, table.title.split(" · ")[0], today];
   const exportCsv = () => downloadBlob(new Blob([reportToCsv(table)], { type: "text/csv;charset=utf-8" }), fileNameFor(fileBase, "csv"));
@@ -70,7 +74,9 @@ export function ReportsView({ project, schedule, usage, curves, today, baselineI
     );
   }
 
-  const body = <ReportBody kind={kind} table={table} project={project} schedule={schedule} curves={curves} usage={workRes} resId={resId} today={today} baseIdx={baseIdx} period={period} />;
+  const body = (
+    <ReportBody kind={kind} table={table} project={project} schedule={schedule} curves={curves} usage={workRes} resId={resId} today={today} baseIdx={baseIdx} period={period} onOpenTask={onOpenTask} />
+  );
 
   return (
     <div className="page reports-page">
@@ -174,24 +180,42 @@ function ReportBody(props: {
   today: string;
   baseIdx: number;
   period: CashPeriod;
+  onOpenTask?: (id: string) => void;
 }) {
-  const { kind, table, project, schedule, curves, today, baseIdx } = props;
+  const { kind, table, project, schedule, curves, today, baseIdx, onOpenTask } = props;
   const bi = baseIdx >= 0 ? baseIdx : undefined;
   let visual: React.ReactNode = null;
   if (kind === "evm") {
     const e = earnedValue(project, schedule, today, bi);
     const ratio = (v: number | null) => (v === null ? "—" : formatNumber(v, 2));
     const tone = (v: number | null) => (v === null ? "" : v >= 1 ? "good" : "bad");
+    // Hiç gerçekleşen maliyet yoksa CPI ve ona bağlı tahminler gösterilmez (hesap aynı)
+    const noAc = noActualCost(e);
+    const estimated = e.acEstimatedRows.length;
     visual = (
-      <div className="kpis">
-        <Kpi label="BAC" value={formatMoney(e.bac)} sub={t("evm.short.bac")} />
-        <Kpi label="PV" value={formatMoney(e.pv)} sub={t("evm.short.pv")} />
-        <Kpi label="EV" value={formatMoney(e.ev)} sub={t("evm.short.ev")} />
-        <Kpi label="AC" value={formatMoney(e.ac)} sub={e.acEstimatedRows.length ? t("evm.short.acEstimated") : t("evm.short.ac")} />
-        <Kpi label="SPI" value={ratio(e.spi)} sub={e.spi === null ? t("evm.notStarted") : e.spi >= 1 ? t("evm.ahead") : t("evm.behind")} tone={tone(e.spi)} />
-        <Kpi label="CPI" value={ratio(e.cpi)} sub={e.cpi === null ? t("evm.notStarted") : e.cpi >= 1 ? t("evm.underBudget") : t("evm.overBudget")} tone={tone(e.cpi)} />
-        <Kpi label="EAC" value={formatMoney(e.eac)} sub={`VAC ${formatMoney(e.vac)}`} tone={e.vac >= 0 ? "good" : "bad"} />
-      </div>
+      <>
+        <div className="kpis">
+          <Kpi label="BAC" value={formatMoney(e.bac)} sub={t("evm.short.bac")} />
+          <Kpi label="PV" value={formatMoney(e.pv)} sub={t("evm.short.pv")} />
+          <Kpi label="EV" value={formatMoney(e.ev)} sub={t("evm.short.ev")} />
+          <Kpi label="AC" value={formatMoney(e.ac)} sub={noAc ? t("evm.acNone") : estimated ? t("evm.short.acEstimated", { n: estimated }) : t("evm.short.ac")} />
+          <Kpi label="SPI" value={ratio(e.spi)} sub={e.spi === null ? t("evm.notStarted") : e.spi >= 1 ? t("evm.ahead") : t("evm.behind")} tone={tone(e.spi)} />
+          {noAc ? (
+            <>
+              <Kpi label="CPI" value="—" sub={t("evm.acNone")} />
+              <Kpi label="EAC" value="—" sub={t("evm.acNone")} />
+              <Kpi label="ETC" value="—" sub={t("evm.acNone")} />
+              <Kpi label="VAC" value="—" sub={t("evm.acNone")} />
+            </>
+          ) : (
+            <>
+              <Kpi label="CPI" value={ratio(e.cpi)} sub={e.cpi === null ? t("evm.notStarted") : e.cpi >= 1 ? t("evm.underBudget") : t("evm.overBudget")} tone={tone(e.cpi)} />
+              <Kpi label="EAC" value={formatMoney(e.eac)} sub={`VAC ${formatMoney(e.vac)}`} tone={e.vac >= 0 ? "good" : "bad"} />
+            </>
+          )}
+        </div>
+        <AcMissing project={project} rows={e.acEstimatedRows} onOpenTask={onOpenTask} />
+      </>
     );
   } else if (kind === "scurve") {
     const pts = sCurveSeries(project, schedule, curves, today, bi);
@@ -267,6 +291,39 @@ function ReportBody(props: {
   );
 }
 
+/** "Eksik gerçekleşen maliyet" bağlantısı: başlamış ama gerçekleşen maliyeti girilmemiş görevleri açar */
+function AcMissing({ project, rows, onOpenTask }: { project: Project; rows: number[]; onOpenTask?: (id: string) => void }) {
+  return (
+    <details className="ac-missing">
+      <summary>{t("evm.acMissing", { n: rows.length })}</summary>
+      {rows.length === 0 ? (
+        <p className="hint">{t("evm.acMissingNone")}</p>
+      ) : (
+        <>
+          <p className="hint">{t("evm.acMissingNote")}</p>
+          <ul>
+            {rows.map((r) => {
+              const task = project.tasks[r - 1];
+              const label = `${r}. ${task.name || "—"}`;
+              return (
+                <li key={task.id}>
+                  {onOpenTask ? (
+                    <button type="button" className="link-btn" onClick={() => onOpenTask(task.id)}>
+                      {label}
+                    </button>
+                  ) : (
+                    label
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      )}
+    </details>
+  );
+}
+
 function Kpi({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: string }) {
   return (
     <div className={`kpi ${tone ?? ""}`}>
@@ -279,7 +336,8 @@ function Kpi({ label, value, sub, tone }: { label: string; value: string; sub?: 
 
 export function formatCell(v: Cell, kind: CellKind): string {
   if (v === null || v === undefined || v === "") return "—";
-  if (typeof v === "string") return kind === "date" ? formatDateLocal(v) : v;
+  // Tarih: görev tablosundaki gibi gün kısaltması + seçili biçim ("Pzt 02.11.2026")
+  if (typeof v === "string") return kind === "date" ? formatShort(v) : v;
   switch (kind) {
     case "money":
       return formatMoney(v);

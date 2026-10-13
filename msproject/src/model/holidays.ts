@@ -67,14 +67,17 @@ export function turkishHolidays(
   const list: Holiday[] = [];
   for (let y = fromYear; y <= toYear; y++) {
     for (const f of FIXED_HOLIDAYS) {
-      if (f.halfDay ? !(options.official && options.halfDays) : !options.official) continue;
+      // Arife (28 Ekim) yalnızca "arifeler" seçeneğine bağlıdır
+      if (f.halfDay ? !options.halfDays : !options.official) continue;
       list.push({ date: `${y}-${f.mmdd}`, name: label(f, lang), src: `fixed:${f.mmdd}`, ...(f.halfDay ? { halfDay: true } : {}) });
     }
-    if (!options.religious) continue;
+    if (!options.religious && !options.halfDays) continue;
     for (const r of RELIGIOUS_HOLIDAYS[y] ?? []) {
       const d0 = new Date(`${r.start}T00:00:00Z`).getTime();
       const day = (i: number) => new Date(d0 + i * 86_400_000).toISOString().slice(0, 10);
+      // Bayram arifeleri yarım gün olarak eklenir (bayram günleri seçilmese de)
       if (options.halfDays) list.push({ date: day(-1), name: label(r.eve, lang), src: `rel:${r.start}:eve`, halfDay: true });
+      if (!options.religious) continue;
       for (let i = 0; i < r.days; i++) {
         const src = `rel:${r.start}:${i}`;
         list.push({ date: day(i), name: srcName(src, lang)!, src });

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { formatDateLocal, formatMoney, formatNumber, formatPercent, parseNumberLocal, t, type MessageKey } from "../i18n";
+import { formatDateLocal, formatMoney, formatNumber, formatPercent, parseNumberLocal, t, type MessageKey, type Msg } from "../i18n";
+import { useLocale } from "../i18n/react";
 import { formatShort } from "../model/calendar";
 import { planQuality } from "../model/quality";
 import { qualityReport } from "../model/reports";
@@ -18,7 +19,7 @@ interface Props {
   schedule: Schedule;
   today: string;
   update: (fn: (p: Project) => Project) => void;
-  flash: (text: string) => void;
+  flash: (text: Msg) => void;
 }
 
 type Tab = "register" | "simulation" | "quality";
@@ -242,15 +243,15 @@ function useSimJob(update: Props["update"], flash: Props["flash"]): SimControl {
         if (job.current !== j) return;
         job.current = null;
         setProgress(null);
-        if (!summary) return flash(t("sim.cancelled"));
+        if (!summary) return flash(() => t("sim.cancelled"));
         // Zaman damgası ana iş parçacığında (worker'ın saati ayrı)
         update((p) => ({ ...p, simulation: settings, simResult: { ...summary, at: new Date().toISOString() } }));
-        flash(t("sim.done", { n: formatNumber(summary.iterations, 0), s: formatNumber((performance.now() - started) / 1000, 1) }));
+        flash(() => t("sim.done", { n: formatNumber(summary.iterations, 0), s: formatNumber((performance.now() - started) / 1000, 1) }));
       })
       .catch((e: Error) => {
         job.current = null;
         setProgress(null);
-        flash(t("sim.failed", { error: e.message }));
+        flash(() => t("sim.failed", { error: e.message }));
       });
   };
   return { progress, start, cancel: () => job.current?.cancel() };
@@ -277,7 +278,7 @@ function Simulation({ project, flash, sim, draftState }: Props & { sim: SimContr
 
   const run = () => {
     const settings = parse();
-    if (typeof settings === "string") return flash(settings);
+    if (typeof settings === "string") return flash(() => String(parse()));
     sim.start(project, settings);
   };
   const cancel = sim.cancel;
@@ -492,8 +493,9 @@ const toDraft = (s: SimulationSettings): Draft => ({
 // --- Plan kalitesi ---
 
 function Quality({ project, schedule, today }: Props) {
-  const table = useMemo(() => qualityReport(project, schedule, today), [project, schedule, today]);
-  const checks = useMemo(() => planQuality(project, schedule, today), [project, schedule, today]);
+  const loc = useLocale();
+  const table = useMemo(() => qualityReport(project, schedule, today), [project, schedule, today, loc]); // eslint-disable-line react-hooks/exhaustive-deps
+  const checks = useMemo(() => planQuality(project, schedule, today), [project, schedule, today, loc]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <section className="card">
       <header className="card-head">

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent, type RefObject, type UIEvent } from "react";
 import { formatMoney, formatPercent, t } from "../i18n";
+import { useLocale } from "../i18n/react";
 import { addDays, diffDays, formatShort, parseDate } from "../model/calendar";
 import { bands, headerUnits, scaleFor, visibleRange } from "../model/timescale";
 import type { LinkType } from "../model/types";
@@ -66,13 +67,14 @@ export function Gantt(props: Props) {
   const toDay = Math.min(days, Math.ceil((vp.left + vp.width * 1.5) / ppd));
   const { first, last } = visibleRange(vp.top, vp.height - HEADER_H, ROW_H, rows.length);
 
+  const loc = useLocale();
   const header = useMemo(() => {
     const [topUnit, bottomUnit] = headerUnits(scale);
     return {
       top: bands(timelineStart, topUnit, "top", fromDay, toDay),
       bottom: bands(timelineStart, bottomUnit, "bottom", fromDay, toDay),
     };
-  }, [scale, timelineStart, fromDay, toDay]);
+  }, [scale, timelineStart, fromDay, toDay, loc]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Çalışılmayan hafta günleri (ardışık bloklar) ve tatiller; yalnızca görünen günler
   const shading = useMemo(() => {

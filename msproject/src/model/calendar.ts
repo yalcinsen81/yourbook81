@@ -1,4 +1,4 @@
-import { dayName, getDateStyle, getLang, monthName } from "../i18n";
+import { dayName, formatDateLocal, monthName } from "../i18n";
 
 // Standart takvim: Pazartesi–Cuma iş günü, hafta sonu tatil. Tüm tarihler UTC olarak YYYY-MM-DD.
 
@@ -61,16 +61,10 @@ export function dateToWorkday(base: string, iso: string): number {
   return weeks * 5 + rem - baseDow;
 }
 
-/** Tablo için kısa gösterim, dile ve tarih biçimi ayarına göre: "Pzt 12.10.26", "Mon 10/12/26", "Mon 2026-10-12" */
+/** Tablo için gösterim: gün kısaltması + seçili tarih biçimi, "Pzt 02.11.2026", "Mon 11/2/2026", "Mon 2026-11-02" */
 export function formatShort(iso: string | null | undefined): string {
   if (!iso || !isValidDate(iso)) return "—";
-  const d = parseDate(iso);
-  const dd = String(d.getUTCDate()).padStart(2, "0");
-  const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
-  const yy = String(d.getUTCFullYear()).slice(2);
-  const date =
-    getDateStyle() === "iso" ? iso : getLang() === "tr" ? `${dd}.${mm}.${yy}` : `${d.getUTCMonth() + 1}/${d.getUTCDate()}/${yy}`;
-  return `${dayName(d.getUTCDay())} ${date}`;
+  return `${dayName(parseDate(iso).getUTCDay())} ${formatDateLocal(iso)}`;
 }
 
 /** "Kas 2026" / "Nov 2026" */

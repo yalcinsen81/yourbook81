@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { t, type MessageKey } from "../i18n";
+import { useLocale } from "../i18n/react";
 import { guessMapping, IMPORT_FIELDS, importTasks, parseCsv, type ImportField } from "../model/tabular";
 import type { Project } from "../model/types";
 import { readXlsx } from "../model/xlsx";
@@ -51,7 +52,8 @@ export function ImportDialog({ project, onImport, onClose }: Props) {
   };
 
   const width = table ? Math.max(...table.slice(0, 50).map((r) => r.length)) : 0;
-  const result = useMemo(() => (table ? importTasks(project, table, mapping, { hasHeader, mode }) : null), [table, mapping, hasHeader, mode, project]);
+  const loc = useLocale();
+  const result = useMemo(() => (table ? importTasks(project, table, mapping, { hasHeader, mode }) : null), [table, mapping, hasHeader, mode, project, loc]); // eslint-disable-line react-hooks/exhaustive-deps
   const hasName = mapping.includes("name");
   const preview = table ? table.slice(hasHeader ? 1 : 0, (hasHeader ? 1 : 0) + 6) : [];
 

@@ -62,7 +62,7 @@ export function updateSettings(patch: (s: AppSettings) => AppSettings): AppSetti
 /** Açılışta kayıtlı dil ve tarih biçimini uygular; kayıt yoksa işletim sistemi dili */
 export function applySavedLocale(): void {
   const s = loadSettings();
-  setLocale({ lang: s.lang === "tr" || s.lang === "en" ? s.lang : detectLang(), dateStyle: s.dateStyle === "iso" ? "iso" : "locale" });
+  setLocale({ lang: s.lang === "tr" || s.lang === "en" ? s.lang : detectLang(), dateStyle: s.dateStyle === "iso" || s.dateStyle === "dmy" ? s.dateStyle : "locale" });
 }
 
 export function saveLocale(lang: Lang, dateStyle: DateStyle): void {

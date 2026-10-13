@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { t } from "../i18n";
 import { formatShort, isValidDate } from "../model/calendar";
+import { LAST_RELIGIOUS_YEAR } from "../model/holidayData";
 import { DEFAULT_HOLIDAY_OPTIONS, holidayLabel, mergeHolidays, turkishHolidays, type Holiday, type HolidayOptions } from "../model/holidays";
 import type { Blackout } from "../model/types";
 import { defaultHolidays } from "../model/sample";
@@ -80,6 +81,11 @@ export function CalendarDialog({ holidays, workdays, halfDayMode, blackouts, pro
       <div className="modal" role="dialog" aria-modal="true" aria-labelledby="cal-title" onMouseDown={(e) => e.stopPropagation()}>
         <h2 id="cal-title">{t("calendar.title")}</h2>
         <p className="modal-note">{t("calendar.note")}</p>
+        {finishYear > LAST_RELIGIOUS_YEAR && (
+          <p className="info-note warn" role="note">
+            {t("calendar.noDataAfter", { year: String(LAST_RELIGIOUS_YEAR) })}
+          </p>
+        )}
         <div className="settings">
           <WorkdayPicker value={days} onChange={setDays} />
           <label className="check">

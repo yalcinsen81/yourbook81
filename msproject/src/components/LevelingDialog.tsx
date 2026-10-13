@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { formatMoney, formatPercent, t } from "../i18n";
+import { useLocale } from "../i18n/react";
 import { formatShort } from "../model/calendar";
 import { clearLeveling, overallocations, proposeLeveling, type LevelingKind } from "../model/leveling";
 import type { Project, Schedule } from "../model/types";
@@ -16,8 +17,9 @@ interface Props {
  * kapasiteyi artır). Proje yalnızca "Uygula" ile değişir; değişiklik tek geri al adımıdır.
  */
 export function LevelingDialog({ project, schedule, onApply, onClose }: Props) {
-  const over = useMemo(() => overallocations(project, schedule), [project, schedule]);
-  const options = useMemo(() => proposeLeveling(project), [project]);
+  const loc = useLocale();
+  const over = useMemo(() => overallocations(project, schedule), [project, schedule, loc]); // eslint-disable-line react-hooks/exhaustive-deps
+  const options = useMemo(() => proposeLeveling(project), [project, loc]); // eslint-disable-line react-hooks/exhaustive-deps
   const [kind, setKind] = useState<LevelingKind>("delay");
   const option = options.find((o) => o.kind === kind);
   const hasDelays = project.tasks.some((x) => x.levelingDelay);

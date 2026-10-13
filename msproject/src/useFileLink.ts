@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { clearHandle, loadHandle, saveHandle } from "./handleStore";
-import { t } from "./i18n";
+import { t, type Msg } from "./i18n";
 import { needsUpgradeBackup, sanitizeProject } from "./model/storage";
 import { addBackup } from "./settings";
 import type { Project } from "./model/types";
@@ -34,7 +34,7 @@ export function serializeProject(project: Project): string {
 export function useFileLink(
   project: Project,
   replace: (p: Project) => void,
-  notify: (text: string) => void,
+  notify: (text: Msg) => void,
   /** Dosya okunamadı (bozuk JSON / proje değil): kurtarma önerilir */
   onInvalid?: (name: string, detail: string) => void,
 ) {
@@ -69,7 +69,7 @@ export function useFileLink(
       if (parsed && needsUpgradeBackup(raw)) {
         // Eski biçimli dosya yeni biçimle üzerine yazılmadan önce özgün metin saklanır (Ayarlar > Yedeği indir)
         addBackup(h.name, text);
-        notify(t("link.upgraded", { name: h.name }));
+        notify(() => t("link.upgraded", { name: h.name }));
       }
       if (parsed) {
         replace(parsed);
@@ -93,11 +93,12 @@ export function useFileLink(
       [h] = await w.showOpenFilePicker!({ types: pickerTypes(), multiple: false });
       if (h.requestPermission && (await h.requestPermission({ mode: "readwrite" })) !== "granted") return;
       await attach(h);
-      notify(t("link.linked", { name: h.name }));
+      const name = h.name;
+      notify(() => t("link.linked", { name }));
     } catch (e) {
       if ((e as Error)?.name === "AbortError") return;
       if (h && onInvalid && (e instanceof SyntaxError || (e as Error)?.message === "invalid")) onInvalid(h.name, e instanceof SyntaxError ? e.message : "");
-      else notify(t("link.openFailed"));
+      else notify(() => t("link.openFailed"));
     }
   }, [attach, notify, onInvalid]);
 
@@ -108,7 +109,7 @@ export function useFileLink(
       try {
         if (h.requestPermission && (await h.requestPermission({ mode: "readwrite" })) !== "granted") return false;
         await attach(h);
-        notify(t("link.linked", { name: h.name }));
+        notify(() => t("link.linked", { name: h.name }));
         return true;
       } catch (e) {
         if (onInvalid && (e instanceof SyntaxError || (e as Error)?.message === "invalid")) {
@@ -127,11 +128,11 @@ export function useFileLink(
     try {
       if (pending.requestPermission && (await pending.requestPermission({ mode: "readwrite" })) !== "granted") return;
       await attach(pending);
-      notify(t("link.reconnected", { name: pending.name }));
+      notify(() => t("link.reconnected", { name: pending.name }));
     } catch {
       setPending(null);
       void clearHandle();
-      notify(t("link.missing", { name: pending.name }));
+      notify(() => t("link.missing", { name: pending.name }));
     }
   }, [attach, notify, pending]);
 
@@ -147,7 +148,7 @@ export function useFileLink(
       if (state === "granted") {
         try {
           await attach(h);
-          notify(t("link.restored", { name: h.name }));
+          notify(() => t("link.restored", { name: h.name }));
           return;
         } catch {
           // dosya yok: aşağıda yeniden bağlan önerilir
@@ -168,9 +169,9 @@ export function useFileLink(
       setHandle(h);
       setPending(null);
       void saveHandle(h);
-      notify(t("link.created", { name: h.name }));
+      notify(() => t("link.created", { name: h.name }));
     } catch (e) {
-      if ((e as Error)?.name !== "AbortError") notify(t("link.createFailed"));
+      if ((e as Error)?.name !== "AbortError") notify(() => t("link.createFailed"));
     }
   }, [notify, project, write]);
 
@@ -178,7 +179,7 @@ export function useFileLink(
     setHandle(null);
     setPending(null);
     void clearHandle();
-    notify(t("link.unlinked"));
+    notify(() => t("link.unlinked"));
   }, [notify]);
 
   // Uygulamadaki değişikliği dosyaya yaz (kısa gecikmeyle)
@@ -191,7 +192,7 @@ export function useFileLink(
         // İzin geri alındı ya da dosya kayboldu: bağlantı askıya alınır, tek tıkla yeniden bağlanılır
         setHandle(null);
         setPending(handle);
-        notify(t("link.writeFailed", { name: handle.name }));
+        notify(() => t("link.writeFailed", { name: handle.name }));
       });
     }, 400);
     return () => window.clearTimeout(timer);
@@ -217,7 +218,7 @@ export function useFileLink(
         lastModified.current = file.lastModified;
         lastText.current = serializeProject(parsed);
         replace(parsed);
-        notify(t("link.externalUpdate"));
+        notify(() => t("link.externalUpdate"));
       } catch {
         // Yazma sırasında yarım okunan dosya: bir sonraki turda yeniden denenir
       }

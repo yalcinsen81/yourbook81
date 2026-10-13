@@ -36,7 +36,12 @@ export const FIXED_HOLIDAYS: FixedHoliday[] = [
 const RAMAZAN = { tr: "Ramazan Bayramı", en: "Eid al-Fitr", eve: { tr: "Ramazan Bayramı arifesi", en: "Eid al-Fitr eve" } };
 const KURBAN = { tr: "Kurban Bayramı", en: "Eid al-Adha", eve: { tr: "Kurban Bayramı arifesi", en: "Eid al-Adha eve" } };
 
-/** Yıla göre dini bayramlar (Diyanet takvimi). Ramazan 3 gün, Kurban 4 gün. */
+/**
+ * Yıla göre dini bayramlar (Diyanet takvimi). Ramazan 3 gün, Kurban 4 gün; arife bir önceki gündür.
+ * 2028 ve 2029: Diyanet Vakit Hesaplama "2028 Dini Günler" (icerik=185) ve "2029 Dini Günler Listesi" (icerik=186)
+ * sayfalarındaki tarihler, 2026-10-13'te kontrol edildi. 2030 ve sonrası bilerek yok: kesin tarih girilmeden
+ * tahmin yazılmaz, kullanıcı Takvim penceresinden ekler.
+ */
 export const RELIGIOUS_HOLIDAYS: Record<number, ReligiousHoliday[]> = {
   2026: [
     { start: "2026-03-20", days: 3, ...RAMAZAN },
@@ -46,4 +51,17 @@ export const RELIGIOUS_HOLIDAYS: Record<number, ReligiousHoliday[]> = {
     { start: "2027-03-09", days: 3, ...RAMAZAN },
     { start: "2027-05-16", days: 4, ...KURBAN },
   ],
+  // Arife 25 Şubat 2028 Cuma; Kurban arifesi 4 Mayıs 2028 Perşembe
+  2028: [
+    { start: "2028-02-26", days: 3, ...RAMAZAN },
+    { start: "2028-05-05", days: 4, ...KURBAN },
+  ],
+  // Arife 13 Şubat 2029 Salı; Kurban arifesi 23 Nisan 2029 Pazartesi (23 Nisan tatiline denk gelir)
+  2029: [
+    { start: "2029-02-14", days: 3, ...RAMAZAN },
+    { start: "2029-04-24", days: 4, ...KURBAN },
+  ],
 };
+
+/** Dini bayram verisinin son yılı; sonrası için kullanıcı tarihleri elle girer */
+export const LAST_RELIGIOUS_YEAR = Math.max(...Object.keys(RELIGIOUS_HOLIDAYS).map(Number));

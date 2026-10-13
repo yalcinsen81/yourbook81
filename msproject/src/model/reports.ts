@@ -119,6 +119,8 @@ export interface EarnedValue {
   baselineName?: string;
   /** Başlamış ama gerçekleşen maliyeti girilmemiş görevlerin satırları (AC = EV sayıldı) */
   acEstimatedRows: number[];
+  /** Gerçekleşen maliyeti girilmiş görev sayısı (yalnızca gösterim için; hesap değişmez) */
+  acEnteredCount: number;
   today: string;
 }
 
@@ -144,11 +146,15 @@ export function earnedValue(p: Project, s: Schedule, today: string, baselineInde
   let ev = 0;
   let ac = 0;
   const acEstimatedRows: number[] = [];
+  let acEnteredCount = 0;
   p.tasks.forEach((task, i) => {
     if (s.rows[i].isSummary) return;
     const earned = (costs[i] * task.percent) / 100;
     ev += earned;
-    if (task.actualCost !== undefined) ac += task.actualCost;
+    if (task.actualCost !== undefined) {
+      ac += task.actualCost;
+      acEnteredCount++;
+    }
     else {
       ac += earned;
       if (task.percent > 0) acEstimatedRows.push(i + 1);
@@ -172,6 +178,7 @@ export function earnedValue(p: Project, s: Schedule, today: string, baselineInde
     pvSource: b ? "baseline" : "plan",
     baselineName: b?.name,
     acEstimatedRows,
+    acEnteredCount,
     today,
   };
 }
@@ -612,11 +619,21 @@ export function sCurveReport(p: Project, s: Schedule, curves: Curves, opts: Repo
   };
 }
 
+/** Gerçekleşen maliyet girilmemişken anlamsız olan göstergeler */
+const CPI_KEYS = new Set<string>(["cpi", "eac", "etc", "vac"]);
+
+/** Hiçbir görevde gerçekleşen maliyet yok: CPI, EAC, ETC ve VAC "—" gösterilir */
+export function noActualCost(e: EarnedValue): boolean {
+  return e.acEnteredCount === 0;
+}
+
 export const EVM_KEYS = ["bac", "pv", "ev", "ac", "sv", "cv", "spi", "cpi", "eac", "etc", "vac"] as const;
 
 export function evmReport(p: Project, s: Schedule, opts: ReportOptions): ReportTable {
   const e = earnedValue(p, s, opts.today, opts.baselineIndex);
-  const row = (key: (typeof EVM_KEYS)[number]) => ({ metric: key, name: t(`evm.${key}` as MessageKey), value: e[key] });
+  // Hiç gerçekleşen maliyet girilmediyse CPI'ye bağlı değerler gösterilmez (hesap aynı kalır, yalnızca boş gösterilir)
+  const hidden = noActualCost(e);
+  const row = (key: (typeof EVM_KEYS)[number]) => ({ metric: key, name: t(`evm.${key}` as MessageKey), value: hidden && CPI_KEYS.has(key) ? null : e[key] });
   const items = EVM_KEYS.map(row);
   return {
     id: "evm",
@@ -626,7 +643,11 @@ export function evmReport(p: Project, s: Schedule, opts: ReportOptions): ReportT
     notes: [
       t("report.evmAsOf", { date: formatDateLocal(e.today) }),
       e.pvSource === "baseline" ? t("report.pvBaseline", { name: e.baselineName ?? "" }) : t("report.pvPlan"),
-      ...(e.acEstimatedRows.length ? [t("report.acEstimated", { rows: e.acEstimatedRows.join(", ") })] : []),
+      ...(hidden
+        ? [t("report.acNone")]
+        : e.acEstimatedRows.length
+          ? [t("report.acEstimated", { n: e.acEstimatedRows.length, rows: e.acEstimatedRows.join(", ") })]
+          : []),
     ],
   };
 }

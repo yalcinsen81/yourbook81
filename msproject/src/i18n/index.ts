@@ -7,7 +7,9 @@ import { tr, type MessageKey, type Plural } from "./tr";
 
 export type Lang = "tr" | "en";
 /** Tarih gösterimi: dile göre (TR 13.11.2026, EN 11/13/2026) ya da ISO (2026-11-13) */
-export type DateStyle = "locale" | "iso";
+/** Tarih biçimi: dile göre (TR gün.ay.yıl, EN ay/gün/yıl), her dilde gün.ay.yıl ya da ISO */
+export type DateStyle = "locale" | "dmy" | "iso";
+export const DATE_STYLES: readonly DateStyle[] = ["locale", "dmy", "iso"];
 export type { MessageKey };
 
 type Entry = string | Plural;
@@ -79,6 +81,10 @@ function lookup(key: MessageKey, l: Lang = lang): Entry {
  * Çeviri. "{n} görev" gibi yer tutucular params ile doldurulur. Çoğul girişlerde ({ one, other }) params.n'e
  * göre Intl.PluralRules ile biçim seçilir.
  */
+/** Ekranda bir süre kalan ileti: dil değişince yeniden üretilebilsin diye işlev olarak da verilebilir */
+export type Msg = string | (() => string);
+export const msgText = (m: Msg): string => (typeof m === "function" ? m() : m);
+
 export function t(key: MessageKey, params: Record<string, string | number> = {}): string {
   return tIn(lang, key, params);
 }
@@ -143,22 +149,33 @@ export function weekStartDay(): number {
 const pad = (n: number) => String(n).padStart(2, "0");
 
 /** Tarih: TR 13.11.2026, EN 11/13/2026, ISO 2026-11-13. Geçersiz değerde "—". */
+/** Geçerli biçimin sırası: gün.ay.yıl, ay/gün/yıl ya da ISO */
+export function dateOrder(): "dmy" | "mdy" | "iso" {
+  if (dateStyle === "iso") return "iso";
+  if (dateStyle === "dmy") return "dmy";
+  return lang === "tr" ? "dmy" : "mdy";
+}
+
 export function formatDateLocal(iso: string | null | undefined): string {
   const m = typeof iso === "string" ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso) : null;
   if (!m) return "—";
-  if (dateStyle === "iso") return iso!;
-  return lang === "tr" ? `${m[3]}.${m[2]}.${m[1]}` : `${Number(m[2])}/${Number(m[3])}/${m[1]}`;
+  const order = dateOrder();
+  if (order === "iso") return iso!;
+  return order === "dmy" ? `${m[3]}.${m[2]}.${m[1]}` : `${Number(m[2])}/${Number(m[3])}/${m[1]}`;
 }
 
 /** Tarih biçiminin kalıbı (yer tutucu ve ipucu için) */
 export function datePattern(): string {
-  if (dateStyle === "iso") return "YYYY-MM-DD";
-  return lang === "tr" ? "GG.AA.YYYY" : "MM/DD/YYYY";
+  const order = dateOrder();
+  if (order === "iso") return lang === "tr" ? "YYYY-AA-GG" : "YYYY-MM-DD";
+  if (order === "dmy") return lang === "tr" ? "GG.AA.YYYY" : "DD.MM.YYYY";
+  return "MM/DD/YYYY";
 }
 
 /**
- * Kullanıcının yazdığı tarihi ISO'ya çevirir. Seçili biçim, ISO ve diğer dilin biçimi kabul edilir;
- * yıl 2 haneli yazılırsa 2000'li yıllar varsayılır. Geçersizse null.
+ * Kullanıcının yazdığı tarihi ISO'ya çevirir. ISO ve noktalı gün.ay.yıl her zaman kabul edilir;
+ * eğik çizgili belirsiz yazım (03/04/2026) seçili biçime uyar: ay/gün/yıl biçiminde ay önce, aksi halde gün önce
+ * (ISO seçiliyse dile göre). Yıl 2 haneli yazılırsa 2000'li yıllar varsayılır. Geçersizse null.
  */
 export function parseDateLocal(text: string): string | null {
   const s = text.trim();
@@ -167,15 +184,22 @@ export function parseDateLocal(text: string): string | null {
   if (m) [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
   else if ((m = /^(\d{1,2})\.(\d{1,2})\.(\d{2}|\d{4})$/.exec(s))) [d, mo, y] = [Number(m[1]), Number(m[2]), Number(m[3])];
   else if ((m = /^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/.exec(s))) {
-    // Eğik çizgi: İngilizcede ay/gün, Türkçede gün/ay
     const [a, b] = [Number(m[1]), Number(m[2])];
-    [mo, d] = lang === "en" ? [a, b] : [b, a];
+    const order = dateOrder();
+    const monthFirst = order === "mdy" || (order === "iso" && lang === "en");
+    [mo, d] = monthFirst ? [a, b] : [b, a];
     y = Number(m[3]);
   } else return null;
   if (y < 100) y += 2000;
   const iso = `${y}-${pad(mo)}-${pad(d)}`;
   const dt = new Date(`${iso}T00:00:00Z`);
   return !Number.isNaN(dt.getTime()) && dt.toISOString().slice(0, 10) === iso ? iso : null;
+}
+
+/** Okunamayan tarih uyarısı, seçili biçimde örnekle: "Tarih okunamadı. Örnek: 13.11.2026 veya 2026-11-13." */
+export function invalidDateMessage(): string {
+  const local = formatDateLocal("2026-11-13");
+  return t("valid.date", { example: dateOrder() === "iso" ? local : `${local} ${t("common.or")} 2026-11-13` });
 }
 
 /** Ay adı (0 = ocak) */

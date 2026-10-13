@@ -1,6 +1,6 @@
 import { useRef, useState, type DragEvent, type MouseEvent, type RefObject, type UIEvent } from "react";
-import { datePattern, formatDateLocal, formatMoney, formatNumber, formatPercent, parseDateLocal, t, type MessageKey } from "../i18n";
-import { formatShort } from "../model/calendar";
+import { datePattern, dayName, formatDateLocal, formatMoney, formatNumber, formatPercent, t, type MessageKey } from "../i18n";
+import { formatShort, isValidDate, parseDate } from "../model/calendar";
 import { formatEstimate } from "../model/risks";
 import { visibleRange } from "../model/timescale";
 import type { ScheduledTask, Task } from "../model/types";
@@ -44,7 +44,8 @@ interface Props {
   onToggle: (id: string) => void;
   onName: (id: string, name: string) => void;
   onDuration: (id: string, text: string) => boolean;
-  onStart: (id: string, iso: string) => boolean;
+  /** Yazılan metin ya da takvimden seçilen ISO tarih; boş metin kısıtı kaldırır */
+  onStart: (id: string, text: string) => boolean;
   onPredecessors: (id: string, text: string) => boolean;
   onPercent: (id: string, text: string) => boolean;
   onResources: (id: string, text: string) => boolean;
@@ -72,8 +73,8 @@ export const COLUMNS: { key: string; label: MessageKey | ""; width: number }[] =
   { key: "wbs", label: "col.wbs", width: 52 },
   { key: "name", label: "col.name", width: 250 },
   { key: "duration", label: "col.duration", width: 72 },
-  { key: "start", label: "col.start", width: 128 },
-  { key: "finish", label: "col.finish", width: 112 },
+  { key: "start", label: "col.start", width: 150 },
+  { key: "finish", label: "col.finish", width: 136 },
   { key: "preds", label: "col.predecessors", width: 92 },
   { key: "resources", label: "col.resources", width: 150 },
   { key: "percent", label: "col.percent", width: 64 },
@@ -365,7 +366,7 @@ export function TaskGrid(props: Props) {
 }
 
 /**
- * Tarih hücresi: seçili biçimde (TR 13.11.2026, EN 11/13/2026, ISO) yazılır; yanındaki düğme tarayıcının takvimini açar.
+ * Tarih hücresi: gün kısaltması + seçili biçim (Pzt 02.11.2026, Mon 11/2/2026, ISO); gün kısaltması salt okunur; yanındaki düğme tarayıcının takvimini açar.
  * Boş bırakmak kısıtı kaldırır.
  */
 function DateCell(props: {
@@ -375,11 +376,15 @@ function DateCell(props: {
   constrained: boolean;
   ariaLabel: string;
   title: string;
-  onCommit: (iso: string) => boolean;
+  onCommit: (text: string) => boolean;
 }) {
   const picker = useRef<HTMLInputElement>(null);
   return (
     <div className="date-cell">
+      {/* Gün kısaltması bitiş sütunuyla aynı görünüm için; düzenlenmez */}
+      <span className="dow" aria-hidden>
+        {isValidDate(props.iso) ? dayName(parseDate(props.iso).getUTCDay()) : ""}
+      </span>
       <EditableCell
         value={formatDateLocal(props.iso)}
         readOnly={props.readOnly}
@@ -389,11 +394,7 @@ function DateCell(props: {
         ariaLabel={props.ariaLabel}
         title={props.title}
         placeholder={datePattern()}
-        onCommit={(text) => {
-          if (!text.trim()) return props.onCommit("");
-          const iso = parseDateLocal(text);
-          return iso ? props.onCommit(iso) : false;
-        }}
+        onCommit={props.onCommit}
       />
       {!props.readOnly && (
         <>

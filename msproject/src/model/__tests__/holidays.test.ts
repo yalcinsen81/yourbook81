@@ -18,10 +18,11 @@ const task = (id: string, duration: number, extra: Partial<Task> = {}): Task => 
 });
 
 describe("Madde 3: tatil verisi ve takvim seçenekleri", () => {
-  it("mevcut 41 tatil aynen korunur (2026–2029, varsayılan seçenekler)", () => {
+  it("mevcut tatiller aynen korunur (2026–2027: 27; 2028–2029 bayramlarıyla 2026–2029: 55)", () => {
+    expect(turkishHolidays(2026, 2027)).toHaveLength(27);
     const list = turkishHolidays(2026, 2029);
-    expect(list).toHaveLength(41);
-    expect(new Set(list.map((h) => h.date)).size).toBe(41);
+    expect(list).toHaveLength(55);
+    expect(new Set(list.map((h) => h.date)).size).toBe(55);
     expect(list.find((h) => h.date === "2027-05-19")!.name).toBe("Atatürk'ü Anma, Gençlik ve Spor Bayramı / Kurban Bayramı 4. gün");
     expect(list.some((h) => h.halfDay)).toBe(false);
   });
@@ -36,9 +37,9 @@ describe("Madde 3: tatil verisi ve takvim seçenekleri", () => {
   });
 
   it("veri olmayan yıllar bildirilir; tahmini tarih eklenmez", () => {
-    expect(yearsWithoutReligiousData(2026, 2029)).toEqual([2028, 2029]);
-    const y2028 = turkishHolidays(2028, 2028);
-    expect(y2028.every((h) => !/Ramazan|Kurban/.test(h.name))).toBe(true);
+    expect(yearsWithoutReligiousData(2026, 2031)).toEqual([2030, 2031]);
+    const y2030 = turkishHolidays(2030, 2030);
+    expect(y2030.every((h) => !/Ramazan|Kurban/.test(h.name))).toBe(true);
   });
 
   it("seçenekler: yalnızca resmî, yalnızca dini, arifeler yarım gün", () => {
@@ -119,7 +120,7 @@ describe("dosya sürümü ve otomatik yükseltme", () => {
     expect(p.version).toBe(PROJECT_VERSION);
     expect(p.workdays).toEqual([1, 2, 3, 4, 5]);
     expect(p.progressWeight).toBe("cost");
-    expect(p.holidays).toHaveLength(42);
+    expect(p.holidays).toHaveLength(56);
     expect(p.holidays.find((h) => h.date === "2026-08-14")!.name).toBe("Kullanıcının tatili");
     expect(schedule(p).finishDate).toBe(schedule(sampleProject("2026-10-12")).finishDate);
   });

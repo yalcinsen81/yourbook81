@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { t } from "../i18n";
+import { t, type Msg } from "../i18n";
+import { useLocale } from "../i18n/react";
 import { isValidDate } from "../model/calendar";
 import { ganttImage, ganttPages, type ExportScale, type GanttExportOptions, type Orientation, type PageSize } from "../model/ganttSvg";
 import type { Baseline, Project, Schedule } from "../model/types";
@@ -15,7 +16,7 @@ interface Props {
   /** Tabloda görünen satırlar (süzgeç / kapalı özetler); tümünden azsa seçenek olarak sunulur */
   visible: number[];
   onClose: () => void;
-  flash: (text: string) => void;
+  flash: (text: Msg) => void;
 }
 
 const SCALES: ExportScale[] = ["day", "week", "month", "fit"];
@@ -50,7 +51,8 @@ export function GanttExportDialog({ project, schedule, today, baseline, visible,
     baseline: withBaseline ? baseline : undefined,
     indexes: onlyVisible ? visible : undefined,
   };
-  const pages = useMemo(() => (rangeOk ? ganttPages(project, schedule, opts) : []), [project, schedule, rangeOk, from, to, scale, size, orientation, withBaseline, onlyVisible, today]); // eslint-disable-line react-hooks/exhaustive-deps
+  const loc = useLocale();
+  const pages = useMemo(() => (rangeOk ? ganttPages(project, schedule, opts) : []), [project, schedule, rangeOk, from, to, scale, size, orientation, withBaseline, onlyVisible, today, loc]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const savePng = async () => {
     setBusy(true);
@@ -72,7 +74,7 @@ export function GanttExportDialog({ project, schedule, today, baseline, visible,
       if (!blob) throw new Error("png");
       downloadBlob(blob, fileNameFor([project.name, "Gantt", today], "png"));
     } catch {
-      flash(t("gexport.pngFailed"));
+      flash(() => t("gexport.pngFailed"));
     } finally {
       setBusy(false);
     }

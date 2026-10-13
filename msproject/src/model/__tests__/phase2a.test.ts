@@ -43,10 +43,10 @@ describe("öncül gecikme birimi dile göre", () => {
 });
 
 describe("tablo tarihi dile göre", () => {
-  it("TR Pzt 02.11.26, EN Mon 11/2/26, ISO", () => {
-    expect(formatShort("2026-11-02")).toBe("Pzt 02.11.26");
+  it("TR Pzt 02.11.2026, EN Mon 11/2/2026, ISO", () => {
+    expect(formatShort("2026-11-02")).toBe("Pzt 02.11.2026");
     setLocale({ lang: "en" });
-    expect(formatShort("2026-11-02")).toBe("Mon 11/2/26");
+    expect(formatShort("2026-11-02")).toBe("Mon 11/2/2026");
     setLocale({ dateStyle: "iso" });
     expect(formatShort("2026-11-02")).toBe("Mon 2026-11-02");
   });

@@ -3,7 +3,7 @@ import { t } from "../i18n";
 
 interface Props {
   value: string;
-  /** false dönerse değer geçersizdir: hücre kırmızı kalır, taslak korunur. */
+  /** false dönerse değer geçersizdir: hücre son geçerli değere döner ve odaktayken kırmızı çerçeveli kalır. */
   onCommit: (text: string) => boolean | void;
   type?: "text" | "date";
   readOnly?: boolean;
@@ -38,6 +38,8 @@ export function EditableCell({ value, onCommit, type = "text", readOnly, row, co
     }
     const ok = onCommit(draft) !== false;
     setInvalid(!ok);
+    // Geçersiz metin ekranda kalmaz: son geçerli değer geri yazılır (uyarıyı çağıran gösterir)
+    if (!ok) setDraft(value);
     return ok;
   };
 
@@ -45,6 +47,7 @@ export function EditableCell({ value, onCommit, type = "text", readOnly, row, co
     if (e.key === "Enter") {
       e.preventDefault();
       if (commit()) focusCell(row + (e.shiftKey ? -1 : 1), col);
+      else e.currentTarget.select();
     } else if (e.key === "Escape") {
       cancelled.current = true;
       setDraft(value);
@@ -72,7 +75,10 @@ export function EditableCell({ value, onCommit, type = "text", readOnly, row, co
       aria-invalid={invalid}
       data-row={row}
       data-col={col}
-      onChange={(e) => setDraft(e.target.value)}
+      onChange={(e) => {
+        setDraft(e.target.value);
+        setInvalid(false);
+      }}
       onFocus={(e) => {
         setFocused(true);
         if (type === "text") e.currentTarget.select();

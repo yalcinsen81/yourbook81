@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { datePattern, formatDateLocal, parseDateLocal, t } from "../i18n";
+import { datePattern, formatDateLocal, invalidDateMessage, parseDateLocal, t } from "../i18n";
 import { Icon } from "./icons";
 
 /**
@@ -24,7 +24,7 @@ export function DateInput(props: { value: string; onChange: (iso: string) => voi
         aria-label={props.ariaLabel}
         aria-invalid={invalid}
         className={invalid ? "invalid" : ""}
-        title={invalid ? t("common.invalid") : datePattern()}
+        title={invalid ? invalidDateMessage() : datePattern()}
         autoFocus={props.autoFocus}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}

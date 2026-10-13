@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { formatMoney, formatNumber, formatPercent, parseNumberLocal, t } from "../i18n";
+import { formatMoney, formatNumber, formatPercent, parseNumberLocal, t, type Msg } from "../i18n";
 import { formatShort, isValidDate, normalizeWorkdays } from "../model/calendar";
 import { newResourceId, removeResource, type ResourceUsage } from "../model/resources";
 import type { Project, RateType, Resource, ResourceType, Schedule } from "../model/types";
@@ -17,7 +17,7 @@ interface Props {
   selected: string | null;
   onSelect: (id: string | null) => void;
   update: (fn: (p: Project) => Project) => void;
-  flash: (text: string) => void;
+  flash: (text: Msg) => void;
 }
 
 /** Kaynak sayfası: kaynak listesi (ad, kapasite, ücret) ve seçili kaynağın yük histogramı */
@@ -163,11 +163,11 @@ export function ResourceView({ project, schedule, usage, selected, onSelect, upd
                   onCommit={(v) => {
                     const name = v.trim();
                     if (!name || /[;,[\]]/.test(name)) {
-                      flash(t("err.resourceName"));
+                      flash(() => t("err.resourceName"));
                       return false;
                     }
                     if (project.resources.some((x) => x.id !== r.id && x.name.toLocaleLowerCase("tr") === name.toLocaleLowerCase("tr"))) {
-                      flash(t("err.resourceExists", { name }));
+                      flash(() => t("err.resourceExists", { name }));
                       return false;
                     }
                     patch(r.id, { name });

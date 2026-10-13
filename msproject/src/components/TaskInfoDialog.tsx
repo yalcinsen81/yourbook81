@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { formatMoney, formatNumber, formatPercent, parseNumberLocal, t } from "../i18n";
+import { useLocale } from "../i18n/react";
 import type { Variance } from "../model/baseline";
 import { formatShort } from "../model/calendar";
 import { taskCostBreakdown } from "../model/costs";
@@ -61,7 +62,8 @@ export function TaskInfoDialog({ project, schedule, taskId, baseline, issues, on
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const cost = useMemo(() => taskCostBreakdown(task, project), [task, project]);
+  const loc = useLocale();
+  const cost = useMemo(() => taskCostBreakdown(task, project), [task, project, loc]); // eslint-disable-line react-hooks/exhaustive-deps
   const needsDate = ctype !== "ASAP" && ctype !== "ALAP";
   const leaf = !row.isSummary;
   const workRemaining = (task.assignments ?? []).reduce((sum, a) => {

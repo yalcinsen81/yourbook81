@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { formatDateLocal, getDateStyle, getLang, t, type DateStyle, type Lang } from "../i18n";
+import { DATE_STYLES, formatDateLocal, getDateStyle, getLang, t, type Lang } from "../i18n";
 import { useLocale } from "../i18n/react";
 import { listBackups, saveLocale } from "../settings";
 import { CurrencyPicker } from "./CalendarSettings";
@@ -24,7 +24,8 @@ export function SettingsDialog({ currency, onCurrency, download, onClose }: Prop
   const dateStyle = getDateStyle();
   const backups = listBackups();
   // Örnek tarih: seçili dile göre biçim önizlemesi
-  const example = (style: DateStyle) => (style === "iso" ? "2026-11-13" : lang === "tr" ? "13.11.2026" : "11/13/2026");
+  const example = { locale: lang === "tr" ? "13.11.2026" : "11/13/2026", dmy: "13.11.2026", iso: "2026-11-13" } as const;
+  const label = { locale: "settings.dateLocale", dmy: "settings.dateDmy", iso: "settings.dateIso" } as const;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -49,10 +50,13 @@ export function SettingsDialog({ currency, onCurrency, download, onClose }: Prop
           </fieldset>
           <fieldset className="setting">
             <legend>{t("settings.dateFormat")}</legend>
-            {(["locale", "iso"] as DateStyle[]).map((style) => (
+            {DATE_STYLES.map((style) => (
               <label key={style} className="check">
-                <input type="radio" name="date-style" checked={dateStyle === style} onChange={() => saveLocale(lang, style)} />
-                <span>{t(style === "iso" ? "settings.dateIso" : "settings.dateLocale", { example: example(style) })}</span>
+                <input type="radio" name="date-style" value={style} checked={dateStyle === style} onChange={() => saveLocale(lang, style)} />
+                <span>
+                  {t(label[style])} <small className="hint">{example[style]}</small>
+                  {style === "locale" && lang === "en" && <small className="hint date-hint">{t("settings.dateLocaleHint")}</small>}
+                </span>
               </label>
             ))}
             <small className="modal-note">{t("settings.appNote")}</small>
