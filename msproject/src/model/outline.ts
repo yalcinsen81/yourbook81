@@ -79,3 +79,71 @@ export function wbsCodes(tasks: Task[]): string[] {
     return counters.join(".");
   });
 }
+
+/** Görev kendi özetine (ya da özet kendi alt görevine) bağlı kaldıysa o bağ kopar (girinti/taşıma sonrası) */
+export function dropAncestorLinks(tasks: Task[]): Task[] {
+  const anc = ancestorsOf(tasks);
+  return tasks.map((t) => {
+    const mine = new Set(anc.get(t.id));
+    const kept = t.predecessors.filter((pr) => !mine.has(pr.taskId) && !(anc.get(pr.taskId) ?? []).includes(t.id));
+    return kept.length === t.predecessors.length ? t : { ...t, predecessors: kept };
+  });
+}
+
+/** Seçili satırları alt ağaçlarıyla birlikte topla (sıralı, tekrarsız indeksler) */
+export function blockIndexes(tasks: Task[], indexes: number[]): number[] {
+  const out = new Set<number>();
+  for (const i of [...indexes].sort((a, b) => a - b)) {
+    if (i < 0 || i >= tasks.length || out.has(i)) continue;
+    for (let j = i; j < subtreeEnd(tasks, i); j++) out.add(j);
+  }
+  return [...out].sort((a, b) => a - b);
+}
+
+/**
+ * Satırların kopyası (alt ağaçlarıyla): yeni kimlik alır; kopyalanan satırlar arasındaki bağlar yeni kimliklere
+ * taşınır, dışarıdaki görevlere olan bağlar korunur. Girintiler en üstteki kopya 0 olacak şekilde göreli tutulur.
+ */
+export function cloneRows(tasks: Task[], indexes: number[], newId: () => string): Task[] {
+  const rows = blockIndexes(tasks, indexes).map((i) => tasks[i]);
+  if (!rows.length) return [];
+  const map = new Map(rows.map((t) => [t.id, newId()]));
+  const base = Math.min(...rows.map((t) => t.outline));
+  return rows.map((t) => ({
+    ...structuredClone(t),
+    id: map.get(t.id)!,
+    outline: t.outline - base,
+    predecessors: t.predecessors.map((p) => ({ ...p, taskId: map.get(p.taskId) ?? p.taskId })),
+  }));
+}
+
+/**
+ * Kopyalanmış satırları `at` konumuna, `level` girintisinde ekler. Var olmayan görevlere giden bağlar atılır;
+ * girintiler tutarlı hâle getirilir.
+ */
+export function insertRows(tasks: Task[], at: number, rows: Task[], level: number): Task[] {
+  const placed = rows.map((t) => ({ ...t, outline: t.outline + level }));
+  const next = [...tasks.slice(0, at), ...placed, ...tasks.slice(at)];
+  const ids = new Set(next.map((t) => t.id));
+  const cleaned = next.map((t) =>
+    t.predecessors.every((p) => ids.has(p.taskId)) ? t : { ...t, predecessors: t.predecessors.filter((p) => ids.has(p.taskId)) },
+  );
+  return dropAncestorLinks(normalizeOutline(cleaned));
+}
+
+/**
+ * Sürükle-bırak: `from` satırını alt ağacıyla birlikte `to` satırının önüne taşır ve hedefin girintisini alır
+ * (`to` = tasks.length sona taşır, son satırın girintisini alır). Kendi alt ağacının içine bırakılamaz.
+ */
+export function moveBlockTo(tasks: Task[], from: number, to: number): Task[] {
+  if (from < 0 || from >= tasks.length || to < 0 || to > tasks.length) return tasks;
+  const end = subtreeEnd(tasks, from);
+  if (to >= from && to <= end) return tasks;
+  const block = tasks.slice(from, end);
+  const rest = [...tasks.slice(0, from), ...tasks.slice(end)];
+  const target = to > from ? to - block.length : to;
+  const level = target < rest.length ? rest[target].outline : rest.length ? rest[rest.length - 1].outline : 0;
+  const delta = level - block[0].outline;
+  const moved = block.map((t) => ({ ...t, outline: Math.max(0, t.outline + delta) }));
+  return dropAncestorLinks(normalizeOutline([...rest.slice(0, target), ...moved, ...rest.slice(target)]));
+}

@@ -2,7 +2,8 @@ import { t as tx } from "../i18n";
 import { addDays, DEFAULT_WORKDAYS, isValidDate, normalizeWorkdays } from "./calendar";
 import { tagBuiltinHolidays, type Holiday } from "./holidays";
 import { normalizeOutline, wbsCodes } from "./outline";
-import type { Assignment, LinkType, Predecessor, Project, Resource, Schedule, Task } from "./types";
+import { taskCost } from "./costs";
+import type { Assignment, Baseline, ConstraintType, CostAccrual, LinkType, Predecessor, Project, Resource, Schedule, Task } from "./types";
 
 // Microsoft Project XML biçimi (Dosya > Farklı Kaydet > XML). .mpp ikili biçimi tarayıcıda okunamaz;
 // MS Project'te "XML Biçimi (*.xml)" olarak kaydedilen dosya buraya açılır, buradan kaydedilen dosya MS Project'te açılır.
@@ -11,8 +12,11 @@ const NS = "http://schemas.microsoft.com/project";
 // MS Project bağ tipi kodları
 const TYPE_FROM_MSP: Record<string, LinkType> = { "0": "FF", "1": "FS", "2": "SF", "3": "SS" };
 const TYPE_TO_MSP: Record<LinkType, number> = { FF: 0, FS: 1, SF: 2, SS: 3 };
-// ConstraintType: 0 = Mümkün olan en kısa sürede, 4 = Şundan önce başlamasın
-const SNET = "4";
+// ConstraintType kodları (0 = en kısa sürede … 7 = şu tarihten geç bitmesin)
+const CONSTRAINT_CODES: ConstraintType[] = ["ASAP", "ALAP", "MSO", "MFO", "SNET", "SNLT", "FNET", "FNLT"];
+// FixedCostAccrual: 1 = başta, 2 = eşit, 3 = sonda
+const ACCRUAL_TO_MSP: Record<CostAccrual, number> = { start: 1, prorated: 2, end: 3 };
+const ACCRUAL_FROM_MSP: Record<string, CostAccrual> = { "1": "start", "3": "end" };
 
 export interface ImportResult {
   project: Project;
@@ -67,16 +71,42 @@ export function parseMspXml(xml: string): ImportResult {
 
   let manual = 0;
   let percentLags = 0;
+  // Referans planlar (MS Project Baseline 0–2), MSP UID'sine göre
+  const baselineRows: Record<number, Record<string, Baseline["tasks"][string]>> = {};
   const tasks: Task[] = rawTasks.map((t) => {
     const milestone = text(t, "Milestone") === "1";
     const duration = milestone ? 0 : toDays(text(t, "Duration"));
-    let snet: string | undefined;
+    let constraint: Task["constraint"];
     const constraintDate = dateOf(text(t, "ConstraintDate"));
-    if (text(t, "ConstraintType") === SNET && isValidDate(constraintDate)) snet = constraintDate;
+    const ctype = CONSTRAINT_CODES[Number(text(t, "ConstraintType") || 0)] ?? "ASAP";
+    if (ctype === "ALAP") constraint = { type: "ALAP" };
+    else if (ctype !== "ASAP" && isValidDate(constraintDate)) constraint = { type: ctype, date: constraintDate };
     // Elle zamanlanan görev: MS Project'teki tarihi korunsun diye başlangıç kısıtı olur
     if (text(t, "Manual") === "1" && isValidDate(dateOf(text(t, "Start")))) {
-      snet = dateOf(text(t, "Start"));
+      constraint = { type: "SNET", date: dateOf(text(t, "Start")) };
       manual++;
+    }
+    const extra: Partial<Task> = {};
+    const deadline = dateOf(text(t, "Deadline"));
+    if (isValidDate(deadline)) extra.deadline = deadline;
+    const actualStart = dateOf(text(t, "ActualStart"));
+    const actualFinish = dateOf(text(t, "ActualFinish"));
+    if (isValidDate(actualStart)) {
+      extra.actualStart = actualStart;
+      if (isValidDate(actualFinish)) extra.actualFinish = actualFinish;
+    }
+    const fixedCost = Number(text(t, "FixedCost")) || 0;
+    if (fixedCost > 0) extra.fixedCost = fixedCost;
+    const accrual = ACCRUAL_FROM_MSP[text(t, "FixedCostAccrual")];
+    if (accrual) extra.costAccrual = accrual;
+    for (const b of children(t, "Baseline")) {
+      const n = Number(text(b, "Number"));
+      const bs = dateOf(text(b, "Start"));
+      const bf = dateOf(text(b, "Finish"));
+      if (!(n >= 0 && n < 3) || !isValidDate(bs) || !isValidDate(bf)) continue;
+      const uid = text(t, "UID");
+      const entry = (baselineRows[n] ??= {});
+      entry[uid] = { start: bs, finish: bf, duration: toDays(text(b, "Duration")), cost: Number(text(b, "Cost")) || 0 };
     }
     const predecessors: Predecessor[] = children(t, "PredecessorLink").flatMap((l) => {
       const taskId = idOf.get(text(l, "PredecessorUID"));
@@ -94,12 +124,13 @@ export function parseMspXml(xml: string): ImportResult {
       duration,
       outline: Math.max(0, (Number(text(t, "OutlineLevel")) || 1) - 1),
       percent: Math.min(100, Math.max(0, Math.round(Number(text(t, "PercentComplete")) || 0))),
-      startNoEarlierThan: snet,
+      ...(constraint ? { constraint } : {}),
+      ...extra,
       predecessors,
     };
   });
 
-  // Kaynaklar (yalnızca iş kaynakları; malzeme ve maliyet kaynakları atlanır)
+  // Kaynaklar: iş (Type 1) ve malzeme (Type 0); maliyet kaynakları (Type 2) atlanır
   const resources: Resource[] = [];
   const resOf = new Map<string, string>();
   let skippedRes = 0;
@@ -107,19 +138,29 @@ export function parseMspXml(xml: string): ImportResult {
     const uidText = text(r, "UID");
     const name = text(r, "Name");
     if (uidText === "0" || text(r, "IsNull") === "1" || !name) continue;
-    if (text(r, "Type") && text(r, "Type") !== "1") {
+    const type = text(r, "Type") || "1";
+    if (type !== "1" && type !== "0") {
       skippedRes++;
       continue;
     }
     const id = `msp-r${uidText}`;
-    // StandardRate saatliktir; günlük ücrete çevrilir
-    const hourly = Number(text(r, "StandardRate")) || 0;
-    resources.push({
-      id,
-      name,
-      maxUnits: Math.max(1, Math.round((Number(text(r, "MaxUnits") || 1) || 1) * 100)),
-      rate: Math.round(hourly * hoursPerDay * 100) / 100,
-    });
+    const standard = Number(text(r, "StandardRate")) || 0;
+    const perUse = Number(text(r, "CostPerUse")) || 0;
+    if (type === "0") {
+      // Malzeme: StandardRate birim fiyattır
+      const label = text(r, "MaterialLabel");
+      resources.push({ id, name, maxUnits: 100, rate: standard, type: "material", ...(label ? { unitLabel: label } : {}) });
+    } else if (!standard && perUse) {
+      resources.push({ id, name, maxUnits: Math.max(1, Math.round((Number(text(r, "MaxUnits") || 1) || 1) * 100)), rate: perUse, rateType: "use" });
+    } else {
+      // StandardRate saatliktir; günlük ücrete çevrilir
+      resources.push({
+        id,
+        name,
+        maxUnits: Math.max(1, Math.round((Number(text(r, "MaxUnits") || 1) || 1) * 100)),
+        rate: Math.round(standard * hoursPerDay * 100) / 100,
+      });
+    }
     resOf.set(uidText, id);
   }
   const taskByUid = new Map(rawTasks.map((t, i) => [text(t, "UID"), tasks[i]]));
@@ -127,7 +168,9 @@ export function parseMspXml(xml: string): ImportResult {
     const task = taskByUid.get(text(a, "TaskUID"));
     const resourceId = resOf.get(text(a, "ResourceUID"));
     if (!task || !resourceId) continue;
-    const units = Math.max(1, Math.round((Number(text(a, "Units") || 1) || 1) * 100));
+    const material = resources.find((r) => r.id === resourceId)?.type === "material";
+    const raw = Number(text(a, "Units") || 1) || 1;
+    const units = material ? Math.round(raw * 100) / 100 : Math.max(1, Math.round(raw * 100));
     const list: Assignment[] = (task.assignments ??= []);
     if (!list.some((x) => x.resourceId === resourceId)) list.push({ resourceId, units });
   }
@@ -135,6 +178,17 @@ export function parseMspXml(xml: string): ImportResult {
   if (manual) warnings.push(tx("xml.manualTasks", { n: manual }));
   if (percentLags) warnings.push(tx("xml.percentLags", { n: percentLags }));
 
+  const uidToId = new Map(rawTasks.map((t, i) => [text(t, "UID"), tasks[i].id]));
+  const baselines: Baseline[] = Object.entries(baselineRows).map(([n, rows]) => {
+    const entries = Object.entries(rows).flatMap(([uid, v]) => (uidToId.has(uid) ? [[uidToId.get(uid)!, v] as const] : []));
+    return {
+      index: Number(n),
+      name: `${tx("baseline.default")} ${Number(n) + 1}`,
+      savedAt: "",
+      finish: entries.reduce((m, [, v]) => (v.finish > m ? v.finish : m), ""),
+      tasks: Object.fromEntries(entries),
+    };
+  });
   return {
     project: {
       name: text(root, "Title") || text(root, "Name").replace(/\.xml$/i, "") || "MS Project",
@@ -143,6 +197,7 @@ export function parseMspXml(xml: string): ImportResult {
       holidays: tagBuiltinHolidays(readHolidays(root)),
       resources,
       workdays: readWorkdays(root),
+      ...(baselines.length ? { baselines } : {}),
     },
     warnings,
   };
@@ -280,14 +335,24 @@ export function toMspXml(project: Project, schedule: Schedule): string {
     out.push(`      <Milestone>${s.isMilestone ? 1 : 0}</Milestone>`);
     out.push(`      <Summary>${s.isSummary ? 1 : 0}</Summary>`);
     out.push(`      <Critical>${s.critical ? 1 : 0}</Critical>`);
-    out.push(`      <PercentComplete>${s.isSummary ? 0 : t.percent}</PercentComplete>`);
-    out.push(`      <TotalSlack>${s.slack * 480 * 10}</TotalSlack>`);
-    if (t.startNoEarlierThan && !s.isSummary) {
-      out.push(`      <ConstraintType>${SNET}</ConstraintType>`);
-      out.push(`      <ConstraintDate>${t.startNoEarlierThan}T08:00:00</ConstraintDate>`);
-    } else {
-      out.push(`      <ConstraintType>0</ConstraintType>`);
+    out.push(`      <PercentComplete>${s.isSummary ? s.percent : t.percent}</PercentComplete>`);
+    if (!s.isSummary && t.actualStart) {
+      out.push(`      <ActualStart>${t.actualStart}T08:00:00</ActualStart>`);
+      if (t.actualFinish) out.push(`      <ActualFinish>${t.actualFinish}T17:00:00</ActualFinish>`);
     }
+    if (!s.isSummary) {
+      out.push(`      <Cost>${money(taskCost(t, project))}</Cost>`);
+      if (t.fixedCost) out.push(`      <FixedCost>${money(t.fixedCost)}</FixedCost>`);
+      out.push(`      <FixedCostAccrual>${ACCRUAL_TO_MSP[t.costAccrual ?? "prorated"]}</FixedCostAccrual>`);
+    }
+    out.push(`      <TotalSlack>${Math.round(s.slack * 480 * 10)}</TotalSlack>`);
+    const c = s.isSummary ? undefined : t.constraint;
+    out.push(`      <ConstraintType>${CONSTRAINT_CODES.indexOf(c?.type ?? "ASAP")}</ConstraintType>`);
+    if (c?.date) {
+      const finishType = c.type === "MFO" || c.type === "FNET" || c.type === "FNLT";
+      out.push(`      <ConstraintDate>${c.date}T${finishType ? "17:00:00" : "08:00:00"}</ConstraintDate>`);
+    }
+    if (t.deadline) out.push(`      <Deadline>${t.deadline}T17:00:00</Deadline>`);
     for (const p of t.predecessors) {
       const pu = uid.get(p.taskId);
       if (!pu) continue;
@@ -298,6 +363,17 @@ export function toMspXml(project: Project, schedule: Schedule): string {
       out.push(`        <LinkLag>${p.lag * 480 * 10}</LinkLag>`);
       out.push(`        <LagFormat>7</LagFormat>`);
       out.push(`      </PredecessorLink>`);
+    }
+    for (const b of project.baselines ?? []) {
+      const row = b.tasks[t.id];
+      if (!row) continue;
+      out.push(`      <Baseline>`);
+      out.push(`        <Number>${b.index}</Number>`);
+      out.push(`        <Start>${row.start}T08:00:00</Start>`);
+      out.push(`        <Finish>${row.finish}T17:00:00</Finish>`);
+      out.push(`        <Duration>${hours(row.duration)}</Duration>`);
+      out.push(`        <Cost>${money(row.cost)}</Cost>`);
+      out.push(`      </Baseline>`);
     }
     out.push(`    </Task>`);
   });
@@ -310,11 +386,24 @@ export function toMspXml(project: Project, schedule: Schedule): string {
       out.push(`      <UID>${i + 1}</UID>`);
       out.push(`      <ID>${i + 1}</ID>`);
       out.push(`      <Name>${esc(r.name)}</Name>`);
-      out.push(`      <Type>1</Type>`);
-      out.push(`      <MaxUnits>${(r.maxUnits / 100).toFixed(2)}</MaxUnits>`);
-      // Ücret saatlik yazılır, MS Project'te günlük gösterilir (StandardRateFormat 3 = gün)
-      out.push(`      <StandardRate>${money(r.rate / 8)}</StandardRate>`);
-      out.push(`      <StandardRateFormat>3</StandardRateFormat>`);
+      if (r.type === "material") {
+        // Malzeme: StandardRate birim fiyat, atamadaki Units miktar
+        out.push(`      <Type>0</Type>`);
+        if (r.unitLabel) out.push(`      <MaterialLabel>${esc(r.unitLabel)}</MaterialLabel>`);
+        out.push(`      <StandardRate>${money(r.rate)}</StandardRate>`);
+      } else {
+        out.push(`      <Type>1</Type>`);
+        out.push(`      <MaxUnits>${(r.maxUnits / 100).toFixed(2)}</MaxUnits>`);
+        if (r.rateType === "use") {
+          out.push(`      <StandardRate>0</StandardRate>`);
+          out.push(`      <CostPerUse>${money(r.rate)}</CostPerUse>`);
+        } else {
+          // Ücret saatlik yazılır; MS Project'te günlük ya da saatlik gösterilir (StandardRateFormat 2 = saat, 3 = gün)
+          const hourly = r.rateType === "hour" ? r.rate : r.rate / 8;
+          out.push(`      <StandardRate>${money(hourly)}</StandardRate>`);
+          out.push(`      <StandardRateFormat>${r.rateType === "hour" ? 2 : 3}</StandardRateFormat>`);
+        }
+      }
       out.push(`      <CalendarUID>1</CalendarUID>`);
       out.push(`    </Resource>`);
     });
@@ -328,18 +417,24 @@ export function toMspXml(project: Project, schedule: Schedule): string {
     for (const a of t.assignments ?? []) {
       const ru = resUid.get(a.resourceId);
       if (!ru) continue;
-      const rate = project.resources[ru - 1].rate;
+      const res = project.resources[ru - 1];
+      const material = res.type === "material";
       const mins = Math.round((t.duration * 480 * a.units) / 100);
+      const cost = material ? a.units * res.rate : res.rateType === "use" ? res.rate : ((res.rateType === "hour" ? res.rate * 8 : res.rate) * t.duration * a.units) / 100;
       assignments.push(`    <Assignment>`);
       assignments.push(`      <UID>${++auid}</UID>`);
       assignments.push(`      <TaskUID>${i + 1}</TaskUID>`);
       assignments.push(`      <ResourceUID>${ru}</ResourceUID>`);
       // Öğe sırası MS Project şemasındaki gibidir
-      assignments.push(`      <Cost>${money((rate * t.duration * a.units) / 100)}</Cost>`);
+      assignments.push(`      <Cost>${money(cost)}</Cost>`);
       assignments.push(`      <Finish>${s.finishDate}T17:00:00</Finish>`);
       assignments.push(`      <Start>${s.startDate}T08:00:00</Start>`);
-      assignments.push(`      <Units>${(a.units / 100).toFixed(2)}</Units>`);
-      assignments.push(`      <Work>PT${Math.floor(mins / 60)}H${mins % 60}M0S</Work>`);
+      if (material) {
+        assignments.push(`      <Units>${a.units}</Units>`);
+      } else {
+        assignments.push(`      <Units>${(a.units / 100).toFixed(2)}</Units>`);
+        assignments.push(`      <Work>PT${Math.floor(mins / 60)}H${mins % 60}M0S</Work>`);
+      }
       assignments.push(`    </Assignment>`);
     }
   });

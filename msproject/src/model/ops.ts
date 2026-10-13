@@ -1,8 +1,9 @@
 import { getLang, t } from "../i18n";
-import { formatDate, isValidDate, normalizeWorkdays } from "./calendar";
+import { addDays, formatDate, isValidDate, normalizeWorkdays } from "./calendar";
+import { CONSTRAINT_TYPES } from "./storage";
 import { indent, normalizeOutline, outdent, subtreeEnd, wbsCodes, ancestorsOf } from "./outline";
 import { formatPredecessors, parsePredecessors } from "./predecessors";
-import { schedule, wouldCreateCycle } from "./schedule";
+import { cycleWith, schedule } from "./schedule";
 import { newId } from "./storage";
 import {
   assignFromText,
@@ -16,7 +17,7 @@ import {
   taskCost,
   type Curves,
 } from "./resources";
-import type { LinkType, ProgressWeight, Project, Resource, Task } from "./types";
+import type { ConstraintType, CostAccrual, LinkType, ProgressWeight, Project, Resource, Schedule, ScheduleIssue, Task } from "./types";
 
 // Projeyi değiştiren saf işlemler. Satır numaraları 1'den başlar (tablodaki # sütunu, öncüllerdeki numaralar).
 // MCP sunucusu (Claude bağlantısı) bunları kullanır; hatalar seçili dildeki mesajla fırlatılır.
@@ -33,13 +34,26 @@ function setPredecessors(p: Project, task: Task, text: string): Task {
   const { predecessors, errors } = parsePredecessors(text, p.tasks, task.id);
   if (errors.length) throw new OpError(t("err.predecessor", { parts: errors.join(", ") }));
   const base: Project = { ...p, tasks: p.tasks.map((t) => (t.id === task.id ? { ...t, predecessors: [] } : t)) };
-  for (const pr of predecessors) {
-    if (wouldCreateCycle(base, task.id, pr.taskId)) {
-      const row = p.tasks.findIndex((t) => t.id === pr.taskId) + 1;
-      throw new OpError(t("err.cycleRow", { row: String(row) }));
-    }
-  }
+  for (const pr of predecessors) checkCycle(base, task.id, pr.taskId);
   return { ...task, predecessors };
+}
+
+/** Bağ döngü oluşturuyorsa nedenini söyleyen metin (ör. "… döngü oluşur (3 → 5 → 3)"), yoksa null */
+export function cycleError(project: Project, taskId: string, predId: string, link?: { from: number; to: number }): string | null {
+  const path = cycleWith(project, taskId, predId);
+  if (!path) return null;
+  const anc = ancestorsOf(project.tasks);
+  if ((anc.get(taskId) ?? []).includes(predId) || (anc.get(predId) ?? []).includes(taskId)) {
+    return t("err.summaryLink", { a: String(path[0]), b: String(path[1]) });
+  }
+  if (link) return t("err.cycleLink", { from: String(link.from), to: String(link.to), path: path.join(" → ") });
+  const row = project.tasks.findIndex((x) => x.id === predId) + 1;
+  return t("err.cycleRow", { row: String(row), path: path.join(" → ") });
+}
+
+function checkCycle(project: Project, taskId: string, predId: string): void {
+  const msg = cycleError(project, taskId, predId);
+  if (msg) throw new OpError(msg);
 }
 
 function checkDate(d: string | undefined): void {
@@ -55,9 +69,15 @@ export interface TaskInput {
   parentRow?: number;
   predecessors?: string;
   percent?: number;
+  /** Eski ad: SNET kısıtı */
   startNoEarlierThan?: string;
+  constraintType?: string;
+  constraintDate?: string;
+  deadline?: string;
   /** "Ali[50%]; Vinç"; listede olmayan adlar yeni kaynak olur */
   resources?: string;
+  fixedCost?: number;
+  costAccrual?: CostAccrual;
 }
 
 function setResources(p: Project, taskId: string, text: string): Project {
@@ -79,15 +99,17 @@ export function addTask(p: Project, input: TaskInput): { project: Project; row: 
     at = subtreeEnd(p.tasks, input.afterRow - 1);
     outline = after.outline;
   }
-  let task: Task = {
-    id: newId(),
-    name: input.name,
-    duration: clampDuration(input.duration ?? 1),
-    outline,
-    percent: clampPercent(input.percent ?? 0),
-    predecessors: [],
-    startNoEarlierThan: input.startNoEarlierThan || undefined,
-  };
+  let task: Task = applyFields(
+    {
+      id: newId(),
+      name: input.name,
+      duration: clampDuration(input.duration ?? 1),
+      outline,
+      percent: clampPercent(input.percent ?? 0),
+      predecessors: [],
+    },
+    input,
+  );
   let project: Project = { ...p, tasks: normalizeOutline([...p.tasks.slice(0, at), task, ...p.tasks.slice(at)]) };
   if (input.predecessors) {
     task = setPredecessors(project, project.tasks[at], input.predecessors);
@@ -101,25 +123,158 @@ export interface TaskPatch {
   name?: string;
   duration?: number;
   predecessors?: string;
+  /** Yüzde girilince gerçekleşen başlangıç/bitiş ve kalan süre MS Project'teki gibi güncellenir */
   percent?: number;
-  /** Boş metin kısıtı kaldırır */
+  /** Eski ad: SNET kısıtı. Boş metin kısıtı kaldırır. */
   startNoEarlierThan?: string;
+  /** ASAP, ALAP, SNET, SNLT, MSO, MFO, FNET, FNLT */
+  constraintType?: string;
+  constraintDate?: string;
+  /** Boş metin son tarihi kaldırır */
+  deadline?: string;
+  /** Boş metin kaldırır (yüzde 0 olur) */
+  actualStart?: string;
+  /** Görevi %100 yapar, süreyi gerçekleşen tarihlere göre ayarlar; boş metin kaldırır */
+  actualFinish?: string;
+  /** Kalan süre (iş günü): süre = gerçekleşen + kalan, yüzde yeniden hesaplanır */
+  remainingDuration?: number;
   /** Atamaları tamamen değiştirir; boş metin hepsini kaldırır */
   resources?: string;
+  fixedCost?: number;
+  costAccrual?: CostAccrual;
+  /** Göreve uygulanacak çalışılamayan dönemlerin adları (listeyi tamamen değiştirir) */
+  blackouts?: string[];
+}
+
+/** Kısıt, son tarih ve maliyet alanlarını uygular (doğrulayarak) */
+function applyFields(task: Task, f: TaskInput | TaskPatch): Task {
+  const next = { ...task };
+  if (f.startNoEarlierThan !== undefined) {
+    checkDate(f.startNoEarlierThan);
+    if (f.startNoEarlierThan) next.constraint = { type: "SNET", date: f.startNoEarlierThan };
+    else delete next.constraint;
+  }
+  if (f.constraintType !== undefined || f.constraintDate !== undefined) {
+    const type = (f.constraintType ?? next.constraint?.type ?? "ASAP").toUpperCase() as ConstraintType;
+    if (!CONSTRAINT_TYPES.includes(type)) throw new OpError(t("err.constraintType", { type, list: CONSTRAINT_TYPES.join(", ") }));
+    next.constraint = constraintOf(type, f.constraintDate ?? next.constraint?.date);
+    if (!next.constraint) delete next.constraint;
+  }
+  if (f.deadline !== undefined) {
+    checkDate(f.deadline);
+    if (f.deadline) next.deadline = f.deadline;
+    else delete next.deadline;
+  }
+  if (f.fixedCost !== undefined) {
+    if (!Number.isFinite(f.fixedCost) || f.fixedCost < 0) throw new OpError(t("err.fixedCost"));
+    if (f.fixedCost > 0) next.fixedCost = f.fixedCost;
+    else delete next.fixedCost;
+  }
+  if (f.costAccrual !== undefined) {
+    if (f.costAccrual === "prorated") delete next.costAccrual;
+    else next.costAccrual = f.costAccrual;
+  }
+  return next;
+}
+
+/** Kısıt nesnesi; ASAP için undefined. Tarih isteyen türde tarih yoksa hata. */
+export function constraintOf(type: ConstraintType, date?: string): Task["constraint"] {
+  if (type === "ASAP") return undefined;
+  if (type === "ALAP") return { type };
+  if (!date) throw new OpError(t("err.constraintDate"));
+  checkDate(date);
+  return { type, date };
+}
+
+/**
+ * Yüzde girişi (MS Project gibi): %0 gerçekleşen tarihleri siler; >0 ve gerçekleşen başlangıç yoksa planlanan
+ * başlangıç yazılır; %100 ve gerçekleşen bitiş yoksa planlanan bitiş yazılır; <100 gerçekleşen bitişi siler.
+ */
+export function withPercent(task: Task, percent: number, s: Schedule): Task {
+  const next: Task = { ...task, percent: clampPercent(percent) };
+  const r = s.byId.get(task.id);
+  if (next.percent === 0) {
+    delete next.actualStart;
+    delete next.actualFinish;
+    return next;
+  }
+  if (!next.actualStart && r) next.actualStart = r.startDate;
+  if (next.percent === 100) {
+    if (!next.actualFinish && r) next.actualFinish = r.finishDate;
+  } else delete next.actualFinish;
+  return next;
+}
+
+/** Gerçekleşen başlangıç: boşsa kaldırılır (yüzde 0 olur) */
+export function withActualStart(task: Task, date: string): Task {
+  checkDate(date);
+  const next = { ...task };
+  if (!date) {
+    delete next.actualStart;
+    delete next.actualFinish;
+    next.percent = 0;
+    return next;
+  }
+  next.actualStart = date;
+  if (next.actualFinish && next.actualFinish < date) delete next.actualFinish;
+  return next;
+}
+
+/** Gerçekleşen bitiş: görev %100 olur, süre gerçekleşen başlangıç–bitiş arası iş günü olur */
+export function withActualFinish(task: Task, date: string, s: Schedule): Task {
+  checkDate(date);
+  const next = { ...task };
+  if (!date) {
+    delete next.actualFinish;
+    if (next.percent === 100) next.percent = 99;
+    return next;
+  }
+  if (!next.actualStart) throw new OpError(t("err.actualFinishNoStart"));
+  if (date < next.actualStart) throw new OpError(t("err.actualFinishBeforeStart"));
+  next.actualFinish = date;
+  next.percent = 100;
+  if (next.duration > 0) {
+    const cal = s.calendar;
+    const days = s.capacity(task.id, cal.toOffset(next.actualStart), cal.toOffset(addDays(date, 1)));
+    next.duration = Math.max(1, Math.round(days));
+  }
+  return next;
+}
+
+/** Kalan süre: gerçekleşen kısım (süre × %) korunur, süre = gerçekleşen + kalan */
+export function withRemaining(task: Task, remaining: number, s: Schedule): Task {
+  if (!Number.isFinite(remaining) || remaining < 0) throw new OpError(t("err.remaining"));
+  const actual = (task.duration * task.percent) / 100;
+  const duration = Math.max(0, Math.round(actual + remaining));
+  const percent = duration > 0 ? Math.round((actual / duration) * 100) : task.percent;
+  return withPercent({ ...task, duration }, remaining === 0 && duration > 0 ? 100 : Math.min(99, percent), s);
 }
 
 export function updateTask(p: Project, row: number, patch: TaskPatch): Project {
-  let task = { ...taskAt(p, row) };
+  let task = applyFields({ ...taskAt(p, row) }, patch);
   if (patch.name !== undefined) task.name = patch.name;
   if (patch.duration !== undefined) task.duration = clampDuration(patch.duration);
-  if (patch.percent !== undefined) task.percent = clampPercent(patch.percent);
-  if (patch.startNoEarlierThan !== undefined) {
-    checkDate(patch.startNoEarlierThan);
-    task.startNoEarlierThan = patch.startNoEarlierThan || undefined;
+  if (patch.blackouts !== undefined) {
+    const ids = patch.blackouts.map((name) => {
+      const b = (p.blackouts ?? []).find((x) => x.name.toLocaleLowerCase("tr") === name.trim().toLocaleLowerCase("tr"));
+      if (!b) throw new OpError(t("err.noBlackout", { name }));
+      return b.id;
+    });
+    if (ids.length) task.blackouts = [...new Set(ids)];
+    else delete task.blackouts;
   }
   if (patch.predecessors !== undefined) task = setPredecessors(p, task, patch.predecessors);
-  const next = { ...p, tasks: p.tasks.map((t, i) => (i === row - 1 ? task : t)) };
-  return patch.resources !== undefined ? setResources(next, task.id, patch.resources) : next;
+  let next = { ...p, tasks: p.tasks.map((t, i) => (i === row - 1 ? task : t)) };
+  if (patch.resources !== undefined) next = setResources(next, task.id, patch.resources);
+  // İlerleme alanları güncel zamanlamaya göre yorumlanır
+  const progress = patch.percent !== undefined || patch.actualStart !== undefined || patch.actualFinish !== undefined || patch.remainingDuration !== undefined;
+  if (!progress) return next;
+  let cur = next.tasks[row - 1];
+  if (patch.actualStart !== undefined) cur = withActualStart(cur, patch.actualStart);
+  if (patch.percent !== undefined) cur = withPercent(cur, patch.percent, schedule({ ...next, tasks: next.tasks.map((x, i) => (i === row - 1 ? cur : x)) }));
+  if (patch.actualFinish !== undefined) cur = withActualFinish(cur, patch.actualFinish, schedule(next));
+  if (patch.remainingDuration !== undefined) cur = withRemaining(cur, patch.remainingDuration, schedule(next));
+  return { ...next, tasks: next.tasks.map((x, i) => (i === row - 1 ? cur : x)) };
 }
 
 /** Görevi siler; özetse alt görevleri de silinir. */
@@ -157,9 +312,8 @@ export function linkTasks(p: Project, fromRow: number, toRow: number, type: Link
     ...p,
     tasks: p.tasks.map((t) => (t.id === to.id ? { ...t, predecessors: t.predecessors.filter((x) => x.taskId !== from.id) } : t)),
   };
-  if (wouldCreateCycle(without, to.id, from.id)) {
-    throw new OpError(t("err.cycleLink", { from: String(fromRow), to: String(toRow) }));
-  }
+  const msg = cycleError(without, to.id, from.id, { from: fromRow, to: toRow });
+  if (msg) throw new OpError(msg);
   return {
     ...without,
     tasks: without.tasks.map((t) =>
@@ -193,8 +347,19 @@ export interface TaskRow {
   percent: number;
   slack: number;
   critical: boolean;
-  /** "şundan önce başlamasın: YYYY-AA-GG" ya da "" */
+  /** "Şu tarihten önce başlamasın: YYYY-AA-GG" (seçili dilde) ya da "" */
   constraint: string;
+  /** ASAP, ALAP, SNET … */
+  constraintType: ConstraintType;
+  constraintDate: string;
+  deadline: string;
+  actualStart: string;
+  actualFinish: string;
+  /** Kalan süre (iş günü) = süre × (1 − %) */
+  remainingDuration: number;
+  fixedCost: number;
+  /** Zamanlama uyarıları (kısıt çatışması, son tarih aşımı) */
+  issues: string[];
   /** "Ali[50%]; Vinç" ya da ""; özet görevlerde "" */
   resources: string;
   /** Görev maliyeti; özet görevde alt görevlerin toplamı */
@@ -210,7 +375,9 @@ export function listTasks(p: Project): TaskRow[] {
   const over = new Set(resourceUsage(p, s).flatMap((u) => u.overTasks));
   const curves = progressCurves(p, s, formatDate(new Date()));
   const zeroCost = new Set(curves.weight === "cost" ? curves.zeroCostRows : []);
-  const leafCost = p.tasks.map((task, i) => (s.rows[i].isSummary ? 0 : Math.round(taskCost(task, p.resources))));
+  const leafCost = p.tasks.map((task, i) => (s.rows[i].isSummary ? 0 : Math.round(taskCost(task, p))));
+  const issuesOf = new Map<string, string[]>();
+  for (const is of s.issues) issuesOf.set(is.taskId, [...(issuesOf.get(is.taskId) ?? []), issueText(p, s, is)]);
   return p.tasks.map((task, i) => {
     const r = s.rows[i];
     const cost = r.isSummary ? leafCost.slice(i + 1, subtreeEnd(p.tasks, i)).reduce((a, b) => a + b, 0) : leafCost[i];
@@ -225,10 +392,18 @@ export function listTasks(p: Project): TaskRow[] {
       start: r.startDate,
       finish: r.finishDate,
       predecessors: formatPredecessors(task.predecessors, p.tasks),
-      percent: task.percent,
+      percent: r.percent,
       slack: r.slack,
       critical: r.critical,
-      constraint: task.startNoEarlierThan ? `şundan önce başlamasın: ${task.startNoEarlierThan}` : "",
+      constraint: task.constraint ? `${t(`constraint.${task.constraint.type}`)}${task.constraint.date ? `: ${task.constraint.date}` : ""}` : "",
+      constraintType: task.constraint?.type ?? "ASAP",
+      constraintDate: task.constraint?.date ?? "",
+      deadline: task.deadline ?? "",
+      actualStart: task.actualStart ?? "",
+      actualFinish: task.actualFinish ?? "",
+      remainingDuration: r.isSummary ? 0 : round1((task.duration * (100 - task.percent)) / 100),
+      fixedCost: task.fixedCost ?? 0,
+      issues: issuesOf.get(task.id) ?? [],
       resources: r.isSummary ? "" : formatAssignments(task.assignments, p.resources),
       cost,
       overallocated: over.has(task.id),
@@ -259,12 +434,35 @@ export function projectSummary(p: Project, today = formatDate(new Date())) {
     earnedValue: Math.round(curves.earnedCost),
     holidays: p.holidays.length,
     resources: p.resources.length,
-    totalCost: Math.round(usage.reduce((sum, u) => sum + u.cost, 0)),
+    totalCost: Math.round(p.tasks.reduce((sum, task, i) => sum + (s.rows[i].isSummary ? 0 : taskCost(task, p)), 0)),
+    overheadPercent: p.overheadPercent ?? 0,
+    issues: s.issues.map((is) => issueText(p, s, is)),
     overallocatedResources: usage.filter((u) => u.overDays.length).map((u) => u.resource.name),
     cycleWarning: s.cycle.length ? t("warn.cycle", { rows: s.cycle.map((id) => p.tasks.findIndex((task) => task.id === id) + 1).join(", ") }) : "",
     /** Bilgilendirme (hata değil): ör. maliyeti olmayan görevler */
     warnings: progressWarnings(curves, projectWeight(p)),
   };
+}
+
+/** Zamanlama uyarısının seçili dildeki metni */
+export function issueText(p: Project, s: Schedule, is: ScheduleIssue): string {
+  const i = p.tasks.findIndex((x) => x.id === is.taskId);
+  const task = p.tasks[i];
+  const r = s.rows[i];
+  const row = String(i + 1);
+  const c = task?.constraint;
+  switch (is.kind) {
+    case "constraintLink":
+      return t("issue.constraintLink", { row, constraint: c ? t(`constraint.${c.type}`) : "", date: c?.date ?? "" });
+    case "startLate":
+      return t("issue.startLate", { row, start: r.startDate, date: c?.date ?? "" });
+    case "finishLate":
+      return t("issue.finishLate", { row, finish: r.finishDate, date: c?.date ?? "" });
+    case "deadline":
+      return t("issue.deadline", { row, finish: r.finishDate, date: task?.deadline ?? "" });
+    case "noWorkingTime":
+      return t("issue.noWorkingTime", { row });
+  }
 }
 
 /** İlerleme ağırlığıyla ilgili bilgi notları (arayüz ve MCP aynı metni kullanır) */

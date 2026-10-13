@@ -145,11 +145,11 @@ export function TaskGrid(props: Props) {
                   iso={sched.startDate}
                   readOnly={sched.isSummary}
                   row={i}
-                  constrained={!!task.startNoEarlierThan}
+                  constrained={!!task.constraint}
                   ariaLabel={t("grid.aria.start", { row })}
                   title={
-                    task.startNoEarlierThan
-                      ? t("grid.constraint", { date: formatShort(task.startNoEarlierThan) })
+                    task.constraint
+                      ? `${t(`constraint.${task.constraint.type}`)}${task.constraint.date ? `: ${formatShort(task.constraint.date)}` : ""}\n${t("grid.constraintHint")}`
                       : t("grid.startHint", { pattern: datePattern() })
                   }
                   onCommit={(v) => props.onStart(task.id, v)}

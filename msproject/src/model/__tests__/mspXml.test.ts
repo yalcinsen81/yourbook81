@@ -63,9 +63,9 @@ describe("MS Project XML", () => {
     const [, hafriyat, grobeton, teslim, elle] = project.tasks;
     expect(hafriyat.percent).toBe(25);
     expect(grobeton.predecessors).toEqual([{ taskId: hafriyat.id, type: "SS", lag: 2 }]);
-    expect(grobeton.startNoEarlierThan).toBe("2026-11-16");
+    expect(grobeton.constraint).toEqual({ type: "SNET", date: "2026-11-16" });
     expect(teslim.predecessors[0].lag).toBe(0);
-    expect(elle.startNoEarlierThan).toBe("2026-11-20");
+    expect(elle.constraint).toEqual({ type: "SNET", date: "2026-11-20" });
     expect(project.holidays.map((h) => h.date)).toEqual(["2026-12-31", "2027-01-01"]);
     expect(warnings).toHaveLength(2);
   });
@@ -77,7 +77,7 @@ describe("MS Project XML", () => {
 
   it("dışa aktarılan dosya geri okununca aynı planı verir", () => {
     const original = sampleProject("2026-10-12");
-    original.tasks[5].startNoEarlierThan = "2026-11-10";
+    original.tasks[5].constraint = { type: "SNET", date: "2026-11-10" };
     original.tasks[12].predecessors[0].lag = 3;
     const xml = toMspXml(original, schedule(original));
     const { project } = parseMspXml(xml);

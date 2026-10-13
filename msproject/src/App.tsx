@@ -88,7 +88,7 @@ export default function App() {
     const wbs = wbsCodes(project.tasks);
     const anc = ancestorsOf(project.tasks);
     // Özet görevin maliyeti alt görevlerinin toplamı
-    const leafCost = project.tasks.map((task, i) => (schedule.rows[i].isSummary ? 0 : taskCost(task, project.resources)));
+    const leafCost = project.tasks.map((task, i) => (schedule.rows[i].isSummary ? 0 : taskCost(task, project)));
     const cost = project.tasks.map((_, i) =>
       schedule.rows[i].isSummary ? leafCost.slice(i + 1, subtreeEnd(project.tasks, i)).reduce((a, b) => a + b, 0) : leafCost[i],
     );
@@ -107,7 +107,7 @@ export default function App() {
       .filter((r) => !(anc.get(r.task.id) ?? []).some((a) => collapsed.has(a)));
     // loc: öncül metnindeki gecikme birimi (g / d) dile bağlı
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [project.tasks, project.resources, schedule, collapsed, overTasks, noCostRows, loc]);
+  }, [project, schedule, collapsed, overTasks, noCostRows, loc]);
 
   const cycle = useMemo(() => new Set(schedule.cycle), [schedule.cycle]);
   // Hazır tatillerin adı seçili dilde; kullanıcının girdiği ad olduğu gibi
@@ -326,11 +326,11 @@ export default function App() {
 
   const onStart = (id: string, iso: string) => {
     if (!iso) {
-      patchTask(id, { startNoEarlierThan: undefined });
+      patchTask(id, { constraint: undefined });
       return true;
     }
     if (!isValidDate(iso)) return false;
-    patchTask(id, { startNoEarlierThan: iso });
+    patchTask(id, { constraint: { type: "SNET", date: iso } });
     return true;
   };
 

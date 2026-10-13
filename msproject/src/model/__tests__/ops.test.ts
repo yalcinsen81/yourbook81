@@ -59,8 +59,12 @@ describe("proje işlemleri (MCP)", () => {
     expect(listTasks(p)[1].predecessors).toBe("");
     p = updateTask(p, 3, { name: "C2", percent: 150, startNoEarlierThan: "2026-10-20" });
     expect(listTasks(p)[2]).toMatchObject({ name: "C2", percent: 100, start: "2026-10-20" });
+    // %100 girilince gerçekleşen tarihler yazılır; görev artık o tarihe sabittir
+    expect(listTasks(p)[2]).toMatchObject({ actualStart: "2026-10-20", actualFinish: "2026-10-21" });
     p = updateTask(p, 3, { startNoEarlierThan: "" });
-    expect(listTasks(p)[2].start).toBe("2026-10-12");
+    expect(listTasks(p)[2].start).toBe("2026-10-20");
+    p = updateTask(p, 3, { actualStart: "" });
+    expect(listTasks(p)[2]).toMatchObject({ start: "2026-10-12", percent: 0, actualStart: "" });
     p = shiftTask(p, 2, "in");
     expect(listTasks(p)[0].summary).toBe(true);
     const d = deleteTask(p, 1);

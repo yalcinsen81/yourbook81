@@ -101,7 +101,7 @@ describe("kaynak yükü", () => {
     const [uAli, uVinc] = resourceUsage(p, schedule(p));
     expect(uAli.work).toBe(0);
     expect(uVinc.work).toBe(2);
-    expect(taskCost(p.tasks[1], p.resources)).toBe(10_000);
+    expect(taskCost(p.tasks[1], p)).toBe(10_000);
   });
 });
 

@@ -1,5 +1,8 @@
 import { addDays, parseDate, type WorkCalendar } from "./calendar";
+import { accrualShares, assignmentCost, taskCost } from "./costs";
 import type { Assignment, ProgressWeight, Project, Resource, Schedule, Task } from "./types";
+
+export { taskCost } from "./costs";
 
 // Kaynak atama, kaynak yükü (histogram), maliyet ve ilerleme eğrileri. Hepsi saf hesaplamadır.
 // Yük iş günü ofsetleri üzerinden tutulur: görev es..ef-1 günlerinde atandığı birimi harcar.
@@ -28,8 +31,12 @@ export function parseAssignments(text: string, resources: Resource[]): ParsedAss
     if (!part) continue;
     const m = /^(.*?)\s*(?:\[\s*(\d+(?:[.,]\d+)?)\s*%?\s*\])?$/.exec(part);
     const name = m?.[1].trim() ?? "";
-    const units = m?.[2] ? Math.round(Number(m[2].replace(",", "."))) : 100;
-    if (!name || units <= 0 || units > 10_000) {
+    const given = m?.[2] ? Number(m[2].replace(",", ".")) : NaN;
+    // Malzeme kaynağında köşeli paranteze miktar yazılır (küsuratlı olabilir); diğerlerinde birim %
+    const known = byName.get(key(name));
+    const material = known?.type === "material";
+    const units = Number.isNaN(given) ? (material ? 1 : 100) : material ? Math.round(given * 100) / 100 : Math.round(given);
+    if (!name || units <= 0 || units > (material ? 1_000_000 : 10_000)) {
       errors.push(part);
       continue;
     }
@@ -52,7 +59,9 @@ export function formatAssignments(assignments: Assignment[] | undefined, resourc
   return assignments
     .flatMap((a) => {
       const r = byId.get(a.resourceId);
-      return r ? [a.units === 100 ? r.name : `${r.name}[${a.units}%]`] : [];
+      if (!r) return [];
+      if (r.type === "material") return [`${r.name}[${a.units}${r.unitLabel ? ` ${r.unitLabel}` : ""}]`];
+      return [a.units === 100 ? r.name : `${r.name}[${a.units}%]`];
     })
     .join("; ");
 }
@@ -94,19 +103,11 @@ function activeTasks(project: Project, schedule: Schedule): { task: Task; es: nu
   });
 }
 
-export function taskCost(task: Task, resources: Resource[], duration = task.duration): number {
-  if (!task.assignments?.length) return 0;
-  const byId = new Map(resources.map((r) => [r.id, r]));
-  let cost = 0;
-  for (const a of task.assignments) cost += ((byId.get(a.resourceId)?.rate ?? 0) * a.units * duration) / 100;
-  return cost;
-}
-
 export interface ResourceUsage {
   resource: Resource;
   /** İş günü ofsetine göre toplam yük (%) */
   load: number[];
-  /** Toplam iş (adam-gün) */
+  /** Toplam iş (adam-gün); malzemede toplam miktar */
   work: number;
   cost: number;
   peak: number;
@@ -125,16 +126,23 @@ export function resourceUsage(project: Project, schedule: Schedule): ResourceUsa
     ]),
   );
   const active = activeTasks(project, schedule);
+  const hpd = project.hoursPerDay ?? 8;
   for (const { task, es, ef } of active) {
     for (const a of task.assignments!) {
       const u = usage.get(a.resourceId);
       if (!u) continue;
-      for (let d = Math.max(0, es); d < ef && d < days; d++) u.load[d] += a.units;
-      u.work += (a.units * (ef - es)) / 100;
-      u.cost += (u.resource.rate * a.units * (ef - es)) / 100;
+      u.cost += assignmentCost(a, u.resource, task.duration, hpd);
+      // Malzeme kapasite tüketmez; yükü ve aşırı yükü yoktur
+      if (u.resource.type === "material") {
+        u.work += a.units;
+        continue;
+      }
+      for (let d = Math.max(0, es); d < ef && d < days; d++) if (schedule.dayCapacity(task.id, d) > 0) u.load[d] += a.units;
+      u.work += (a.units * task.duration) / 100;
     }
   }
   for (const u of usage.values()) {
+    if (u.resource.type === "material") continue;
     u.peak = u.load.reduce((m, v) => Math.max(m, v), 0);
     u.load.forEach((v, d) => {
       if (v > u.resource.maxUnits) u.overDays.push(d);
@@ -144,7 +152,7 @@ export function resourceUsage(project: Project, schedule: Schedule): ResourceUsa
       for (const { task, es, ef } of active) {
         if (!task.assignments!.some((a) => a.resourceId === u.resource.id)) continue;
         for (let d = es; d < ef; d++)
-          if (over.has(d)) {
+          if (over.has(d) && schedule.dayCapacity(task.id, d) > 0) {
             u.overTasks.push(task.id);
             break;
           }
@@ -190,14 +198,19 @@ interface WeightedTask {
   row: number;
   es: number;
   ef: number;
+  /** Süre (iş günü) */
+  dur: number;
   cost: number;
   work: number;
   percent: number;
+  /** Gün başına pay (eşit dağılım, kapasiteyle orantılı) ve maliyet payı (maliyet dağılım türüne göre) */
+  shares: number[];
+  costShares: number[];
 }
 
 /** Ağırlığa göre görev değeri: maliyet (₺), iş (adam-gün) ya da süre (iş günü) */
 function weightOf(t: WeightedTask, mode: ProgressWeight): number {
-  return mode === "cost" ? t.cost : mode === "work" ? t.work : t.ef - t.es;
+  return mode === "cost" ? t.cost : mode === "work" ? t.work : t.dur;
 }
 
 export function projectWeight(project: Project): ProgressWeight {
@@ -206,7 +219,9 @@ export function projectWeight(project: Project): ProgressWeight {
 
 /**
  * S eğrisi ve ilerleme: planlanan %, gerçekleşen % ve sapma tek bir ağırlıkla hesaplanır (varsayılan maliyet).
- * Görevin ağırlığı ve maliyeti süresinin iş günlerine eşit dağılır. Özet görevler ve kilometre taşları sayılmaz.
+ * Görevin ağırlığı iş günlerine eşit dağılır (yarım gün yarım pay); maliyet görevin maliyet dağılımına göre (eşit,
+ * başta, sonda). Maliyet ağırlığında planlanan % maliyet eğrisini izler. Özet görevler ve kilometre taşları sayılmaz;
+ * yalnızca sabit maliyetli ya da malzemeli kilometre taşının maliyeti o güne yazılır.
  */
 export function progressCurves(project: Project, schedule: Schedule, today: string, mode: ProgressWeight = projectWeight(project)): Curves {
   const days = schedule.finish;
@@ -214,10 +229,31 @@ export function progressCurves(project: Project, schedule: Schedule, today: stri
   const byId = new Map(project.resources.map((r) => [r.id, r]));
   project.tasks.forEach((t, i) => {
     const r = schedule.rows[i];
-    if (!r || r.isSummary || r.ef <= r.es) return;
-    const len = r.ef - r.es;
-    const work = (t.assignments ?? []).reduce((sum, a) => sum + (byId.has(a.resourceId) ? (a.units * len) / 100 : 0), 0);
-    items.push({ row: i + 1, es: r.es, ef: r.ef, cost: taskCost(t, project.resources, len), work, percent: t.percent });
+    if (!r || r.isSummary) return;
+    if (r.ef <= r.es) {
+      // Kilometre taşının sabit maliyeti ya da malzemesi varsa o güne yazılır
+      const cost = taskCost(t, project);
+      const day = r.atDayEnd ? r.es - 1 : r.es;
+      if (cost > 0) items.push({ row: i + 1, es: day, ef: day + 1, dur: 0, cost, work: 0, percent: t.percent, shares: [1], costShares: [1] });
+      return;
+    }
+    const work = (t.assignments ?? []).reduce((sum, a) => {
+      const res = byId.get(a.resourceId);
+      return sum + (res && res.type !== "material" ? (a.units * t.duration) / 100 : 0);
+    }, 0);
+    const caps: number[] = [];
+    for (let d = r.es; d < r.ef; d++) caps.push(schedule.dayCapacity(t.id, d));
+    items.push({
+      row: i + 1,
+      es: r.es,
+      ef: r.ef,
+      dur: t.duration,
+      cost: taskCost(t, project),
+      work,
+      percent: t.percent,
+      shares: accrualShares(caps),
+      costShares: accrualShares(caps, t.costAccrual),
+    });
   });
   let weight = mode;
   if (!items.some((t) => weightOf(t, mode) > 0)) weight = "duration";
@@ -229,15 +265,16 @@ export function progressCurves(project: Project, schedule: Schedule, today: stri
   let earnedWeight = 0;
   let earnedCost = 0;
   for (const t of items) {
-    const len = t.ef - t.es;
     const w = weightOf(t, weight);
     totalWeight += w;
     totalCost += t.cost;
     earnedWeight += (w * t.percent) / 100;
     earnedCost += (t.cost * t.percent) / 100;
+    const shares = weight === "cost" ? t.costShares : t.shares;
     for (let d = t.es; d < t.ef && d < days; d++) {
-      dailyWeight[d] += w / len;
-      dailyCost[d] += t.cost / len;
+      if (d < 0) continue;
+      dailyWeight[d] += w * shares[d - t.es];
+      dailyCost[d] += t.cost * t.costShares[d - t.es];
     }
   }
   const points: CurvePoint[] = [{ day: -1, date: schedule.calendar.toDate(0), planned: 0, cost: 0 }];
@@ -258,7 +295,7 @@ export function progressCurves(project: Project, schedule: Schedule, today: stri
     todayDay: schedule.calendar.toOffset(today),
     weight,
     weightFallback: weight !== mode && items.length > 0,
-    zeroCostRows: items.filter((t) => t.cost <= 0).map((t) => t.row),
+    zeroCostRows: items.filter((t) => t.cost <= 0 && t.dur > 0).map((t) => t.row),
   };
 }
 

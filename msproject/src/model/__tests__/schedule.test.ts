@@ -77,7 +77,7 @@ describe("zamanlama", () => {
   });
 
   it("başlangıç kısıtını uygular", () => {
-    const s = schedule(project([t("a", 1, [], 0, { startNoEarlierThan: "2026-10-17" })]));
+    const s = schedule(project([t("a", 1, [], 0, { constraint: { type: "SNET", date: "2026-10-17" } })]));
     expect(s.byId.get("a")!.startDate).toBe("2026-10-19");
   });
 
