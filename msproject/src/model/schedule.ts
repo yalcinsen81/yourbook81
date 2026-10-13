@@ -80,6 +80,8 @@ export function schedule(project: Project): Schedule {
   // İleri geçiş: en erken başlangıç/bitiş
   const es = new Map<string, number>();
   const ef = new Map<string, number>();
+  // Kilometre taşı bir öncülün bitişine bağlıysa MS Project'teki gibi o günün sonunda gösterilir
+  const endOfDay = new Set<string>();
   for (const id of order) {
     const d = dur(id);
     const snet = taskById.get(id)!.startNoEarlierThan;
@@ -94,6 +96,13 @@ export function schedule(project: Project): Schedule {
         case "FF": start = Math.max(start, pef + e.lag - d); break;
         case "SF": start = Math.max(start, pes + e.lag - d); break;
       }
+    }
+    if (d === 0 && start > 0) {
+      const fromEnd = incoming.get(id)!.some((e) => {
+        const pef = ef.get(e.from);
+        return pef !== undefined && (e.type === "FS" || e.type === "FF") && pef + e.lag === start;
+      });
+      if (fromEnd) endOfDay.add(id);
     }
     es.set(id, start);
     ef.set(id, start + d);
@@ -141,6 +150,7 @@ export function schedule(project: Project): Schedule {
         row: i + 1,
         isSummary: true,
         isMilestone: false,
+        atDayEnd: false,
         es: s,
         ef: f,
         ls: Math.min(...ids.map((id) => ls.get(id)!)),
@@ -154,11 +164,14 @@ export function schedule(project: Project): Schedule {
     const s = es.get(t.id)!;
     const f = ef.get(t.id)!;
     const slack = ls.get(t.id)! - s;
+    const atDayEnd = endOfDay.has(t.id);
+    const dates = atDayEnd ? { startDate: cal.toDate(s - 1), finishDate: cal.toDate(s - 1) } : toDates(s, f);
     return {
       id: t.id,
       row: i + 1,
       isSummary: false,
       isMilestone: dur(t.id) === 0,
+      atDayEnd,
       es: s,
       ef: f,
       ls: ls.get(t.id)!,
@@ -166,7 +179,7 @@ export function schedule(project: Project): Schedule {
       slack,
       critical: slack <= 0,
       duration: f - s,
-      ...toDates(s, f),
+      ...dates,
     };
   });
 

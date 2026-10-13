@@ -57,8 +57,9 @@ describe("zamanlama", () => {
     const s = schedule(project([t("a", 2), t("m", 0, ["a"]), t("b", 1, ["m"])]));
     const m = s.byId.get("m")!;
     expect(m.isMilestone).toBe(true);
-    expect(m.startDate).toBe("2026-10-14");
-    expect(m.finishDate).toBe("2026-10-14");
+    // MS Project gibi: öncülün bittiği günün sonunda (13 Ekim)
+    expect(m.startDate).toBe("2026-10-13");
+    expect(m.finishDate).toBe("2026-10-13");
     expect(s.byId.get("b")!.startDate).toBe("2026-10-14");
   });
 

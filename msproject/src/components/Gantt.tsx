@@ -78,7 +78,7 @@ export function Gantt(props: Props) {
   const geo = new Map<string, { x1: number; x2: number; y: number; milestone: boolean }>();
   rows.forEach((r, i) => {
     const y = i * ROW_H + ROW_H / 2;
-    const x1 = x(r.sched.startDate);
+    const x1 = x(r.sched.startDate) + (r.sched.atDayEnd ? ppd : 0);
     const milestone = r.sched.isMilestone;
     const x2 = milestone ? x1 : x(r.sched.finishDate) + ppd;
     if (drag?.id === r.task.id) {

@@ -209,8 +209,10 @@ export function toMspXml(project: Project, schedule: Schedule): string {
     out.push(`      <WBS>${wbs[i]}</WBS>`);
     out.push(`      <OutlineNumber>${wbs[i]}</OutlineNumber>`);
     out.push(`      <OutlineLevel>${t.outline + 1}</OutlineLevel>`);
-    out.push(`      <Start>${s.startDate}T08:00:00</Start>`);
-    out.push(`      <Finish>${s.finishDate}T${s.isMilestone ? "08:00:00" : "17:00:00"}</Finish>`);
+    const startTime = s.atDayEnd ? "17:00:00" : "08:00:00";
+    const finishTime = s.isMilestone ? startTime : "17:00:00";
+    out.push(`      <Start>${s.startDate}T${startTime}</Start>`);
+    out.push(`      <Finish>${s.finishDate}T${finishTime}</Finish>`);
     out.push(`      <Duration>${hours(days)}</Duration>`);
     out.push(`      <DurationFormat>7</DurationFormat>`);
     out.push(`      <Milestone>${s.isMilestone ? 1 : 0}</Milestone>`);

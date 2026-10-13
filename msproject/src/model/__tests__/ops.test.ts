@@ -23,7 +23,7 @@ describe("proje işlemleri (MCP)", () => {
     ]);
     expect(rows[2].start).toBe("2026-10-19");
     expect(rows[3].milestone).toBe(true);
-    expect(rows[3].start).toBe("2026-10-22");
+    expect(rows[3].start).toBe("2026-10-21");
     expect(projectSummary(p).durationWorkdays).toBe(8);
   });
 

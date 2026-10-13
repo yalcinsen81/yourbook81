@@ -41,6 +41,8 @@ export interface ScheduledTask {
   row: number;
   isSummary: boolean;
   isMilestone: boolean;
+  /** Kilometre taşı, gösterilen tarihin gün sonundadır (öncülünün bitişine bağlı) */
+  atDayEnd: boolean;
   /** Proje başlangıcından itibaren iş günü ofseti; başlangıç dahil. */
   es: number;
   /** Bitiş ofseti (hariç): es + süre. */

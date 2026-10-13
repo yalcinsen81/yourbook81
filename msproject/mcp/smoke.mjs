@@ -1,4 +1,4 @@
-// MCP sunucusunu gerçek bir istemciyle uçtan uca dener: node mcp/smoke.mjs
+// MCP sunucusunu gerçek bir istemciyle uçtan uca dener: npm run mcp:smoke
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { mkdtempSync, readFileSync, existsSync } from "node:fs";
@@ -29,11 +29,11 @@ await call("set_holiday", { date: "2026-10-29", name: "Cumhuriyet Bayramı" });
 const tasks = JSON.parse(await call("get_tasks"));
 console.table(tasks.map(({ row, name, duration, start, finish, predecessors, critical }) => ({ row, name, duration, start, finish, predecessors, critical })));
 const bad = await client.callTool({ name: "link_tasks", arguments: { from_row: 4, to_row: 1 } });
-console.log("Döngü denemesi:", bad.isError, bad.content[0].text);
+console.log("Döngü denemesi reddedildi:", bad.isError, "-", bad.content[0].text);
 await call("export_msproject_xml", { path: join(dir, "proje.xml") });
 console.log(await call("get_project_summary"));
 const saved = JSON.parse(readFileSync(file, "utf8"));
-if (saved.tasks.length !== 4 || !existsSync(join(dir, "proje.xml")) || tasks[3].start !== "2026-11-02") {
+if (saved.tasks.length !== 4 || !existsSync(join(dir, "proje.xml")) || tasks[3].start !== "2026-11-02" || tasks[2].finish !== "2026-11-02" || !bad.isError) {
   throw new Error("Beklenen sonuç alınamadı");
 }
 console.log("Tamam:", file);

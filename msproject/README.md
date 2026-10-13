@@ -34,3 +34,36 @@ npm run build
   `predecessors.ts` öncül metni, `outline.ts` girinti/WBS, `storage.ts` kayıt ve dosya doğrulama, `mspXml.ts` MS Project XML okuma/yazma
 - `src/components/` `TaskGrid` (tablo), `Gantt` (SVG şema), `EditableCell`
 - `src/useProject.ts` durum + geri al geçmişi
+
+## Claude'a bağlama (MCP)
+
+`mcp/dist/msproject-mcp.mjs` tek dosyalık bir MCP sunucusudur. Claude bu sunucuyla diskteki proje dosyasını
+okur ve düzenler: görev ekler, siler, girintiler, bağlar, tatil tanımlar ve MS Project XML'ine aktarır.
+Çalıştırmak için yalnızca Node 20 veya üzeri gerekir; `npm install` yapmanız gerekmez.
+
+**Claude Desktop:** Ayarlar > Geliştirici > Yapılandırmayı düzenle ile `claude_desktop_config.json` dosyasını açıp şunu ekleyin:
+
+```json
+{
+  "mcpServers": {
+    "proje-planlayici": {
+      "command": "node",
+      "args": ["C:/yol/yourbook81/msproject/mcp/dist/msproject-mcp.mjs", "C:/Projelerim/proje.json"]
+    }
+  }
+}
+```
+
+**Claude Code:**
+
+```bash
+claude mcp add proje-planlayici -- node /yol/msproject/mcp/dist/msproject-mcp.mjs /yol/proje.json
+```
+
+Değişiklikleri uygulamada canlı görmek için uygulamada **Dosyaya bağla** düğmesiyle aynı `proje.json` dosyasını seçin
+(Chrome veya Edge gerekir). Claude dosyayı değiştirdiğinde ekran yaklaşık 1,5 saniye içinde güncellenir. Sizin
+ekranda yaptığınız değişiklikler de dosyaya yazılır ve Claude bir sonraki işlemde bunları görür.
+
+Kendi denemeniz için Claude'a örneğin şunu yazabilirsiniz: "Projeye 'Elektrik tesisatı' adında, 8. satırdan sonra başlayan 6 günlük bir görev ekle ve kritik yolu göster."
+
+Sunucuyu değiştirdikten sonra yeniden paketlemek için `npm run build:mcp` çalıştırın. Uçtan uca deneme için `npm run mcp:smoke` kullanın.
