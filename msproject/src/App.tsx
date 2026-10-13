@@ -43,14 +43,16 @@ import { DEFAULT_HIDDEN, gridWidthFor } from "./components/TaskGrid";
 import { applyTemplate, projectToTemplate } from "./model/templates";
 import { DEFAULT_VIEW, isViewActive, visibleOrder, type ViewOptions } from "./model/view";
 import { allWarnings } from "./model/validation";
+import { exposure, parseEstimate, riskLevel, risksByTask } from "./model/risks";
 import { serializeProject } from "./useFileLink";
 
 // Raporlar, Gantt dışa aktarma ve içe aktarma ayrı parçada yüklenir (ilk açılış hafif kalsın; çevrimdışı önbellekte de vardır)
 const ReportsView = lazy(() => import("./components/ReportsView").then((m) => ({ default: m.ReportsView })));
 const GanttExportDialog = lazy(() => import("./components/GanttExportDialog").then((m) => ({ default: m.GanttExportDialog })));
+const RisksView = lazy(() => import("./components/RisksView").then((m) => ({ default: m.RisksView })));
 const ImportDialog = lazy(() => import("./components/ImportDialog").then((m) => ({ default: m.ImportDialog })));
 
-type View = "gantt" | "resources" | "charts" | "reports";
+type View = "gantt" | "resources" | "charts" | "risks" | "reports";
 
 export default function App() {
   const { project, schedule, update, undo, redo, canUndo, canRedo, startedCorrupt } = useProject();
@@ -172,6 +174,14 @@ export default function App() {
     );
     const issues = new Map<string, string[]>();
     for (const is of schedule.issues) issues.set(is.taskId, [...(issues.get(is.taskId) ?? []), issueText(project, schedule, is)]);
+    const byTask = risksByTask(project);
+    const levels = ["low", "medium", "high", "critical"];
+    const riskInfo = (id: string) => {
+      const list = byTask.get(id);
+      if (!list?.length) return undefined;
+      const level = levels[Math.max(...list.map((r) => levels.indexOf(riskLevel(exposure(r)))))];
+      return { text: list.map((r) => `${r.id} ${r.title}`), level };
+    };
     const order = viewActive ? visibleOrder(project, schedule, { ...viewOpts, today }, cost, wbs) : project.tasks.map((_, i) => i);
     return order
       .map((i) => ({
@@ -187,6 +197,7 @@ export default function App() {
         issues: issues.get(project.tasks[i].id) ?? [],
         variance: variance.get(project.tasks[i].id)?.finish,
         warnings: taskWarns.get(project.tasks[i].id) ?? [],
+        risks: riskInfo(project.tasks[i].id),
       }))
       .filter((r) => !(anc.get(r.task.id) ?? []).some((a) => collapsed.has(a)));
     // loc: öncül metnindeki gecikme birimi (g / d) dile bağlı
@@ -540,6 +551,25 @@ export default function App() {
     if (!task) return false;
     const next = withPercent(task, Math.min(100, Number(m[1])), schedule);
     update((p) => ({ ...p, tasks: p.tasks.map((x) => (x.id === id ? next : x)) }));
+    return true;
+  };
+
+  const onEstimate = (id: string, text: string) => {
+    const e = parseEstimate(text);
+    if (e === undefined) {
+      flash(t("err.estimate"));
+      return false;
+    }
+    update((p) => ({
+      ...p,
+      tasks: p.tasks.map((x) => {
+        if (x.id !== id) return x;
+        const next = { ...x };
+        if (e) next.estimate = e;
+        else delete next.estimate;
+        return next;
+      }),
+    }));
     return true;
   };
 
@@ -1121,6 +1151,7 @@ export default function App() {
                 ["gantt", "gantt", "view.gantt"],
                 ["resources", "users", "view.resources"],
                 ["charts", "chart", "view.charts"],
+                ["risks", "risk", "view.risks"],
                 ["reports", "report", "view.reports"],
               ] as [View, IconName, MessageKey][]
             ).map(([v, icon, label]) => (
@@ -1173,6 +1204,11 @@ export default function App() {
           }}
         />
       )}
+      {view === "risks" && (
+        <Suspense fallback={<div className="lazy-loading">{t("common.loading")}</div>}>
+          <RisksView project={project} schedule={schedule} today={today} update={update} flash={flash} />
+        </Suspense>
+      )}
       {view === "reports" && (
         <Suspense fallback={<div className="lazy-loading">{t("common.loading")}</div>}>
         <ReportsView
@@ -1224,6 +1260,7 @@ export default function App() {
             onStart={onStart}
             onPredecessors={onPredecessors}
             onPercent={onPercent}
+            onEstimate={onEstimate}
             onResources={onResources}
             onAddAtEnd={() => insertTask(false, true)}
             onInfo={setInfoId}

@@ -21,11 +21,11 @@ function inProgress(): Project {
 }
 
 describe("referans proje (regresyon, Faz 2C)", () => {
-  it("bitiş 2027-03-01 ve toplam 635.000 değişmez; sürüm 5", () => {
+  it("bitiş 2027-03-01 ve toplam 635.000 değişmez; sürüm 5 ve sonrası", () => {
     const p = sanitizeProject(referenceProject())!;
     const s = schedule(p);
     expect(p.version).toBe(PROJECT_VERSION);
-    expect(PROJECT_VERSION).toBe(5);
+    expect(PROJECT_VERSION).toBeGreaterThanOrEqual(5);
     expect(s.finishDate).toBe("2027-03-01");
     expect(progressCurves(p, s, "2026-11-01").totalCost).toBe(635_000);
     expect(s.rows.every((r) => r.critical)).toBe(true);

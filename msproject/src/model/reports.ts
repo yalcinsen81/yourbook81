@@ -1,4 +1,4 @@
-import { formatDateLocal, formatPercent, monthName, t, weekStartDay, type MessageKey } from "../i18n";
+import { formatDateLocal, formatNumber, formatPercent, monthName, t, weekStartDay, type MessageKey } from "../i18n";
 import { addDays, parseDate, WorkCalendar } from "./calendar";
 import { taskCost } from "./costs";
 import { getBaseline } from "./baseline";
@@ -6,6 +6,9 @@ import { nonWorkingDates } from "./holidays";
 import { subtreeEnd, wbsCodes } from "./outline";
 import { formatPredecessors } from "./predecessors";
 import { curveSamples, formatAssignments, progressCurves, resourceUsage, type Curves } from "./resources";
+import { planQuality } from "./quality";
+import { exposure, riskChance, riskLevel } from "./risks";
+import { resultIsCurrent } from "./simulation";
 import type { Baseline, Project, ProgressWeight, Schedule } from "./types";
 
 // Raporlar (saf): kazanılmış değer, S eğrisi serileri, nakit akışı ve tablo raporları. Tablolar türlü hücrelerle
@@ -31,8 +34,8 @@ export interface ReportTable {
   notes?: string[];
 }
 
-export type ReportKind = "evm" | "scurve" | "critical" | "resources" | "histogram" | "cashflow" | "tasks" | "milestones";
-export const REPORT_KINDS: ReportKind[] = ["evm", "scurve", "critical", "resources", "histogram", "cashflow", "tasks", "milestones"];
+export type ReportKind = "evm" | "scurve" | "critical" | "resources" | "histogram" | "cashflow" | "tasks" | "milestones" | "risks" | "simulation" | "quality";
+export const REPORT_KINDS: ReportKind[] = ["evm", "scurve", "critical", "resources", "histogram", "cashflow", "tasks", "milestones", "risks", "simulation", "quality"];
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -648,5 +651,115 @@ export function buildReport(kind: ReportKind, p: Project, s: Schedule, opts: Rep
       return taskListReport(p, s, opts);
     case "milestones":
       return milestoneReport(p, s, opts);
+    case "risks":
+      return riskRegisterReport(p);
+    case "simulation":
+      return simulationReport(p);
+    case "quality":
+      return qualityReport(p, s, opts.today);
   }
+}
+
+// --- Riskler, benzetim ve plan kalitesi (Faz 2D) ---
+
+const taskLabel = (p: Project) => new Map(p.tasks.map((x, i) => [x.id, `${i + 1}. ${x.name}`]));
+
+/** Risk sicili: maruziyete göre sıralı; bağlı görevler ve toplam ek gün/maliyet */
+export function riskRegisterReport(p: Project): ReportTable {
+  const names = taskLabel(p);
+  const risks = [...(p.risks ?? [])].sort((a, b) => exposure(b) - exposure(a) || a.id.localeCompare(b.id, undefined, { numeric: true }));
+  return {
+    id: "risks",
+    title: t("report.risks"),
+    columns: [
+      col("id", t("risk.id")),
+      col("title", t("risk.title")),
+      col("category", t("risk.category")),
+      col("owner", t("risk.owner")),
+      col("probability", t("risk.probabilityShort"), "number"),
+      col("impact", t("risk.impactScoreShort"), "number"),
+      col("exposure", t("risk.exposure"), "number"),
+      col("level", t("risk.level")),
+      col("chance", t("risk.chance"), "percent"),
+      col("response", t("risk.response")),
+      col("status", t("risk.status")),
+      col("tasks", t("risk.tasks")),
+      col("days", t("risk.days"), "days"),
+      col("cost", t("risk.cost"), "money"),
+      col("review", t("risk.review"), "date"),
+      col("mitigation", t("risk.mitigation")),
+    ],
+    rows: risks.map((r) => ({
+      id: r.id,
+      title: r.title,
+      category: r.category ?? "",
+      owner: r.owner ?? "",
+      probability: r.probability,
+      impact: r.impact,
+      exposure: exposure(r),
+      level: t(`risk.lvl.${riskLevel(exposure(r))}` as MessageKey),
+      chance: riskChance(r) * 100,
+      response: r.response ? t(`risk.resp.${r.response}` as MessageKey) : "",
+      status: t(`risk.st.${r.status}` as MessageKey),
+      tasks: r.tasks.map((x) => names.get(x.taskId) ?? x.taskId).join("; "),
+      days: round2(r.tasks.reduce((a, x) => a + x.days, 0)),
+      cost: round2(r.tasks.reduce((a, x) => a + x.cost, 0)),
+      review: r.review ?? null,
+      mitigation: r.mitigation ?? "",
+    })),
+    notes: risks.length ? [t("report.risksNote")] : [t("report.risksEmpty")],
+  };
+}
+
+/** Benzetim özeti: yüzdelik bitiş tarihi ve maliyet; notlarda olasılıklar ve en etkili görevler */
+export function simulationReport(p: Project): ReportTable {
+  const r = p.simResult;
+  const columns = [col("metric", t("report.col.metric")), col("finish", t("sim.finish"), "date"), col("cost", t("sim.cost"), "money")];
+  if (!r) return { id: "simulation", title: t("report.simulation"), columns, rows: [], notes: [t("report.simNone")] };
+  const keys = ["p10", "p50", "p80", "p90", "p95", "mean", "min", "max"] as const;
+  const names = taskLabel(p);
+  const drivers = [...r.tasks].sort((a, b) => Math.abs(b.correlation) - Math.abs(a.correlation)).slice(0, 5);
+  return {
+    id: "simulation",
+    title: t("report.simulation"),
+    columns,
+    rows: [
+      { metric: t("sim.plan"), finish: r.planFinish, cost: r.planCost },
+      ...keys.map((k) => ({ metric: t(`sim.q.${k}` as MessageKey), finish: r.finish[k], cost: r.cost[k] })),
+    ],
+    notes: [
+      t("report.simRun", { n: formatNumber(r.iterations, 0), seed: String(r.seed), dist: t(`sim.dist.${r.distribution}`), at: formatDateLocal(r.at.slice(0, 10)) }),
+      t("report.simOdds", { time: formatPercent(r.onTime * 100, 1), budget: formatPercent(r.onBudget * 100, 1) }),
+      ...(drivers.length ? [t("report.simDrivers", { list: drivers.map((d) => `${names.get(d.id) ?? d.id} (${d.correlation.toFixed(2)})`).join(", ") })] : []),
+      ...(resultIsCurrent(p) ? [] : [t("sim.stale")]),
+    ],
+  };
+}
+
+/** Plan kalite denetimi (DCMA tarzı) */
+export function qualityReport(p: Project, s: Schedule, today: string): ReportTable {
+  const checks = planQuality(p, s, today);
+  return {
+    id: "quality",
+    title: t("report.quality"),
+    columns: [
+      col("check", t("quality.check")),
+      col("count", t("quality.count"), "number"),
+      col("total", t("quality.total"), "number"),
+      col("ratio", t("quality.ratio"), "percent"),
+      col("threshold", t("quality.threshold"), "percent"),
+      col("result", t("quality.result")),
+      col("rows", t("quality.rows")),
+    ],
+    rows: checks.map((c) => ({
+      check: t(`quality.${c.key}` as MessageKey),
+      count: c.skipped ? null : c.count,
+      total: c.skipped ? null : c.total,
+      ratio: c.skipped || !c.total ? null : round2((c.count / c.total) * 100),
+      threshold: c.threshold * 100,
+      result: c.skipped ? t("quality.skipped") : c.pass ? t("quality.pass") : t("quality.fail"),
+      rows: c.rows.slice(0, 30).join(", ") + (c.rows.length > 30 ? " …" : ""),
+    })),
+    notes: [t("quality.summary", { pass: String(checks.filter((c) => c.pass && !c.skipped).length), total: String(checks.filter((c) => !c.skipped).length) })],
+  };
 }

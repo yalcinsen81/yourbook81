@@ -40,6 +40,10 @@ import { buildReport, earnedValue, REPORT_KINDS, type ReportTable } from "../src
 import { guessMapping, importTasks, parseCsv, reportToCsv, reportToSheet } from "../src/model/tabular";
 import { readXlsx, writeXlsx } from "../src/model/xlsx";
 import { applyTemplate, BUILTIN_TEMPLATES } from "../src/model/templates";
+import { exposure, MAX_ITERATIONS, newRiskId, removeRisk, riskChance, riskLevel, toSimulation, upsertRisk, validEstimate } from "../src/model/risks";
+import { resultIsCurrent, settingsOf, simulate } from "../src/model/simulation";
+import { planQuality } from "../src/model/quality";
+import { RISK_RESPONSES, RISK_STATUSES, type Risk, type SimulationSettings, type SimulationSummary } from "../src/model/types";
 
 /** "~", ${HOME}, ${DOCUMENTS}, ${DESKTOP} kısaltmalarını açar (Claude Desktop eklentisinin varsayılan yolu bunları içerir) */
 function expandPath(p: string): string {
@@ -181,7 +185,7 @@ function tableRows(table: ReportTable) {
 
 const dateRange = z.object({ from: z.string(), to: z.string(), name: z.string().optional() });
 
-const server = new McpServer({ name: "proje-planlayici", version: "0.7.0" });
+const server = new McpServer({ name: "proje-planlayici", version: "0.8.0" });
 
 server.registerTool(
   "get_project_summary",
@@ -734,7 +738,10 @@ server.registerTool(
 const reportArgs = {
   kind: z
     .enum(REPORT_KINDS as [string, ...string[]])
-    .describe("evm, scurve (S eğrisi), critical (kritik yol), resources, histogram (kaynak yükü), cashflow (nakit akışı), tasks (görev listesi), milestones"),
+    .describe(
+      "evm, scurve (S eğrisi), critical (kritik yol), resources, histogram (kaynak yükü), cashflow (nakit akışı), tasks (görev listesi), milestones, " +
+        "risks (risk sicili), simulation (son benzetim özeti), quality (plan kalite denetimi)",
+    ),
   period: z.enum(["month", "week"]).optional().describe("Nakit akışı dönemi; varsayılan month"),
   baseline: baselineArg,
   today: z.string().optional().describe("YYYY-AA-GG; varsayılan bugün"),
@@ -834,6 +841,268 @@ server.registerTool(
       return { project: r.project, message: `${r.imported} görev alındı (sütunlar: ${mapping.join(", ")}).${notes}` };
     });
   },
+);
+
+// --- Riskler ve Monte Carlo benzetimi (Faz 2D) ---
+
+/** Risk: satır numaraları ve görev adlarıyla, okunur biçimde */
+function riskView(p: Project, r: Risk) {
+  const index = new Map(p.tasks.map((x, i) => [x.id, i]));
+  return {
+    id: r.id,
+    title: r.title,
+    ...(r.category ? { category: r.category } : {}),
+    ...(r.owner ? { owner: r.owner } : {}),
+    ...(r.description ? { description: r.description } : {}),
+    probability: r.probability,
+    impact: r.impact,
+    exposure: exposure(r),
+    level: riskLevel(exposure(r)),
+    chancePercent: Math.round(riskChance(r) * 1000) / 10,
+    chanceFromScore: r.chance === undefined,
+    ...(r.response ? { response: r.response } : {}),
+    ...(r.mitigation ? { mitigation: r.mitigation } : {}),
+    status: r.status,
+    ...(r.review ? { review: r.review } : {}),
+    tasks: r.tasks.map((x) => ({ row: (index.get(x.taskId) ?? -1) + 1, name: p.tasks[index.get(x.taskId) ?? -1]?.name ?? "", days: x.days, cost: x.cost })),
+  };
+}
+
+/** Benzetim özeti: grafik noktaları çıkarılmış, görevler satır adıyla */
+function simView(p: Project, r: SimulationSummary) {
+  const index = new Map(p.tasks.map((x, i) => [x.id, i]));
+  const name = (id: string) => {
+    const i = index.get(id);
+    return i === undefined ? { row: null, name: "(silinmiş)" } : { row: i + 1, name: p.tasks[i].name };
+  };
+  return {
+    current: resultIsCurrent(p),
+    ranAt: r.at,
+    iterations: r.iterations,
+    seed: r.seed,
+    distribution: r.distribution,
+    plan: { finish: r.planFinish, cost: r.planCost },
+    onTimeProbability: r.onTime,
+    onBudgetProbability: r.onBudget,
+    finish: r.finish,
+    cost: r.cost,
+    finishCurve: r.finishCdf.filter((_, i, a) => a.length <= 20 || i % Math.ceil(a.length / 20) === 0 || i === a.length - 1),
+    drivers: [...r.tasks]
+      .sort((a, b) => Math.abs(b.correlation) - Math.abs(a.correlation))
+      .slice(0, 10)
+      .map((x) => ({ ...name(x.id), criticality: x.criticality, correlation: x.correlation })),
+    risks: r.risks.map((x) => ({ id: x.id, title: p.risks?.find((k) => k.id === x.id)?.title ?? "", occurred: x.triggered, finishDelayWorkdays: x.delay, cost: x.cost })),
+  };
+}
+
+server.registerTool(
+  "list_risks",
+  {
+    title: "Risk sicili",
+    description:
+      "Riskleri maruziyete (olasılık × etki, 1–25) göre sıralı döner: düzey (low/medium/high/critical), benzetimde kullanılan gerçekleşme yüzdesi, " +
+      "yanıt, durum ve bağlı görevlere ek gün/maliyet. Kapananlar include_closed=true ile gelir.",
+    inputSchema: { include_closed: z.boolean().optional() },
+    annotations: { readOnlyHint: true },
+  },
+  async (a) =>
+    run(() => {
+      const p = load();
+      return (p.risks ?? [])
+        .filter((r) => a.include_closed || r.status !== "closed")
+        .sort((x, y) => exposure(y) - exposure(x))
+        .map((r) => riskView(p, r));
+    }),
+);
+
+server.registerTool(
+  "set_risk",
+  {
+    title: "Risk ekle / değiştir",
+    description:
+      "id verilmezse yeni risk ekler (R1, R2…). Verilen alanlar değişir, verilmeyenler korunur. Olasılık ve etki 1–5 puan; " +
+      "chance (0–100) verilmezse olasılık puanından alınır (1→%10, 2→%30, 3→%50, 4→%70, 5→%90). " +
+      "tasks listesi bağlı görevleri DEĞİŞTİRİR: her biri satır, ek iş günü ve ek maliyet (risk gerçekleşirse göreve eklenir). Özet satırlar bağlanamaz.",
+    inputSchema: {
+      id: z.string().optional().describe("Var olan riskin kimliği (ör. R2); yoksa yeni risk"),
+      title: z.string().optional().describe("Risk adı (yeni riskte gerekli)"),
+      category: z.string().optional().describe("Kategori; boş metin kaldırır"),
+      owner: z.string().optional().describe("Sorumlu; boş metin kaldırır"),
+      description: z.string().optional(),
+      probability: z.number().int().min(1).max(5).optional(),
+      impact: z.number().int().min(1).max(5).optional(),
+      chance: z.number().min(0).max(100).nullable().optional().describe("Gerçekleşme yüzdesi; null puandan hesaplanana döner"),
+      response: z.enum(["none", ...RISK_RESPONSES] as [string, ...string[]]).optional().describe("avoid (kaçın), mitigate (azalt), transfer (aktar), accept (kabul); none kaldırır"),
+      mitigation: z.string().optional().describe("Önlem planı; boş metin kaldırır"),
+      status: z.enum(RISK_STATUSES as [string, ...string[]]).optional().describe("open, watch (izleniyor), closed (benzetime katılmaz)"),
+      review: z.string().optional().describe("Gözden geçirme tarihi YYYY-AA-GG; boş metin kaldırır"),
+      tasks: z
+        .array(z.object({ row, days: z.number().min(0).max(10000).optional(), cost: z.number().min(0).optional() }))
+        .optional()
+        .describe("Etkilenen görevler: [{row: 3, days: 5, cost: 20000}]; [] tüm bağları kaldırır"),
+    },
+  },
+  async (a) =>
+    mutate((p) => {
+      const old = a.id ? p.risks?.find((r) => r.id === a.id) : undefined;
+      if (a.id && !old) throw new OpError(`Risk bulunamadı: ${a.id}. Kimlikler: ${(p.risks ?? []).map((r) => r.id).join(", ") || "(yok)"}`);
+      if (!old && !a.title?.trim()) throw new OpError("Yeni risk için title gerekli.");
+      if (a.review && !isValidDate(a.review)) throw new OpError(`Geçersiz tarih: ${a.review}`);
+      const s = schedule(p);
+      const tasks = a.tasks?.map((x) => {
+        const i = x.row - 1;
+        if (!p.tasks[i]) throw new OpError(t("err.noRow", { row: String(x.row), count: p.tasks.length }));
+        if (s.rows[i].isSummary) throw new OpError(`${x.row}. satır özet görev; riski alt görevlerine bağlayın.`);
+        return { taskId: p.tasks[i].id, days: x.days ?? 0, cost: x.cost ?? 0 };
+      });
+      if (tasks && new Set(tasks.map((x) => x.taskId)).size !== tasks.length) throw new OpError("Aynı satır iki kez verilmiş.");
+      const risk: Risk = { ...(old ?? { id: newRiskId(p), title: "", probability: 3, impact: 3, status: "open", tasks: [] }) };
+      const text = (k: "title" | "category" | "owner" | "description" | "mitigation", v: string | undefined) => {
+        if (v === undefined) return;
+        if (v.trim()) risk[k] = v.trim();
+        else if (k !== "title") delete risk[k];
+      };
+      text("title", a.title);
+      text("category", a.category);
+      text("owner", a.owner);
+      text("description", a.description);
+      text("mitigation", a.mitigation);
+      if (a.probability !== undefined) risk.probability = a.probability;
+      if (a.impact !== undefined) risk.impact = a.impact;
+      if (a.chance === null) delete risk.chance;
+      else if (a.chance !== undefined) risk.chance = a.chance;
+      if (a.response === "none") delete risk.response;
+      else if (a.response) risk.response = a.response as Risk["response"];
+      if (a.status) risk.status = a.status as Risk["status"];
+      if (a.review !== undefined) {
+        if (a.review) risk.review = a.review;
+        else delete risk.review;
+      }
+      if (tasks) risk.tasks = tasks;
+      const project = upsertRisk(p, risk);
+      const saved = project.risks!.find((r) => r.id === risk.id)!;
+      return { project, message: `${old ? "Risk güncellendi" : "Risk eklendi"}: ${JSON.stringify(riskView(project, saved))}` };
+    }),
+);
+
+server.registerTool(
+  "delete_risk",
+  {
+    title: "Riski sil",
+    description: "Riski sicilden siler. Geçmişte tutmak için silmek yerine status=closed tercih edin.",
+    inputSchema: { id: z.string() },
+    annotations: { destructiveHint: true },
+  },
+  async (a) =>
+    mutate((p) => {
+      const r = p.risks?.find((x) => x.id === a.id);
+      if (!r) throw new OpError(`Risk bulunamadı: ${a.id}`);
+      return { project: removeRisk(p, a.id), message: `${a.id} "${r.title}" silindi.` };
+    }),
+);
+
+server.registerTool(
+  "set_task_estimates",
+  {
+    title: "Üç nokta süre tahmini",
+    description:
+      "Görevin iyimser / en olası / kötümser süresini (iş günü) yazar; benzetim bu görevde genel belirsizlik yerine bunu kullanır. " +
+      "0 ≤ iyimser ≤ en olası ≤ kötümser olmalı. clear=true tahmini kaldırır. Görevin planlanan süresi değişmez.",
+    inputSchema: {
+      row,
+      optimistic: z.number().min(0).optional(),
+      likely: z.number().min(0).optional().describe("Verilmezse görevin planlanan süresi"),
+      pessimistic: z.number().min(0).optional(),
+      clear: z.boolean().optional(),
+    },
+  },
+  async (a) =>
+    mutate((p) => {
+      const i = a.row - 1;
+      const task = p.tasks[i];
+      if (!task) throw new OpError(t("err.noRow", { row: String(a.row), count: p.tasks.length }));
+      const s = schedule(p);
+      if (s.rows[i].isSummary || task.duration <= 0) throw new OpError(`${a.row}. satır özet ya da kilometre taşı; tahmin yalnız süreli görevlere yazılır.`);
+      const next: Task = { ...task };
+      if (a.clear) delete next.estimate;
+      else {
+        if (a.optimistic === undefined || a.pessimistic === undefined) throw new OpError("optimistic ve pessimistic gerekli (ya da clear=true).");
+        const e = { optimistic: a.optimistic, likely: a.likely ?? task.duration, pessimistic: a.pessimistic };
+        if (!validEstimate(e)) throw new OpError(t("err.estimate"));
+        next.estimate = e;
+      }
+      const project = { ...p, tasks: p.tasks.map((x, j) => (j === i ? next : x)) };
+      return { project, message: a.clear ? `${a.row}. satırın tahmini kaldırıldı.` : `${a.row}. satır tahmini: ${JSON.stringify(next.estimate)}` };
+    }),
+);
+
+server.registerTool(
+  "run_simulation",
+  {
+    title: "Monte Carlo benzetimi",
+    description:
+      "Görev sürelerini dağılımdan çekip (tahmini olmayanlarda genel belirsizlik −low% / +high%), riskleri olasılıklarına göre gerçekleştirip planı " +
+      "her yinelemede yeniden hesaplar. P10–P95 bitiş tarihi ve maliyet, plan tarihinde/bütçesinde bitme olasılığı, bitişi en çok etkileyen görevler " +
+      "(korelasyon, kritiklik indeksi) ve risklerin etkisini döner; ayarlar ve özet dosyaya kaydedilir (uygulamada Riskler sekmesinde görünür). " +
+      "Tamamlanan görevler sabit, başlamışlarda yalnız kalan kısım değişir. Aynı tohum aynı sonucu verir. Büyük projede yineleme sayısını düşük tutun.",
+    inputSchema: {
+      iterations: z.number().int().min(100).max(MAX_ITERATIONS).optional().describe("Varsayılan kayıtlı ayar ya da 5000"),
+      distribution: z.enum(["triangular", "pert"]).optional(),
+      uncertainty_low: z.number().min(0).max(95).optional().describe("Genel belirsizlik eksi % (varsayılan 10)"),
+      uncertainty_high: z.number().min(0).max(500).optional().describe("Genel belirsizlik artı % (varsayılan 25)"),
+      seed: z.number().int().min(0).optional(),
+      include_risks: z.boolean().optional(),
+    },
+  },
+  async (a) =>
+    mutate((p) => {
+      const cur = settingsOf(p);
+      const settings: SimulationSettings = toSimulation({
+        iterations: a.iterations ?? cur.iterations,
+        distribution: a.distribution ?? cur.distribution,
+        uncertaintyLow: a.uncertainty_low ?? cur.uncertaintyLow,
+        uncertaintyHigh: a.uncertainty_high ?? cur.uncertaintyHigh,
+        seed: a.seed ?? cur.seed,
+        includeRisks: a.include_risks ?? cur.includeRisks,
+      })!;
+      if (!p.tasks.length) throw new OpError("Projede görev yok.");
+      const started = Date.now();
+      const runResult = simulate({ ...p, simulation: settings }, settings)!;
+      const project: Project = { ...p, simulation: settings, simResult: runResult.summary };
+      return { project, message: `Benzetim ${((Date.now() - started) / 1000).toFixed(1)} sn sürdü.\n${JSON.stringify(simView(project, runResult.summary), null, 2)}` };
+    }),
+);
+
+server.registerTool(
+  "get_simulation",
+  {
+    title: "Son benzetim sonucu",
+    description: "Kayıtlı son benzetim özetini ve ayarlarını döner; current=false ise proje ya da ayarlar sonradan değişmiştir (run_simulation ile yenileyin).",
+    inputSchema: {},
+    annotations: { readOnlyHint: true },
+  },
+  async () =>
+    run(() => {
+      const p = load();
+      return { settings: settingsOf(p), result: p.simResult ? simView(p, p.simResult) : null };
+    }),
+);
+
+server.registerTool(
+  "check_plan_quality",
+  {
+    title: "Plan kalite denetimi",
+    description:
+      "DCMA 14 nokta denetiminin takvime dayalı maddeleri: eksik bağ, negatif/pozitif gecikme, BB dışı bağ, katı kısıt, yüksek/negatif bolluk, " +
+      "44 iş gününden uzun görev, geçersiz tarih, kaynaksız görev, kaçırılan görev (referans plana göre). Her madde için sorunlu satırlar, oran ve eşik.",
+    inputSchema: { today: z.string().optional().describe("YYYY-AA-GG; varsayılan bugün") },
+    annotations: { readOnlyHint: true },
+  },
+  async (a) =>
+    run(() => {
+      const p = load();
+      return planQuality(p, schedule(p), today(a.today)).map((c) => ({ check: c.key, name: t(`quality.${c.key}`), ...c }));
+    }),
 );
 
 // Dosya yoksa boş proje olarak oluşturulur: uygulamada "Dosyaya bağla" ile hemen açılabilsin

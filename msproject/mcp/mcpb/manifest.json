@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "proje-planlayici",
   "display_name": "Proje Planlayıcı",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "MS Project benzeri iş programını Claude'a bağlar: görev, bağ, tatil, kaynak, aşırı yük, S eğrisi ve MS Project XML.",
   "long_description": "Proje Planlayıcı uygulamasının proje dosyasını (proje.json) okur ve düzenler. Uygulamada 'Dosyaya bağla' ile aynı dosya açıkken Claude'un yaptığı değişiklikler ekranda anında görünür.",
   "author": {
@@ -137,6 +137,34 @@
     {
       "name": "import_tasks",
       "description": "CSV / Excel'den görev al"
+    },
+    {
+      "name": "list_risks",
+      "description": "Risk sicili"
+    },
+    {
+      "name": "set_risk",
+      "description": "Risk ekle / değiştir"
+    },
+    {
+      "name": "delete_risk",
+      "description": "Riski sil"
+    },
+    {
+      "name": "set_task_estimates",
+      "description": "Üç nokta süre tahmini"
+    },
+    {
+      "name": "run_simulation",
+      "description": "Monte Carlo benzetimi"
+    },
+    {
+      "name": "get_simulation",
+      "description": "Son benzetim sonucu"
+    },
+    {
+      "name": "check_plan_quality",
+      "description": "Plan kalite denetimi"
     }
   ],
   "keywords": [

@@ -1,6 +1,7 @@
 import { useRef, useState, type DragEvent, type MouseEvent, type RefObject, type UIEvent } from "react";
 import { datePattern, formatDateLocal, formatMoney, formatNumber, formatPercent, parseDateLocal, t, type MessageKey } from "../i18n";
 import { formatShort } from "../model/calendar";
+import { formatEstimate } from "../model/risks";
 import { visibleRange } from "../model/timescale";
 import type { ScheduledTask, Task } from "../model/types";
 import type { TaskWarning } from "../model/validation";
@@ -29,6 +30,8 @@ export interface GridRow {
   variance?: number;
   /** Doğrulama uyarıları (gecikme, tarih aralığı) */
   warnings: TaskWarning[];
+  /** Bağlı kapanmamış riskler ("R1 Zemin suyu") ve en yüksek maruziyet düzeyi */
+  risks?: { text: string[]; level: string };
 }
 
 interface Props {
@@ -45,6 +48,7 @@ interface Props {
   onPredecessors: (id: string, text: string) => boolean;
   onPercent: (id: string, text: string) => boolean;
   onResources: (id: string, text: string) => boolean;
+  onEstimate: (id: string, text: string) => boolean;
   onAddAtEnd: () => void;
   /** Görev bilgisi penceresi (çift tık) */
   onInfo: (id: string) => void;
@@ -75,13 +79,14 @@ export const COLUMNS: { key: string; label: MessageKey | ""; width: number }[] =
   { key: "percent", label: "col.percent", width: 64 },
   { key: "slack", label: "col.slack", width: 64 },
   { key: "cost", label: "col.cost", width: 104 },
+  { key: "estimate", label: "col.estimate", width: 112 },
   { key: "variance", label: "col.variance", width: 64 },
 ];
 
 /** Gizlenemeyen sütunlar */
 export const FIXED_COLUMNS = new Set(["row", "ind", "name"]);
 /** İlk açılışta gizli sütunlar */
-export const DEFAULT_HIDDEN = ["cost"];
+export const DEFAULT_HIDDEN = ["cost", "estimate"];
 
 /** Görünen sütunların toplam genişliği */
 export function gridWidthFor(hidden: Set<string>, showVariance: boolean): number {
@@ -320,6 +325,21 @@ export function TaskGrid(props: Props) {
                   {r.cost ? formatMoney(r.cost) : "—"}
                 </div>
               )}
+              {show("estimate") && (
+                <div className="gc">
+                  <EditableCell
+                    value={formatEstimate(task.estimate)}
+                    placeholder={sched.isSummary || task.duration <= 0 ? "" : t("common.empty")}
+                    readOnly={sched.isSummary || task.duration <= 0}
+                    row={i}
+                    col="estimate"
+                    className="num"
+                    ariaLabel={t("grid.aria.estimate", { row })}
+                    title={t("grid.estimateHint")}
+                    onCommit={(v) => props.onEstimate(task.id, v)}
+                  />
+                </div>
+              )}
               {show("variance") && (
                 <div
                   className={`gc num gc-var ${r.variance && r.variance > 0 ? "late" : r.variance && r.variance < 0 ? "early" : ""}`}
@@ -423,6 +443,7 @@ function Indicators({ row }: { row: GridRow }) {
   if (!sched.isSummary && task.percent === 100) notes.push(t("grid.complete"));
   if (task.tags?.length) notes.push(`${t("info.tags")}: ${task.tags.join(", ")}`);
   if (task.links?.length) notes.push(...task.links.map((l) => `🔗 ${l.title ?? l.url}`));
+  if (row.risks) notes.push(...row.risks.text.map((x) => `⚠ ${x}`));
   if (task.notes) notes.push(`✎ ${task.notes.length > 200 ? `${task.notes.slice(0, 200)}…` : task.notes}`);
   const late = row.warnings.some((w) => w.kind === "late");
   const warn = row.warnings.length > 0 && !late;
@@ -451,6 +472,11 @@ function Indicators({ row }: { row: GridRow }) {
   return (
     <div className="gc gc-ind" title={notes.join("\n") || undefined}>
       {main}
+      {row.risks && (
+        <span className={`ind-mini risk lvl-${row.risks.level}`} aria-label={row.risks.text.join(", ")}>
+          ⚠
+        </span>
+      )}
       {(task.notes || task.links?.length) && (
         <span className={`ind-mini ${task.links?.length ? "link" : "note"}`} aria-label={task.links?.length ? t("help.i.link") : t("help.i.note")}>
           {task.links?.length ? "🔗" : "✎"}

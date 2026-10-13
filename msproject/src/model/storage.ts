@@ -2,6 +2,7 @@ import { isValidDate, normalizeWorkdays } from "./calendar";
 import { t } from "../i18n";
 import { tagBuiltinHolidays, type Holiday } from "./holidays";
 import { normalizeOutline } from "./outline";
+import { toEstimate, toRisks, toSimSummary, toSimulation } from "./risks";
 import { defaultHolidays } from "./sample";
 import {
   BASELINE_SLOTS,
@@ -75,6 +76,7 @@ export function sanitizeProject(raw: unknown): Project | null {
       links: toLinks(t.links),
       tags: toTags(t.tags),
       color: TASK_COLORS.includes(t.color as TaskColor) ? (t.color as TaskColor) : undefined,
+      estimate: toEstimate(t.estimate),
     };
     for (const [k, v] of Object.entries(optional)) if (v !== undefined && !(Array.isArray(v) && !v.length)) (task as unknown as Record<string, unknown>)[k] = v;
     tasks.push(task);
@@ -143,6 +145,7 @@ export function sanitizeProject(raw: unknown): Project | null {
     resources,
     ...(blackouts.length ? { blackouts } : {}),
     ...extras(r),
+    ...riskFields(r, ids),
   };
 }
 
@@ -154,6 +157,18 @@ function extras(r: Record<string, unknown>): Partial<Project> {
   if (typeof r.hoursPerDay === "number" && r.hoursPerDay > 0 && r.hoursPerDay <= 24 && r.hoursPerDay !== 8) out.hoursPerDay = r.hoursPerDay;
   const baselines = toBaselines(r.baselines);
   if (baselines.length) out.baselines = baselines;
+  return out;
+}
+
+/** Sürüm 6: risk sicili, benzetim ayarları ve son sonuç */
+function riskFields(r: Record<string, unknown>, taskIds: Set<string>): Partial<Project> {
+  const out: Partial<Project> = {};
+  const risks = toRisks(r.risks, taskIds);
+  if (risks.length) out.risks = risks;
+  const sim = toSimulation(r.simulation);
+  if (sim) out.simulation = sim;
+  const result = toSimSummary(r.simResult);
+  if (result) out.simResult = result;
   return out;
 }
 
@@ -173,7 +188,8 @@ export function needsUpgradeBackup(raw: unknown): boolean {
  * kalır (kullanıcının tatillerine dokunulmaz). İlerleme ağırlığı yoksa maliyettir. Sürüm 3: para birimi yoksa TRY;
  * hazır tatillere kaynak anahtarı verilir (bkz. tagBuiltinHolidays). Sürüm 4: "şundan önce başlamasın" alanı SNET
  * kısıtına çevrilir; diğer yeni alanlar isteğe bağlıdır, yoksa önceki davranış sürer. Sürüm 5: not, bağlantı,
- * etiket, renk ve gerçekleşen maliyet isteğe bağlı alanlardır; dönüştürülecek eski alan yoktur.
+ * etiket, renk ve gerçekleşen maliyet isteğe bağlı alanlardır; dönüştürülecek eski alan yoktur. Sürüm 6: risk
+ * sicili, benzetim ayarları/sonucu ve görevlerde üç nokta tahmin isteğe bağlıdır; dönüştürülecek eski alan yoktur.
  */
 function migrate(r: Record<string, unknown>): Pick<Project, "version" | "workdays" | "progressWeight" | "currency"> {
   return {

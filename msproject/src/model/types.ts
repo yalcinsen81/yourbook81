@@ -65,6 +65,14 @@ export interface Task {
   tags?: string[];
   /** Satır ve çubuk rengi */
   color?: TaskColor;
+  /** Benzetim için üç nokta süre tahmini (iş günü): iyimser, en olası, kötümser. Yoksa proje geneli belirsizlik. */
+  estimate?: DurationEstimate;
+}
+
+export interface DurationEstimate {
+  optimistic: number;
+  likely: number;
+  pessimistic: number;
 }
 
 export interface TaskLink {
@@ -131,8 +139,9 @@ export type ProgressWeight = "cost" | "work" | "duration";
  * 4: kısıtlar, son tarih, gerçekleşen tarihler, referans planlar, kaynak takvimi/türü, maliyet kalemleri,
  *    çalışılamayan dönemler, yarım gün seçeneği. `startNoEarlierThan` → `constraint: SNET`.
  * 5: görev notu, bağlantılar, etiketler, renk ve gerçekleşen maliyet (hepsi isteğe bağlı).
+ * 6: risk sicili, benzetim ayarları ve son sonucu, görevlerde üç nokta süre tahmini (hepsi isteğe bağlı).
  */
-export const PROJECT_VERSION = 5;
+export const PROJECT_VERSION = 6;
 
 /** Referans plan (baseline): kaydedildiği andaki tarihler, süre ve maliyet */
 export interface Baseline {
@@ -172,6 +181,88 @@ export interface Project {
   /** Saatlik ücretli kaynaklarda günlük çalışma saati. Yoksa 8. */
   hoursPerDay?: number;
   baselines?: Baseline[];
+  /** Risk sicili */
+  risks?: Risk[];
+  /** Monte Carlo benzetim ayarları; yoksa DEFAULT_SIMULATION */
+  simulation?: SimulationSettings;
+  /** Son benzetimin özeti (girdi parmak iziyle; girdi değişince "güncel değil" sayılır) */
+  simResult?: SimulationSummary;
+}
+
+// --- Riskler ve benzetim (Faz 2D) ---
+
+export type RiskResponse = "avoid" | "mitigate" | "transfer" | "accept";
+export const RISK_RESPONSES: RiskResponse[] = ["avoid", "mitigate", "transfer", "accept"];
+export type RiskStatus = "open" | "watch" | "closed";
+export const RISK_STATUSES: RiskStatus[] = ["open", "watch", "closed"];
+
+/** Risk gerçekleşirse bağlı göreve eklenecek gün ve tutar */
+export interface RiskImpact {
+  taskId: string;
+  /** Ek süre (iş günü) */
+  days: number;
+  /** Ek maliyet (proje para birimi) */
+  cost: number;
+}
+
+export interface Risk {
+  id: string;
+  title: string;
+  category?: string;
+  owner?: string;
+  description?: string;
+  /** Olasılık puanı 1–5 */
+  probability: number;
+  /** Benzetimde gerçekleşme olasılığı (%); yoksa puandan (RISK_CHANCE) */
+  chance?: number;
+  /** Etki puanı 1–5 */
+  impact: number;
+  response?: RiskResponse;
+  mitigation?: string;
+  status: RiskStatus;
+  /** Gözden geçirme tarihi (YYYY-MM-DD) */
+  review?: string;
+  tasks: RiskImpact[];
+}
+
+export type Distribution = "triangular" | "pert";
+
+export interface SimulationSettings {
+  iterations: number;
+  distribution: Distribution;
+  /** Tahmini olmayan görevlerde iyimser süre = süre × (1 − low/100) */
+  uncertaintyLow: number;
+  /** Tahmini olmayan görevlerde kötümser süre = süre × (1 + high/100) */
+  uncertaintyHigh: number;
+  /** Aynı tohum aynı sonucu verir */
+  seed: number;
+  /** Kapanmamış riskler benzetime katılsın mı */
+  includeRisks: boolean;
+}
+
+export interface SimulationSummary {
+  /** Girdi parmak izi (simulationFingerprint) */
+  fingerprint: string;
+  /** Çalıştırıldığı an (ISO) */
+  at: string;
+  iterations: number;
+  seed: number;
+  distribution: Distribution;
+  /** Deterministik plan */
+  planFinish: string;
+  planCost: number;
+  /** Planın tutma olasılığı (0–1) */
+  onTime: number;
+  onBudget: number;
+  finish: { p10: string; p50: string; p80: string; p90: string; p95: string; mean: string; min: string; max: string };
+  cost: { p10: number; p50: number; p80: number; p90: number; p95: number; mean: number; min: number; max: number };
+  /** Bitiş tarihi olasılık eğrisi: tarih ve o tarihte ya da önce bitme olasılığı */
+  finishCdf: { date: string; p: number }[];
+  costCdf: { cost: number; p: number }[];
+  /** Görev kimliği → kritik yola girme oranı (0–1) ve süre–bitiş korelasyonu */
+  tasks: { id: string; criticality: number; correlation: number }[];
+  /** Risk kimliği → tetiklenme oranı ve tetiklendiğinde ortalama ek gecikme (iş günü) */
+  risks: { id: string; triggered: number; delay: number; cost: number }[];
 }
 
 /** Zamanlama uyarısı: kısıt ile bağımlılık çatışması, son tarih aşımı vb. */

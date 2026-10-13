@@ -1,3 +1,4 @@
+import { pruneRiskLinks } from "./model/risks";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { formatDate, nextWorkday } from "./model/calendar";
 import { sampleProject } from "./model/sample";
@@ -21,7 +22,8 @@ export function useProject() {
   useEffect(() => saveProject(project), [project]);
 
   const update = useCallback((fn: (p: Project) => Project) => {
-    setHistory((h) => push(h, fn(h.present)));
+    // Silinen görevlere işaret eden risk bağları atılır
+    setHistory((h) => push(h, pruneRiskLinks(fn(h.present))));
   }, []);
 
   const undo = useCallback(() => {

@@ -99,5 +99,26 @@ await call("new_from_template", { template: "fitout", name: "Ofis", start: "2027
 const tpl = JSON.parse(await call("get_project_summary"));
 console.log({ afterImport, template: { name: tpl.name, tasks: tpl.tasks, finish: tpl.finish } });
 if (afterImport <= 5 || tpl.name !== "Ofis" || !tpl.tasks) throw new Error("Şablon / içe aktarma beklenen gibi değil");
+// Faz 2D: risk sicili, üç nokta tahmin, benzetim, plan kalitesi (şablondaki ilk iki süreli alt görev)
+const [leafA, leafB] = JSON.parse(await call("get_tasks")).filter((x) => !x.summary && x.duration > 0).map((x) => x.row);
+const r1 = await call("set_risk", { title: "Kalıp ustası yok", probability: 4, impact: 3, response: "mitigate", tasks: [{ row: leafA, days: 4, cost: 15000 }] });
+await call("set_risk", { id: "R1", chance: 100, owner: "Şef" });
+const badRisk = await client.callTool({ name: "set_risk", arguments: { id: "R9", title: "x" } });
+await call("set_risk", { title: "Silinecek", probability: 1, impact: 1 });
+await call("delete_risk", { id: "R2" });
+await call("set_task_estimates", { row: leafB, optimistic: 2, likely: 3, pessimistic: 8 });
+const badEst = await client.callTool({ name: "set_task_estimates", arguments: { row: leafB, optimistic: 5, pessimistic: 2 } });
+const risks = JSON.parse(await call("list_risks"));
+const simText = await call("run_simulation", { iterations: 500, seed: 3 });
+const sim = JSON.parse(await call("get_simulation"));
+const quality = JSON.parse(await call("check_plan_quality"));
+const saved2d = JSON.parse(readFileSync(file, "utf8"));
+console.log({ risks: risks.map((r) => `${r.id}:${r.exposure}:${r.chancePercent}`), p80: sim.result?.finish.p80, onTime: sim.result?.onTimeProbability, quality: quality.length });
+if (!r1.includes("R1") || !badRisk.isError || !badEst.isError || risks.length !== 1 || risks[0].chancePercent !== 100 || !simText.includes("Benzetim") ||
+  !sim.result?.current || sim.result.risks[0].occurred !== 1 || quality.length !== 11 || saved2d.version !== 6 || saved2d.tasks[leafB - 1].estimate?.pessimistic !== 8) {
+  throw new Error("Faz 2D sonucu beklenen gibi değil");
+}
+await call("update_task", { row: leafB, duration: 9 });
+if (JSON.parse(await call("get_simulation")).result.current) throw new Error("Benzetim eskimiş görünmeli");
 console.log("Tamam:", file);
 await client.close();

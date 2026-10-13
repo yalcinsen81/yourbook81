@@ -1,3 +1,4 @@
+import { pruneRiskLinks, risksByTask } from "./risks";
 import { getLang, t } from "../i18n";
 import { addDays, formatDate, isValidDate, normalizeWorkdays } from "./calendar";
 import { CONSTRAINT_TYPES } from "./storage";
@@ -20,6 +21,7 @@ import {
 import type {
   ConstraintType,
   CostAccrual,
+  DurationEstimate,
   Leave,
   LinkType,
   ProgressWeight,
@@ -298,7 +300,7 @@ export function deleteTask(p: Project, row: number): { project: Project; deleted
   const tasks = p.tasks
     .filter((t) => !doomed.has(t.id))
     .map((t) => ({ ...t, predecessors: t.predecessors.filter((pr) => !doomed.has(pr.taskId)) }));
-  return { project: { ...p, tasks: normalizeOutline(tasks) }, deleted: doomed.size };
+  return { project: pruneRiskLinks({ ...p, tasks: normalizeOutline(tasks) }), deleted: doomed.size };
 }
 
 export function shiftTask(p: Project, row: number, direction: "in" | "out"): Project {
@@ -380,6 +382,10 @@ export interface TaskRow {
   overallocated: boolean;
   /** Bilgi notu (ör. maliyet ağırlığında maliyeti olmayan görev) ya da "" */
   info: string;
+  /** Üç nokta süre tahmini (iyimser, en olası, kötümser) */
+  estimate?: DurationEstimate;
+  /** Bağlı kapanmamış risklerin kimlikleri */
+  risks?: string[];
 }
 
 export function listTasks(p: Project): TaskRow[] {
@@ -391,8 +397,10 @@ export function listTasks(p: Project): TaskRow[] {
   const leafCost = p.tasks.map((task, i) => (s.rows[i].isSummary ? 0 : Math.round(taskCost(task, p))));
   const issuesOf = new Map<string, string[]>();
   for (const is of s.issues) issuesOf.set(is.taskId, [...(issuesOf.get(is.taskId) ?? []), issueText(p, s, is)]);
+  const byTask = risksByTask(p);
   return p.tasks.map((task, i) => {
     const r = s.rows[i];
+    const linked = byTask.get(task.id);
     const cost = r.isSummary ? leafCost.slice(i + 1, subtreeEnd(p.tasks, i)).reduce((a, b) => a + b, 0) : leafCost[i];
     return {
       row: i + 1,
@@ -421,6 +429,8 @@ export function listTasks(p: Project): TaskRow[] {
       cost,
       overallocated: over.has(task.id),
       info: zeroCost.has(i + 1) ? t("warn.taskNoCost") : "",
+      ...(task.estimate ? { estimate: task.estimate } : {}),
+      ...(linked ? { risks: linked.map((x) => x.id) } : {}),
     };
   });
 }

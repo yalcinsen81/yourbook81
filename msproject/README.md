@@ -23,6 +23,10 @@ veri tarayıcıda (localStorage) otomatik saklanır, JSON olarak indirilip geri 
   kaynak başına maliyet ve iş. İlerleme ağırlığı seçilir: maliyet (varsayılan), iş (adam-gün) ya da süre; planlanan %,
   gerçekleşen % ve sapma aynı ağırlıkla hesaplanır. Maliyeti olmayan görevler bilgi notuyla gösterilir.
 - Kaynaklar ve atamalar MS Project XML'ine yazılır ve oradan okunur
+- Riskler sayfası (dosya sürümü 6): risk sicili (olasılık × etki, 5×5 matris, yanıt, durum, sorumlu), riskleri görevlere ek gün ve
+  maliyetle bağlama, görev başına üç nokta süre tahmini; Monte Carlo benzetimi (üçgen ya da PERT, tohumlu, Web Worker'da; P50/P80/P95
+  bitiş ve maliyet, plan tarihinde bitme olasılığı, kritiklik indeksi, bitişi en çok etkileyen görevler, risklerin etkisi) ve DCMA tarzı
+  plan kalite denetimi. Risk sicili, benzetim özeti ve plan kalitesi Raporlar'dan CSV/Excel/PDF olarak alınır.
 - Geri al / yinele, JSON aç/kaydet, örnek inşaat projesi
 - Kısayollar: Insert (görev ekle), Delete (sil), Alt+Shift+→/← (girinti), Ctrl+F2 (bağla), Ctrl+Z / Ctrl+Y
 
@@ -59,7 +63,8 @@ npm run build
 ## Yapı
 - `src/model/` saf mantık (testli): `calendar.ts` iş günü takvimi (`WorkCalendar`), `holidays.ts` + `holidayData.ts` Türkiye tatilleri (yıl bazlı veri, tr + en adlar), `schedule.ts` CPM motoru,
   `predecessors.ts` öncül metni, `outline.ts` girinti/WBS, `storage.ts` kayıt ve dosya doğrulama, `mspXml.ts` MS Project XML okuma/yazma,
-  `resources.ts` kaynak atama, yük, maliyet ve S eğrisi, `ops.ts` MCP'nin kullandığı işlemler
+  `resources.ts` kaynak atama, yük, maliyet ve S eğrisi, `ops.ts` MCP'nin kullandığı işlemler,
+  `risks.ts` risk sicili, `simulation.ts` Monte Carlo benzetimi (`src/simWorker.ts` arka planda çalıştırır), `quality.ts` plan kalite denetimi
 - `src/components/` `TaskGrid` (tablo), `Gantt` (SVG şema), `ResourceView` (kaynaklar), `ChartsView` + `charts.tsx` (bağımlılıksız SVG grafikler), `EditableCell`
 - `src/i18n/` arayüz metinleri (`t("anahtar")`, `tr.ts` + `en.ts`); yeni metinler buradan eklenir
 - `src/useProject.ts` durum + geri al geçmişi
@@ -68,7 +73,7 @@ npm run build
 
 `mcp/dist/msproject-mcp.mjs` tek dosyalık bir MCP sunucusudur. Claude bu sunucuyla diskteki proje dosyasını
 okur ve düzenler: görev ekler, siler, girintiler, bağlar, tatil tanımlar, kaynak tanımlayıp atar, aşırı yükü ve S eğrisini
-okur, MS Project XML'ine aktarır.
+okur, MS Project XML'ine aktarır, riskleri yönetir ve Monte Carlo benzetimi çalıştırır.
 Çalıştırmak için yalnızca Node 20 veya üzeri gerekir; `npm install` yapmanız gerekmez.
 
 **En kolay yol (Claude Desktop eklentisi):** `mcp/dist/proje-planlayici.mcpb` dosyasına çift tıklayın (ya da Claude Desktop'ta

@@ -11,6 +11,7 @@ import { downloadBlob, fileNameFor, XLSX_TYPE } from "../download";
 import { LoadHistogram, PeriodBars, SeriesChart } from "./charts";
 import { Icon } from "./icons";
 import { PrintPreview } from "./PrintPreview";
+import { CostDistribution, FinishDistribution } from "./SimCharts";
 
 interface Props {
   project: Project;
@@ -32,6 +33,9 @@ const ICONS: Record<ReportKind, string> = {
   cashflow: "₺",
   tasks: "≡",
   milestones: "◆",
+  risks: "⚠",
+  simulation: "≈",
+  quality: "✓",
 };
 
 /** Raporlar: kazanılmış değer, S eğrisi, kritik yol, kaynak, histogram, nakit akışı, görev ve kilometre taşı listeleri */
@@ -219,6 +223,23 @@ function ReportBody(props: {
         />
       </section>
     );
+  } else if (kind === "simulation" && project.simResult) {
+    visual = (
+      <div className="chart-grid">
+        <section className="card">
+          <header className="card-head">
+            <h3>{t("sim.finishChart")}</h3>
+          </header>
+          <FinishDistribution result={project.simResult} />
+        </section>
+        <section className="card">
+          <header className="card-head">
+            <h3>{t("sim.costChart")}</h3>
+          </header>
+          <CostDistribution result={project.simResult} />
+        </section>
+      </div>
+    );
   } else if (kind === "histogram") {
     const u = props.usage.find((x) => x.resource.id === props.resId) ?? props.usage[0];
     visual = u ? (
@@ -290,7 +311,7 @@ export function ReportTableView({ table }: { table: ReportTable }) {
         </thead>
         <tbody>
           {table.rows.map((row, i) => (
-            <tr key={i} className={row.status === t("report.status.late") ? "late" : ""}>
+            <tr key={i} className={row.status === t("report.status.late") || row.result === t("quality.fail") ? "late" : ""}>
               {table.columns.map((c) => (
                 <td key={c.key} className={numeric(c.kind) ? "num" : ""}>
                   {formatCell(row[c.key], c.kind)}

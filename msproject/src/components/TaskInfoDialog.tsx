@@ -4,6 +4,8 @@ import type { Variance } from "../model/baseline";
 import { formatShort } from "../model/calendar";
 import { taskCostBreakdown } from "../model/costs";
 import { constraintOf, OpError, withActualFinish, withActualStart, withPercent, withRemaining } from "../model/ops";
+import { exposure, riskLevel, risksByTask, validEstimate } from "../model/risks";
+import { settingsOf } from "../model/simulation";
 import { CONSTRAINT_TYPES, safeUrl, toTags } from "../model/storage";
 import { TASK_COLORS, type ConstraintType, type CostAccrual, type Project, type Schedule, type Task, type TaskColor, type TaskLink } from "../model/types";
 import { DateInput } from "./DateInput";
@@ -46,7 +48,12 @@ export function TaskInfoDialog({ project, schedule, taskId, baseline, issues, on
   const [linkTitle, setLinkTitle] = useState("");
   const [tags, setTags] = useState((task.tags ?? []).join(", "));
   const [color, setColor] = useState<TaskColor | undefined>(task.color);
+  const [estimate, setEstimate] = useState<[string, string, string]>(
+    task.estimate ? [formatNumber(task.estimate.optimistic, 1), formatNumber(task.estimate.likely, 1), formatNumber(task.estimate.pessimistic, 1)] : ["", "", ""],
+  );
   const [error, setError] = useState<string | null>(null);
+  const linkedRisks = useMemo(() => risksByTask(project).get(taskId) ?? [], [project, taskId]);
+  const sim = settingsOf(project);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -94,6 +101,14 @@ export function TaskInfoDialog({ project, schedule, taskId, baseline, issues, on
         if (actualCost.trim() && (ac === null || ac < 0)) throw new OpError(t("err.actualCost"));
         if (ac !== null) next.actualCost = ac;
         else delete next.actualCost;
+        // Üç nokta tahmin: üçü birden ya da hiçbiri
+        if (estimate.every((v) => !v.trim())) delete next.estimate;
+        else {
+          const [o, m, pe] = estimate.map((v) => parseNumberLocal(v));
+          const e = { optimistic: o ?? NaN, likely: m ?? NaN, pessimistic: pe ?? NaN };
+          if (!validEstimate(e)) throw new OpError(t("err.estimate"));
+          next.estimate = e;
+        }
       }
       // Not, bağlantı, etiket, renk özet görevlerde de tutulur
       if (notes.trim()) next.notes = notes.slice(0, 20_000);
@@ -266,6 +281,43 @@ export function TaskInfoDialog({ project, schedule, taskId, baseline, issues, on
                   <dd>{formatMoney(cost.total)}</dd>
                 </div>
               </dl>
+            </fieldset>
+          )}
+
+          {leaf && task.duration > 0 && (
+            <fieldset className="setting">
+              <legend>{t("info.uncertainty")}</legend>
+              <div className="field-row">
+                {(["optimistic", "likely", "pessimistic"] as const).map((k, i) => (
+                  <label key={k} className="field">
+                    <span>{t(`est.${k}`)}</span>
+                    <input
+                      value={estimate[i]}
+                      inputMode="decimal"
+                      placeholder={formatNumber(i === 0 ? task.duration * (1 - sim.uncertaintyLow / 100) : i === 1 ? task.duration : task.duration * (1 + sim.uncertaintyHigh / 100), 1)}
+                      onChange={(e) => setEstimate(estimate.map((v, j) => (j === i ? e.target.value : v)) as [string, string, string])}
+                    />
+                  </label>
+                ))}
+              </div>
+              <small className="hint">{t("info.uncertaintyHint", { low: formatNumber(sim.uncertaintyLow, 0), high: formatNumber(sim.uncertaintyHigh, 0) })}</small>
+              {linkedRisks.length > 0 && (
+                <ul className="risk-mini">
+                  {linkedRisks.map((r) => {
+                    const impact = r.tasks.find((x) => x.taskId === taskId)!;
+                    return (
+                      <li key={r.id}>
+                        <span className={`risk-badge lvl-${riskLevel(exposure(r))}`}>{exposure(r)}</span>
+                        <b>{r.id}</b> {r.title}
+                        <small>
+                          {" "}
+                          · {t("risk.impactShort", { days: formatNumber(impact.days, 1), cost: formatMoney(impact.cost) })}
+                        </small>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </fieldset>
           )}
 

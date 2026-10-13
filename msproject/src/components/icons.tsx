@@ -43,6 +43,7 @@ const PATHS = {
   menu: "M4 7h16M4 12h16M4 17h16",
   image: "M4 5h16v14H4zM4 16l5-5 4 4 3-3 4 4M15 9h.01",
   clock: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2",
+  risk: "M12 4L2.5 20h19zM12 10v4.5M12 17.5h.01",
   crosshair: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 3v4M12 17v4M3 12h4M17 12h4",
 } as const;
 
