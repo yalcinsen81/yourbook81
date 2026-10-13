@@ -9,6 +9,10 @@ export interface GridRow {
   sched: ScheduledTask;
   wbs: string;
   predText: string;
+  /** "Ali[50%]; Vinç" */
+  resText: string;
+  /** Atandığı kaynaklardan biri bu görev sırasında kapasitesini aşıyor */
+  overallocated: boolean;
   collapsed: boolean;
 }
 
@@ -25,6 +29,7 @@ interface Props {
   onStart: (id: string, iso: string) => boolean;
   onPredecessors: (id: string, text: string) => boolean;
   onPercent: (id: string, text: string) => boolean;
+  onResources: (id: string, text: string) => boolean;
   onAddAtEnd: () => void;
 }
 
@@ -36,6 +41,7 @@ export const COLUMNS = [
   { key: "start", label: "Başlangıç", width: 128 },
   { key: "finish", label: "Bitiş", width: 104 },
   { key: "preds", label: "Öncüller", width: 92 },
+  { key: "resources", label: "Kaynaklar", width: 150 },
   { key: "percent", label: "% Tam.", width: 58 },
   { key: "slack", label: "Bolluk", width: 58 },
 ] as const;
@@ -139,6 +145,26 @@ export function TaskGrid(props: Props) {
                   ariaLabel={`Satır ${sched.row} öncüller`}
                   title="Örnek: 2 · 3SS · 4FS+2g · 5FF-1g (birden çoksa ; ile ayırın)"
                   onCommit={(v) => props.onPredecessors(task.id, v)}
+                />
+              </div>
+              <div className={`gc gc-res ${r.overallocated ? "over" : ""}`}>
+                {r.overallocated && (
+                  <span className="over-flag" title="Atanan kaynaklardan biri bu görev sırasında kapasitesini aşıyor">
+                    !
+                  </span>
+                )}
+                <EditableCell
+                  value={r.resText}
+                  readOnly={sched.isSummary}
+                  row={i}
+                  col="resources"
+                  ariaLabel={`Satır ${sched.row} kaynaklar`}
+                  title={
+                    sched.isSummary
+                      ? "Özet göreve kaynak atanmaz"
+                      : "Örnek: Ali · Ali[50%]; Vinç (yeni ad yazılırsa kaynak listesine eklenir)"
+                  }
+                  onCommit={(v) => props.onResources(task.id, v)}
                 />
               </div>
               <div className="gc">

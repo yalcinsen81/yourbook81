@@ -19,6 +19,7 @@ const project = (tasks: Task[], holidays: string[] = []): Project => ({
   start: "2026-10-12",
   tasks,
   holidays: holidays.map((date) => ({ date, name: "" })),
+  resources: [],
 });
 
 describe("zamanlama", () => {

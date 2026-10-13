@@ -89,5 +89,13 @@ describe("MS Project XML", () => {
       a.rows.map((r) => [r.startDate, r.finishDate, r.critical]),
     );
     expect(project.tasks.map((t) => t.name)).toEqual(original.tasks.map((t) => t.name));
+    // Kaynaklar, kapasiteleri, günlük ücretleri ve atamalar korunur
+    expect(project.resources.map((r) => [r.name, r.maxUnits, r.rate])).toEqual(
+      original.resources.map((r) => [r.name, r.maxUnits, r.rate]),
+    );
+    const names = (p: typeof project, i: number) =>
+      (p.tasks[i].assignments ?? []).map((a) => [p.resources.find((r) => r.id === a.resourceId)!.name, a.units]);
+    original.tasks.forEach((_, i) => expect(names(project, i)).toEqual(names(original, i)));
+    expect(xml).toContain("<Work>PT160H0M0S</Work>"); // Temel: 10 gün × %200 kaba inşaat ekibi
   });
 });

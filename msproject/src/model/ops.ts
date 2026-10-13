@@ -3,7 +3,8 @@ import { indent, normalizeOutline, outdent, subtreeEnd, wbsCodes, ancestorsOf } 
 import { formatPredecessors, parsePredecessors } from "./predecessors";
 import { schedule, wouldCreateCycle } from "./schedule";
 import { newId } from "./storage";
-import type { LinkType, Project, Task } from "./types";
+import { assignFromText, formatAssignments, newResourceId, removeResource, resourceUsage, taskCost } from "./resources";
+import type { LinkType, Project, Resource, Task } from "./types";
 
 // Projeyi değiştiren saf işlemler. Satır numaraları 1'den başlar (tablodaki # sütunu, öncüllerdeki numaralar).
 // MCP sunucusu (Claude bağlantısı) bunları kullanır; hatalar kullanıcıya gösterilecek Türkçe mesajla fırlatılır.
@@ -43,6 +44,14 @@ export interface TaskInput {
   predecessors?: string;
   percent?: number;
   startNoEarlierThan?: string;
+  /** "Ali[50%]; Vinç"; listede olmayan adlar yeni kaynak olur */
+  resources?: string;
+}
+
+function setResources(p: Project, taskId: string, text: string): Project {
+  const { project, errors } = assignFromText(p, taskId, text);
+  if (errors.length) throw new OpError(`Anlaşılamayan kaynak: ${errors.join(", ")}. Örnek: "Ali", "Ali[50%]; Vinç".`);
+  return project;
 }
 
 export function addTask(p: Project, input: TaskInput): { project: Project; row: number } {
@@ -72,6 +81,7 @@ export function addTask(p: Project, input: TaskInput): { project: Project; row: 
     task = setPredecessors(project, project.tasks[at], input.predecessors);
     project = { ...project, tasks: project.tasks.map((t, i) => (i === at ? task : t)) };
   }
+  if (input.resources) project = setResources(project, task.id, input.resources);
   return { project, row: at + 1 };
 }
 
@@ -82,6 +92,8 @@ export interface TaskPatch {
   percent?: number;
   /** Boş metin kısıtı kaldırır */
   startNoEarlierThan?: string;
+  /** Atamaları tamamen değiştirir; boş metin hepsini kaldırır */
+  resources?: string;
 }
 
 export function updateTask(p: Project, row: number, patch: TaskPatch): Project {
@@ -94,7 +106,8 @@ export function updateTask(p: Project, row: number, patch: TaskPatch): Project {
     task.startNoEarlierThan = patch.startNoEarlierThan || undefined;
   }
   if (patch.predecessors !== undefined) task = setPredecessors(p, task, patch.predecessors);
-  return { ...p, tasks: p.tasks.map((t, i) => (i === row - 1 ? task : t)) };
+  const next = { ...p, tasks: p.tasks.map((t, i) => (i === row - 1 ? task : t)) };
+  return patch.resources !== undefined ? setResources(next, task.id, patch.resources) : next;
 }
 
 /** Görevi siler; özetse alt görevleri de silinir. */
@@ -168,11 +181,15 @@ export interface TaskRow {
   slack: number;
   critical: boolean;
   constraint?: string;
+  resources?: string;
+  cost?: number;
+  overallocated?: boolean;
 }
 
 export function listTasks(p: Project): TaskRow[] {
   const s = schedule(p);
   const wbs = wbsCodes(p.tasks);
+  const over = new Set(resourceUsage(p, s).flatMap((u) => u.overTasks));
   return p.tasks.map((t, i) => {
     const r = s.rows[i];
     return {
@@ -190,6 +207,13 @@ export function listTasks(p: Project): TaskRow[] {
       slack: r.slack,
       critical: r.critical,
       ...(t.startNoEarlierThan ? { constraint: `şundan önce başlamasın: ${t.startNoEarlierThan}` } : {}),
+      ...(!r.isSummary && t.assignments?.length
+        ? {
+            resources: formatAssignments(t.assignments, p.resources),
+            cost: Math.round(taskCost(t, p.resources)),
+            ...(over.has(t.id) ? { overallocated: true } : {}),
+          }
+        : {}),
     };
   });
 }
@@ -212,6 +236,9 @@ export function projectSummary(p: Project) {
     criticalTasks: leaves.filter((t) => s.byId.get(t.id)!.critical).length,
     progressPercent: total ? Math.round((done / total) * 100) : 0,
     holidays: p.holidays.length,
+    resources: p.resources.length,
+    totalCost: Math.round(resourceUsage(p, s).reduce((sum, u) => sum + u.cost, 0)),
+    overallocatedResources: resourceUsage(p, s).filter((u) => u.overDays.length).map((u) => u.resource.name),
     cycleWarning: s.cycle.length ? `Döngüsel bağ var: ${s.cycle.map((id) => p.tasks.findIndex((t) => t.id === id) + 1).join(", ")}. satırlar` : undefined,
   };
 }
@@ -224,4 +251,78 @@ function clampDuration(n: number): number {
 function clampPercent(n: number): number {
   if (!Number.isFinite(n)) throw new OpError("Yüzde 0–100 arasında olmalı.");
   return Math.min(100, Math.max(0, Math.round(n)));
+}
+
+function findResource(p: Project, name: string): Resource | undefined {
+  const k = name.trim().toLocaleLowerCase("tr");
+  return p.resources.find((r) => r.name.toLocaleLowerCase("tr") === k);
+}
+
+export interface ResourceInput {
+  name: string;
+  newName?: string;
+  /** Kapasite %: 100 = bir kişi, 300 = üç kişilik ekip */
+  maxUnits?: number;
+  /** %100 birimde günlük ücret */
+  rate?: number;
+}
+
+/** Kaynağı adına göre bulur ve günceller; yoksa ekler. */
+export function setResource(p: Project, input: ResourceInput): { project: Project; created: boolean } {
+  const name = input.name.trim();
+  if (!name || /[;,[\]]/.test(name)) throw new OpError("Kaynak adı boş olamaz ve ; , [ ] içeremez.");
+  if (input.maxUnits !== undefined && !(input.maxUnits >= 1)) throw new OpError("Kapasite en az %1 olmalı.");
+  if (input.rate !== undefined && !(input.rate >= 0)) throw new OpError("Ücret 0 ya da pozitif olmalı.");
+  const existing = findResource(p, name);
+  if (input.newName !== undefined) {
+    const nn = input.newName.trim();
+    if (!nn || /[;,[\]]/.test(nn)) throw new OpError("Yeni ad boş olamaz ve ; , [ ] içeremez.");
+    const clash = findResource(p, nn);
+    if (clash && clash !== existing) throw new OpError(`"${nn}" adında bir kaynak zaten var.`);
+  }
+  const fields = {
+    ...(input.newName !== undefined ? { name: input.newName.trim() } : {}),
+    ...(input.maxUnits !== undefined ? { maxUnits: Math.round(input.maxUnits) } : {}),
+    ...(input.rate !== undefined ? { rate: input.rate } : {}),
+  };
+  if (existing) {
+    return { project: { ...p, resources: p.resources.map((r) => (r === existing ? { ...r, ...fields } : r)) }, created: false };
+  }
+  const created: Resource = { id: newResourceId(), name, maxUnits: 100, rate: 0, ...fields };
+  return { project: { ...p, resources: [...p.resources, created] }, created: true };
+}
+
+export function deleteResource(p: Project, name: string): { project: Project; unassigned: number } {
+  const r = findResource(p, name);
+  if (!r) throw new OpError(`"${name}" adında kaynak yok. Kaynaklar: ${p.resources.map((x) => x.name).join(", ") || "(yok)"}.`);
+  const unassigned = p.tasks.filter((t) => t.assignments?.some((a) => a.resourceId === r.id)).length;
+  return { project: removeResource(p, r.id), unassigned };
+}
+
+/** Kaynak listesi: iş, maliyet, en yüksek yük ve aşırı yüklü tarih aralıkları */
+export function listResources(p: Project) {
+  const s = schedule(p);
+  return resourceUsage(p, s).map((u) => {
+    const ranges: string[] = [];
+    let from = -1;
+    u.overDays.forEach((d, i) => {
+      if (from < 0) from = d;
+      if (u.overDays[i + 1] !== d + 1) {
+        const a = s.calendar.toDate(from);
+        const b = s.calendar.toDate(d);
+        ranges.push(a === b ? a : `${a} – ${b}`);
+        from = -1;
+      }
+    });
+    return {
+      name: u.resource.name,
+      maxUnitsPercent: u.resource.maxUnits,
+      dailyRate: u.resource.rate,
+      workPersonDays: Math.round(u.work * 10) / 10,
+      cost: Math.round(u.cost),
+      peakPercent: u.peak,
+      overallocated: ranges,
+      overallocatedTaskRows: u.overTasks.map((id) => p.tasks.findIndex((t) => t.id === id) + 1),
+    };
+  });
 }

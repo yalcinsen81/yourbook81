@@ -30,10 +30,24 @@ const tasks = JSON.parse(await call("get_tasks"));
 console.table(tasks.map(({ row, name, duration, start, finish, predecessors, critical }) => ({ row, name, duration, start, finish, predecessors, critical })));
 const bad = await client.callTool({ name: "link_tasks", arguments: { from_row: 4, to_row: 1 } });
 console.log("Döngü denemesi reddedildi:", bad.isError, "-", bad.content[0].text);
+// Kaynaklar: Ali iki çakışan göreve %100 atanır, aşırı yüklenir
+await call("set_resource", { name: "Ali", rate: 1000 });
+await call("update_task", { row: 2, resources: "Ali" });
+await call("update_task", { row: 3, resources: "Ali; Vinç[50%]" });
+await call("add_task", { name: "Paralel iş", duration: 3, resources: "Ali" });
+await call("set_resource", { name: "Vinç", rate: 4000, max_units: 100 });
+const resources = JSON.parse(await call("list_resources"));
+console.table(resources);
+const curve = JSON.parse(await call("get_progress_curve", { today: "2026-10-20" }));
+console.log("Maliyet:", curve.totalCost, "Bugüne planlanan %", curve.plannedPercentToday);
+const ali = resources.find((r) => r.name === "Ali");
+if (!ali || ali.overallocated[0] !== "2026-10-12 – 2026-10-14" || ali.overallocatedTaskRows.join() !== "2,5" || curve.totalCost !== 28_000) {
+  throw new Error("Kaynak sonucu beklenen gibi değil");
+}
 await call("export_msproject_xml", { path: join(dir, "proje.xml") });
 console.log(await call("get_project_summary"));
 const saved = JSON.parse(readFileSync(file, "utf8"));
-if (saved.tasks.length !== 4 || !existsSync(join(dir, "proje.xml")) || tasks[3].start !== "2026-11-02" || tasks[2].finish !== "2026-11-02" || !bad.isError) {
+if (saved.tasks.length !== 5 || !readFileSync(join(dir, "proje.xml"), "utf8").includes("<Assignment>") || !existsSync(join(dir, "proje.xml")) || tasks[3].start !== "2026-11-02" || tasks[2].finish !== "2026-11-02" || !bad.isError) {
   throw new Error("Beklenen sonuç alınamadı");
 }
 console.log("Tamam:", file);

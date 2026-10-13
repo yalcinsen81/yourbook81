@@ -14,6 +14,12 @@ veri tarayıcıda (localStorage) otomatik saklanır, JSON olarak indirilip geri 
 - Gantt'ta sürükle-bırak: çubuğu taşımak başlangıç kısıtı koyar, sağ ucundan çekmek süreyi değiştirir
 - Tatil takvimi: Türkiye resmî tatilleri hazır (dini bayramlar 2026–2027), Takvim penceresinden eklenip silinir
 - MS Project XML aç/kaydet: MS Project'te "Farklı Kaydet > XML Biçimi" ile kaydedilen dosya açılır; "MS Project'e" düğmesi MS Project'te açılan .xml indirir (.mpp doğrudan okunamaz)
+- Kaynaklar: kişi, ekip ya da makine; kapasite (%300 = üç kişilik ekip) ve günlük ücret. Görev tablosundaki Kaynaklar
+  sütununa `Ali[50%]; Vinç` yazılır; yeni ad kaynak listesine eklenir. Aşırı yüklenen kaynak kırmızı ünlemle işaretlenir.
+- Kaynaklar sayfası: iş (adam-gün), maliyet, en yüksek yük ve seçili kaynağın günlük yük histogramı
+- Grafikler sayfası: S eğrisi (planlanan / gerçekleşen), maliyet eğrisi ve kazanılan değer, haftalık kaynak yük haritası,
+  kaynak başına maliyet ve iş
+- Kaynaklar ve atamalar MS Project XML'ine yazılır ve oradan okunur
 - Geri al / yinele, JSON aç/kaydet, örnek inşaat projesi
 - Kısayollar: Insert (görev ekle), Delete (sil), Alt+Shift+→/← (girinti), Ctrl+F2 (bağla), Ctrl+Z / Ctrl+Y
 
@@ -31,14 +37,16 @@ npm run build
 
 ## Yapı
 - `src/model/` saf mantık (testli): `calendar.ts` iş günü takvimi (`WorkCalendar`), `holidays.ts` Türkiye tatilleri, `schedule.ts` CPM motoru,
-  `predecessors.ts` öncül metni, `outline.ts` girinti/WBS, `storage.ts` kayıt ve dosya doğrulama, `mspXml.ts` MS Project XML okuma/yazma
-- `src/components/` `TaskGrid` (tablo), `Gantt` (SVG şema), `EditableCell`
+  `predecessors.ts` öncül metni, `outline.ts` girinti/WBS, `storage.ts` kayıt ve dosya doğrulama, `mspXml.ts` MS Project XML okuma/yazma,
+  `resources.ts` kaynak atama, yük, maliyet ve S eğrisi, `ops.ts` MCP'nin kullandığı işlemler
+- `src/components/` `TaskGrid` (tablo), `Gantt` (SVG şema), `ResourceView` (kaynaklar), `ChartsView` + `charts.tsx` (bağımlılıksız SVG grafikler), `EditableCell`
 - `src/useProject.ts` durum + geri al geçmişi
 
 ## Claude'a bağlama (MCP)
 
 `mcp/dist/msproject-mcp.mjs` tek dosyalık bir MCP sunucusudur. Claude bu sunucuyla diskteki proje dosyasını
-okur ve düzenler: görev ekler, siler, girintiler, bağlar, tatil tanımlar ve MS Project XML'ine aktarır.
+okur ve düzenler: görev ekler, siler, girintiler, bağlar, tatil tanımlar, kaynak tanımlayıp atar, aşırı yükü ve S eğrisini
+okur, MS Project XML'ine aktarır.
 Çalıştırmak için yalnızca Node 20 veya üzeri gerekir; `npm install` yapmanız gerekmez.
 
 **Claude Desktop:** Ayarlar > Geliştirici > Yapılandırmayı düzenle ile `claude_desktop_config.json` dosyasını açıp şunu ekleyin:

@@ -1,7 +1,7 @@
 import { addDays, isValidDate } from "./calendar";
 import type { Holiday } from "./holidays";
 import { normalizeOutline, wbsCodes } from "./outline";
-import type { LinkType, Predecessor, Project, Schedule, Task } from "./types";
+import type { Assignment, LinkType, Predecessor, Project, Resource, Schedule, Task } from "./types";
 
 // Microsoft Project XML biçimi (Dosya > Farklı Kaydet > XML). .mpp ikili biçimi tarayıcıda okunamaz;
 // MS Project'te "XML Biçimi (*.xml)" olarak kaydedilen dosya buraya açılır, buradan kaydedilen dosya MS Project'te açılır.
@@ -98,6 +98,39 @@ export function parseMspXml(xml: string): ImportResult {
     };
   });
 
+  // Kaynaklar (yalnızca iş kaynakları; malzeme ve maliyet kaynakları atlanır)
+  const resources: Resource[] = [];
+  const resOf = new Map<string, string>();
+  let skippedRes = 0;
+  for (const r of children(child(root, "Resources"), "Resource")) {
+    const uidText = text(r, "UID");
+    const name = text(r, "Name");
+    if (uidText === "0" || text(r, "IsNull") === "1" || !name) continue;
+    if (text(r, "Type") && text(r, "Type") !== "1") {
+      skippedRes++;
+      continue;
+    }
+    const id = `msp-r${uidText}`;
+    // StandardRate saatliktir; günlük ücrete çevrilir
+    const hourly = Number(text(r, "StandardRate")) || 0;
+    resources.push({
+      id,
+      name,
+      maxUnits: Math.max(1, Math.round((Number(text(r, "MaxUnits") || 1) || 1) * 100)),
+      rate: Math.round(hourly * hoursPerDay * 100) / 100,
+    });
+    resOf.set(uidText, id);
+  }
+  const taskByUid = new Map(rawTasks.map((t, i) => [text(t, "UID"), tasks[i]]));
+  for (const a of children(child(root, "Assignments"), "Assignment")) {
+    const task = taskByUid.get(text(a, "TaskUID"));
+    const resourceId = resOf.get(text(a, "ResourceUID"));
+    if (!task || !resourceId) continue;
+    const units = Math.max(1, Math.round((Number(text(a, "Units") || 1) || 1) * 100));
+    const list: Assignment[] = (task.assignments ??= []);
+    if (!list.some((x) => x.resourceId === resourceId)) list.push({ resourceId, units });
+  }
+  if (skippedRes) warnings.push(`${skippedRes} malzeme/maliyet kaynağı desteklenmiyor, alınmadı.`);
   if (manual) warnings.push(`${manual} elle zamanlanan görev, başlangıç tarihi kısıtıyla alındı.`);
   if (percentLags) warnings.push(`${percentLags} yüzdeli gecikme desteklenmiyor, 0 alındı.`);
 
@@ -107,6 +140,7 @@ export function parseMspXml(xml: string): ImportResult {
       start,
       tasks: normalizeOutline(tasks),
       holidays: readHolidays(root),
+      resources,
     },
     warnings,
   };
@@ -141,6 +175,8 @@ function readHolidays(root: Element): Holiday[] {
   }
   return [...result].map(([date, name]) => ({ date, name })).sort((a, b) => a.date.localeCompare(b.date));
 }
+
+const money = (n: number) => (Math.round(n * 100) / 100).toString();
 
 const esc = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -240,6 +276,48 @@ export function toMspXml(project: Project, schedule: Schedule): string {
     out.push(`    </Task>`);
   });
   out.push(`  </Tasks>`);
+  const resUid = new Map(project.resources.map((r, i) => [r.id, i + 1]));
+  if (project.resources.length) {
+    out.push(`  <Resources>`);
+    project.resources.forEach((r, i) => {
+      out.push(`    <Resource>`);
+      out.push(`      <UID>${i + 1}</UID>`);
+      out.push(`      <ID>${i + 1}</ID>`);
+      out.push(`      <Name>${esc(r.name)}</Name>`);
+      out.push(`      <Type>1</Type>`);
+      out.push(`      <MaxUnits>${(r.maxUnits / 100).toFixed(2)}</MaxUnits>`);
+      // Ücret saatlik yazılır, MS Project'te günlük gösterilir (StandardRateFormat 3 = gün)
+      out.push(`      <StandardRate>${money(r.rate / 8)}</StandardRate>`);
+      out.push(`      <StandardRateFormat>3</StandardRateFormat>`);
+      out.push(`      <CalendarUID>1</CalendarUID>`);
+      out.push(`    </Resource>`);
+    });
+    out.push(`  </Resources>`);
+  }
+  const assignments: string[] = [];
+  let auid = 0;
+  project.tasks.forEach((t, i) => {
+    const s = schedule.rows[i];
+    if (s.isSummary) return;
+    for (const a of t.assignments ?? []) {
+      const ru = resUid.get(a.resourceId);
+      if (!ru) continue;
+      const rate = project.resources[ru - 1].rate;
+      const mins = Math.round((t.duration * 480 * a.units) / 100);
+      assignments.push(`    <Assignment>`);
+      assignments.push(`      <UID>${++auid}</UID>`);
+      assignments.push(`      <TaskUID>${i + 1}</TaskUID>`);
+      assignments.push(`      <ResourceUID>${ru}</ResourceUID>`);
+      // Öğe sırası MS Project şemasındaki gibidir
+      assignments.push(`      <Cost>${money((rate * t.duration * a.units) / 100)}</Cost>`);
+      assignments.push(`      <Finish>${s.finishDate}T17:00:00</Finish>`);
+      assignments.push(`      <Start>${s.startDate}T08:00:00</Start>`);
+      assignments.push(`      <Units>${(a.units / 100).toFixed(2)}</Units>`);
+      assignments.push(`      <Work>PT${Math.floor(mins / 60)}H${mins % 60}M0S</Work>`);
+      assignments.push(`    </Assignment>`);
+    }
+  });
+  if (assignments.length) out.push(`  <Assignments>`, ...assignments, `  </Assignments>`);
   out.push(`</Project>`);
   return out.join("\n");
 }

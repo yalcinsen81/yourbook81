@@ -14,6 +14,11 @@ import { PX_PER_DAY, type Zoom } from "./components/layout";
 import { todayIso, useProject } from "./useProject";
 import { fileLinkSupported, useFileLink } from "./useFileLink";
 import { Icon, type IconName } from "./components/icons";
+import { ResourceView } from "./components/ResourceView";
+import { ChartsView } from "./components/ChartsView";
+import { assignFromText, formatAssignments, formatMoney, overallocatedTasks, resourceUsage } from "./model/resources";
+
+type View = "gantt" | "resources" | "charts";
 
 export default function App() {
   const { project, schedule, update, undo, redo, canUndo, canRedo } = useProject();
@@ -21,10 +26,12 @@ export default function App() {
   const [anchor, setAnchor] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [zoom, setZoom] = useState<Zoom>("day");
-  const [gridWidth, setGridWidth] = useState(Math.min(GRID_WIDTH, 700));
+  const [gridWidth, setGridWidth] = useState(() => Math.min(GRID_WIDTH, Math.max(700, Math.round(window.innerWidth * 0.56))));
   const [message, setMessage] = useState<string | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [linkMenu, setLinkMenu] = useState(false);
+  const [view, setView] = useState<View>("gantt");
+  const [pickedResource, setPickedResource] = useState<string | null>(null);
   const [theme, setTheme] = useTheme();
   const gridRef = useRef<HTMLDivElement>(null);
   const ganttRef = useRef<HTMLDivElement>(null);
@@ -47,6 +54,9 @@ export default function App() {
   );
   const fileLink = useFileLink(project, replaceProject, flash);
 
+  const usage = useMemo(() => resourceUsage(project, schedule), [project, schedule]);
+  const overTasks = useMemo(() => overallocatedTasks(usage), [usage]);
+
   // Görünür satırlar: kapalı özetlerin altları gizlenir
   const rows: GridRow[] = useMemo(() => {
     const wbs = wbsCodes(project.tasks);
@@ -57,10 +67,12 @@ export default function App() {
         sched: schedule.rows[i],
         wbs: wbs[i],
         predText: formatPredecessors(task.predecessors, project.tasks),
+        resText: schedule.rows[i].isSummary ? "" : formatAssignments(task.assignments, project.resources),
+        overallocated: overTasks.has(task.id),
         collapsed: collapsed.has(task.id),
       }))
       .filter((r) => !(anc.get(r.task.id) ?? []).some((a) => collapsed.has(a)));
-  }, [project.tasks, schedule, collapsed]);
+  }, [project.tasks, project.resources, schedule, collapsed, overTasks]);
 
   const cycle = useMemo(() => new Set(schedule.cycle), [schedule.cycle]);
   const holidayMap = useMemo(() => new Map(project.holidays.map((h) => [h.date, h.name])), [project.holidays]);
@@ -301,6 +313,19 @@ export default function App() {
     return true;
   };
 
+  const onResources = (id: string, text: string) => {
+    const result = assignFromText(project, id, text);
+    if (result.errors.length) {
+      flash(`Anlaşılamayan kaynak: ${result.errors.join(", ")}. Örnek: Ali · Ali[50%]; Vinç`);
+      return false;
+    }
+    update(() => result.project);
+    if (result.created.length) {
+      flash(`Kaynak listesine eklendi: ${result.created.map((r) => r.name).join(", ")}. Ücret ve kapasiteyi Kaynaklar sayfasından girin.`);
+    }
+    return true;
+  };
+
   // --- Dosya ---
   const download = (content: string, type: string, ext: string) => {
     const a = document.createElement("a");
@@ -361,6 +386,8 @@ export default function App() {
       } else if (mod && (e.key.toLowerCase() === "y" || (e.key.toLowerCase() === "z" && e.shiftKey)) && !editing) {
         e.preventDefault();
         redo();
+      } else if (view !== "gantt") {
+        // Görev kısayolları yalnızca Gantt görünümünde
       } else if (e.altKey && e.shiftKey && e.key === "ArrowRight") {
         e.preventDefault();
         shiftOutline(1);
@@ -380,7 +407,7 @@ export default function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [deleteSelected, insertTask, linkSelected, redo, shiftOutline, undo]);
+  }, [deleteSelected, insertTask, linkSelected, redo, shiftOutline, undo, view]);
 
   // --- Kaydırma eşitleme ---
   const syncing = useRef(false);
@@ -435,6 +462,7 @@ export default function App() {
     });
     return total ? Math.round((done / total) * 100) : 0;
   }, [project.tasks, schedule]);
+  const totalCost = usage.reduce((s, u) => s + u.cost, 0);
   const criticalCount = schedule.rows.filter((r) => !r.isSummary && r.critical).length;
   const hasSel = selection.size > 0;
 
@@ -484,6 +512,12 @@ export default function App() {
               %{progress}
             </span>
           </div>
+          {totalCost > 0 && (
+            <div className="stat">
+              <span className="stat-label">Maliyet</span>
+              <span className="stat-value">{formatMoney(totalCost)}</span>
+            </div>
+          )}
           <div className="stat crit">
             <span className="stat-label">Kritik</span>
             <span className="stat-value">{criticalCount} görev</span>
@@ -567,8 +601,26 @@ export default function App() {
           />
         </div>
         <div className="toolbar-end">
+          <div className="segmented views" role="tablist" aria-label="Görünüm">
+            {(
+              [
+                ["gantt", "gantt", "Gantt"],
+                ["resources", "users", "Kaynaklar"],
+                ["charts", "chart", "Grafikler"],
+              ] as [View, IconName, string][]
+            ).map(([v, icon, label]) => (
+              <button key={v} role="tab" aria-selected={view === v} className={view === v ? "on" : ""} onClick={() => setView(v)}>
+                <Icon name={icon} size={15} />
+                {label}
+                {v === "resources" && usage.some((u) => u.overDays.length) && <i className="dot-alert" aria-label="aşırı yük var" />}
+              </button>
+            ))}
+          </div>
           <ToolButton icon="calendar" label="Takvim" onClick={() => setCalendarOpen(true)} title="Tatil günlerini düzenle" />
-          <ToolButton icon="target" label="Bugün" onClick={() => scrollToDate(today)} title="Gantt'ı bugüne kaydır" />
+          {view === "gantt" && (
+            <ToolButton icon="target" label="Bugün" onClick={() => scrollToDate(today)} title="Gantt'ı bugüne kaydır" />
+          )}
+          {view === "gantt" && (
           <div className="segmented" role="radiogroup" aria-label="Zaman ölçeği">
             {(["day", "week", "month"] as Zoom[]).map((z) => (
               <button key={z} role="radio" aria-checked={zoom === z} className={zoom === z ? "on" : ""} onClick={() => setZoom(z)}>
@@ -576,10 +628,34 @@ export default function App() {
               </button>
             ))}
           </div>
+          )}
         </div>
       </nav>
 
-      <main className="workspace">
+      {view === "resources" && (
+        <ResourceView
+          project={project}
+          schedule={schedule}
+          usage={usage}
+          selected={pickedResource}
+          onSelect={setPickedResource}
+          update={update}
+          flash={flash}
+        />
+      )}
+      {view === "charts" && (
+        <ChartsView
+          project={project}
+          schedule={schedule}
+          usage={usage}
+          today={today}
+          onPickResource={(id) => {
+            setPickedResource(id);
+            setView("resources");
+          }}
+        />
+      )}
+      <main className="workspace" hidden={view !== "gantt"}>
         <div style={{ width: gridWidth, flex: "none", display: "flex" }}>
           <TaskGrid
             rows={rows}
@@ -601,6 +677,7 @@ export default function App() {
             onStart={onStart}
             onPredecessors={onPredecessors}
             onPercent={onPercent}
+            onResources={onResources}
             onAddAtEnd={() => insertTask(false, true)}
           />
         </div>
@@ -633,7 +710,7 @@ export default function App() {
         <span>{leafCount} görev</span>
         <span className="legend">
           <i className="sw normal" /> Normal <i className="sw critical" /> Kritik yol <i className="sw summary" /> Özet
-          <i className="sw ms" /> Kilometre taşı
+          <i className="sw ms" /> Kilometre taşı <i className="sw over">!</i> Aşırı yüklü kaynak
         </span>
         {schedule.cycle.length > 0 && <span className="warn">Döngüsel bağ var: işaretli satırları kontrol edin</span>}
         <span className="spacer" />

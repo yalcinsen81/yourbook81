@@ -13,7 +13,10 @@ import { formatDate, isValidDate } from "../src/model/calendar";
 import { toMspXml } from "../src/model/mspXml";
 import {
   addTask,
+  deleteResource,
   deleteTask,
+  listResources,
+  setResource,
   linkTasks,
   listTasks,
   OpError,
@@ -22,6 +25,7 @@ import {
   unlinkTasks,
   updateTask,
 } from "../src/model/ops";
+import { progressCurves } from "../src/model/resources";
 import { emptyProject } from "../src/model/sample";
 import { schedule } from "../src/model/schedule";
 import { sanitizeProject } from "../src/model/storage";
@@ -70,15 +74,19 @@ function mutate(fn: (p: Project) => { project: Project; message: string }): Resu
 }
 
 const row = z.number().int().min(1).describe("Satır numarası (1'den başlar; get_tasks çıktısındaki row)");
+const resourcesArg = z
+  .string()
+  .optional()
+  .describe("Kaynak atamaları: 'Ali', 'Ali[50%]; Vinç', 'Kalıp ekibi[200%]'. Listede olmayan ad yeni kaynak olur.");
 const linkType = z.enum(["FS", "SS", "FF", "SF"]).describe("FS bitiş-başlangıç (varsayılan), SS, FF, SF");
 
-const server = new McpServer({ name: "proje-planlayici", version: "0.1.0" });
+const server = new McpServer({ name: "proje-planlayici", version: "0.2.0" });
 
 server.registerTool(
   "get_project_summary",
   {
     title: "Proje özeti",
-    description: "Projenin adı, başlangıç/bitiş tarihi, iş günü süresi, görev sayısı, kritik görev sayısı ve ilerleme yüzdesi.",
+    description: "Projenin adı, başlangıç/bitiş tarihi, iş günü süresi, görev sayısı, kritik görev sayısı, ilerleme yüzdesi, toplam maliyet ve aşırı yüklü kaynaklar.",
     inputSchema: {},
     annotations: { readOnlyHint: true },
   },
@@ -90,7 +98,8 @@ server.registerTool(
   {
     title: "Görevleri listele",
     description:
-      "Tüm görevleri zamanlanmış haliyle döner: satır, WBS, ad, düzey, süre (iş günü), başlangıç, bitiş, öncüller, yüzde, bolluk, kritik mi. " +
+      "Tüm görevleri zamanlanmış haliyle döner: satır, WBS, ad, düzey, süre (iş günü), başlangıç, bitiş, öncüller, yüzde, bolluk, kritik mi, " +
+      "kaynaklar, maliyet ve aşırı yüklü kaynak varsa overallocated. " +
       "Öncül yazımı: '2' (FS), '3SS', '4FS+2' (2 gün gecikme), '5FF-1'; birden çok için ';'.",
     inputSchema: { critical_only: z.boolean().optional().describe("Yalnızca kritik yoldaki görevler") },
     annotations: { readOnlyHint: true },
@@ -117,11 +126,13 @@ server.registerTool(
       predecessors: z.string().optional().describe("Örn. '3' ya da '3;5SS+2'"),
       percent: z.number().min(0).max(100).optional(),
       start_no_earlier_than: z.string().optional().describe("YYYY-AA-GG"),
+      resources: resourcesArg,
     },
   },
   async (a) =>
     mutate((p) => {
       const { project, row: r } = addTask(p, {
+        resources: a.resources,
         name: a.name,
         duration: a.duration,
         parentRow: a.parent_row,
@@ -140,7 +151,7 @@ server.registerTool(
     title: "Görevi güncelle",
     description:
       "Görevin adını, süresini, öncüllerini (tamamen değiştirir; boş metin hepsini siler), yüzdesini ya da başlangıç kısıtını değiştirir. " +
-      "start_no_earlier_than için boş metin kısıtı kaldırır.",
+      "start_no_earlier_than için boş metin kısıtı kaldırır. resources atamaları tamamen değiştirir; boş metin hepsini kaldırır.",
     inputSchema: {
       row,
       name: z.string().optional(),
@@ -148,11 +159,13 @@ server.registerTool(
       predecessors: z.string().optional(),
       percent: z.number().min(0).max(100).optional(),
       start_no_earlier_than: z.string().optional(),
+      resources: resourcesArg,
     },
   },
   async (a) =>
     mutate((p) => ({
       project: updateTask(p, a.row, {
+        resources: a.resources,
         name: a.name,
         duration: a.duration,
         predecessors: a.predecessors,
@@ -224,6 +237,85 @@ server.registerTool(
     mutate((p) => {
       if (a.start !== undefined && !isValidDate(a.start)) throw new OpError(`Geçersiz tarih: ${a.start}`);
       return { project: { ...p, name: a.name ?? p.name, start: a.start ?? p.start }, message: "Proje güncellendi." };
+    }),
+);
+
+server.registerTool(
+  "list_resources",
+  {
+    title: "Kaynakları listele",
+    description:
+      "Kaynaklar: kapasite (%), günlük ücret, toplam iş (adam-gün), maliyet, en yüksek yük ve kapasitenin aşıldığı tarih aralıkları " +
+      "ile o günlerde çalışan görevlerin satırları. Aşırı yükü çözmek için görevi kaydırabilir (start_no_earlier_than), birimi düşürebilir ya da kapasiteyi artırabilirsin.",
+    inputSchema: {},
+    annotations: { readOnlyHint: true },
+  },
+  async () => run(() => listResources(load())),
+);
+
+server.registerTool(
+  "set_resource",
+  {
+    title: "Kaynak ekle / güncelle",
+    description: "Adına göre kaynağı günceller, yoksa ekler. max_units kapasite yüzdesi (100 = bir kişi, 300 = üç kişilik ekip), rate %100 birimde günlük ücret (₺).",
+    inputSchema: {
+      name: z.string().min(1),
+      new_name: z.string().optional().describe("Yeniden adlandırmak için"),
+      max_units: z.number().min(1).optional(),
+      rate: z.number().min(0).optional(),
+    },
+  },
+  async (a) =>
+    mutate((p) => {
+      const { project, created } = setResource(p, { name: a.name, newName: a.new_name, maxUnits: a.max_units, rate: a.rate });
+      return { project, message: created ? `"${a.name}" kaynağı eklendi.` : `"${a.name}" kaynağı güncellendi.` };
+    }),
+);
+
+server.registerTool(
+  "delete_resource",
+  {
+    title: "Kaynağı sil",
+    description: "Kaynağı ve görevlerdeki atamalarını siler.",
+    inputSchema: { name: z.string().min(1) },
+    annotations: { destructiveHint: true },
+  },
+  async (a) =>
+    mutate((p) => {
+      const { project, unassigned } = deleteResource(p, a.name);
+      return { project, message: `"${a.name}" silindi; ${unassigned} görevden ataması kaldırıldı.` };
+    }),
+);
+
+server.registerTool(
+  "get_progress_curve",
+  {
+    title: "S eğrisi ve maliyet eğrisi",
+    description:
+      "Planlanan kümülatif ilerleme (%) ve maliyet; haftalık örneklenmiş. Ayrıca bugüne planlanan ile girilen % tamamlanmalara göre gerçekleşen ilerleme ve kazanılan değer.",
+    inputSchema: { today: z.string().optional().describe("YYYY-AA-GG; varsayılan bugün") },
+    annotations: { readOnlyHint: true },
+  },
+  async (a) =>
+    run(() => {
+      const p = load();
+      const s = schedule(p);
+      const today = a.today && isValidDate(a.today) ? a.today : formatDate(new Date());
+      const c = progressCurves(p, s, today);
+      const at = Math.min(Math.max(c.todayDay, -1), s.finish - 1);
+      const plannedToday = at < 0 ? 0 : c.points[at + 1]?.planned ?? 0;
+      const plannedCostToday = at < 0 ? 0 : c.points[at + 1]?.cost ?? 0;
+      // Haftalık (5 iş günü) örnek, son nokta her zaman dahil
+      const weekly = c.points.filter((_, i) => i % 5 === 0 || i === c.points.length - 1);
+      return {
+        today,
+        totalCost: Math.round(c.totalCost),
+        plannedPercentToday: Math.round(plannedToday * 10) / 10,
+        actualPercent: Math.round(c.earnedPercent * 10) / 10,
+        plannedCostToday: Math.round(plannedCostToday),
+        earnedValue: Math.round(c.earnedCost),
+        curve: weekly.map((x) => ({ date: x.date, plannedPercent: Math.round(x.planned * 10) / 10, plannedCost: Math.round(x.cost) })),
+      };
     }),
 );
 

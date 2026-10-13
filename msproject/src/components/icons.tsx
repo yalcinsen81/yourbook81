@@ -23,6 +23,9 @@ const PATHS = {
   sun: "M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4",
   plug: "M9 2v6M15 2v6M6 8h12v4a6 6 0 0 1-12 0zM12 18v4",
   chevron: "M9 6l6 6-6 6",
+  users: "M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21v-1a6 6 0 0 1 12 0v1M16 3.5a4 4 0 0 1 0 7M22 21v-1a6 6 0 0 0-4-5.6",
+  chart: "M4 20V4M4 20h16M8 16l4-5 3 3 5-7",
+  gantt: "M4 6h9M7 12h10M10 18h10",
 } as const;
 
 export type IconName = keyof typeof PATHS;

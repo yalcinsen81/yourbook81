@@ -174,7 +174,9 @@ export function Gantt(props: Props) {
             const g = geo.get(r.task.id)!;
             const top = g.y - BAR_H / 2;
             const sel = (e: MouseEvent) => onSelect(r.task.id, e);
-            const tip = `${r.task.name || "(adsız)"}\n${formatShort(r.sched.startDate)} – ${formatShort(r.sched.finishDate)} · ${r.sched.duration} g\nBolluk: ${r.sched.slack} g`;
+            const tip =
+              `${r.task.name || "(adsız)"}\n${formatShort(r.sched.startDate)} – ${formatShort(r.sched.finishDate)} · ${r.sched.duration} g\nBolluk: ${r.sched.slack} g` +
+              (r.resText ? `\nKaynaklar: ${r.resText}${r.overallocated ? " (aşırı yüklü)" : ""}` : "");
             if (r.sched.isSummary) {
               const w = Math.max(g.x2 - g.x1, 2);
               return (
@@ -245,9 +247,19 @@ export function Gantt(props: Props) {
                   <title>Süreyi değiştirmek için sürükleyin</title>
                 </rect>
                 <text x={g.x1 + w + 6} y={g.y + 4} className="bar-label">
-                  {drag?.id === r.task.id && snap !== 0
-                    ? `${snap > 0 ? "+" : ""}${snap} gün`
-                    : r.task.name}
+                  {drag?.id === r.task.id && snap !== 0 ? (
+                    `${snap > 0 ? "+" : ""}${snap} gün`
+                  ) : (
+                    <>
+                      {r.task.name}
+                      {r.resText && (
+                        <tspan dx={8} className={`res-label ${r.overallocated ? "over" : ""}`}>
+                          {r.overallocated ? "⚠ " : ""}
+                          {r.resText}
+                        </tspan>
+                      )}
+                    </>
+                  )}
                 </text>
               </g>
             );

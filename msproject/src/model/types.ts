@@ -23,6 +23,24 @@ export interface Task {
   startNoEarlierThan?: string;
   /** Tamamlanma yüzdesi 0–100. */
   percent: number;
+  /** Kaynak atamaları; özet görevlerde yok sayılır. */
+  assignments?: Assignment[];
+}
+
+/** İş kaynağı: kişi, ekip ya da makine. */
+export interface Resource {
+  id: string;
+  name: string;
+  /** Azami birim (%): 100 = bir kişi tam gün, 300 = üç kişilik ekip. */
+  maxUnits: number;
+  /** %100 birimde günlük ücret (₺/gün). */
+  rate: number;
+}
+
+export interface Assignment {
+  resourceId: string;
+  /** Göreve ayrılan birim (%): 50 = yarım gün. */
+  units: number;
 }
 
 export interface Project {
@@ -32,6 +50,7 @@ export interface Project {
   tasks: Task[];
   /** Çalışılmayan günler (resmî tatil vb.); hafta sonları zaten tatildir. */
   holidays: Holiday[];
+  resources: Resource[];
 }
 
 /** Hesaplanmış satır: zamanlama motorunun her görev için ürettiği sonuç. */

@@ -1,5 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { addTask, deleteTask, linkTasks, listTasks, OpError, projectSummary, shiftTask, unlinkTasks, updateTask } from "../ops";
+import {
+  addTask,
+  deleteResource,
+  deleteTask,
+  linkTasks,
+  listResources,
+  listTasks,
+  OpError,
+  projectSummary,
+  setResource,
+  shiftTask,
+  unlinkTasks,
+  updateTask,
+} from "../ops";
 import { emptyProject } from "../sample";
 import type { Project } from "../types";
 
@@ -64,5 +77,27 @@ describe("proje işlemleri (MCP)", () => {
     expect(() => updateTask(p, 1, { predecessors: "abc" })).toThrow(/Anlaşılamayan/);
     expect(() => addTask(p, { name: "C", startNoEarlierThan: "2026-13-01" })).toThrow(/Geçersiz tarih/);
     expect(() => shiftTask(p, 1, "out")).toThrow(OpError);
+  });
+
+  it("kaynak ekler, atar, aşırı yükü ve maliyeti bildirir", () => {
+    let p = base();
+    p = setResource(p, { name: "Ali", rate: 1000 }).project;
+    p = addTask(p, { name: "A", duration: 4, resources: "ali" }).project;
+    p = addTask(p, { name: "B", duration: 2, resources: "Ali[50%]; Usta" }).project;
+    expect(p.resources.map((r) => r.name)).toEqual(["Ali", "Usta"]);
+    const res = listResources(p);
+    expect(res[0]).toMatchObject({ peakPercent: 150, workPersonDays: 5, cost: 5000, overallocated: ["2026-10-12 – 2026-10-13"], overallocatedTaskRows: [1, 2] });
+    expect(listTasks(p)[1]).toMatchObject({ resources: "Ali[50%]; Usta", cost: 1000, overallocated: true });
+    expect(projectSummary(p)).toMatchObject({ totalCost: 5000, overallocatedResources: ["Ali"] });
+    p = setResource(p, { name: "ali", maxUnits: 200, newName: "Ali Usta" }).project;
+    expect(listResources(p)[0].overallocated).toEqual([]);
+    expect(() => setResource(p, { name: "Usta", newName: "ali usta" })).toThrow(/zaten var/);
+    expect(() => updateTask(p, 1, { resources: "Ali[0]" })).toThrow(/Anlaşılamayan kaynak/);
+    p = updateTask(p, 1, { resources: "" });
+    expect(p.tasks[0].assignments).toEqual([]);
+    const d = deleteResource(p, "usta");
+    expect(d.unassigned).toBe(1);
+    expect(d.project.tasks[1].assignments!.length).toBe(1);
+    expect(() => deleteResource(p, "Yok")).toThrow(OpError);
   });
 });
