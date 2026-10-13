@@ -6,7 +6,8 @@ if not exist node_modules (
   echo Ilk calistirma: gerekli paketler yukleniyor, birkac dakika surebilir...
   call npm install || (pause & exit /b 1)
 )
-echo Proje Planlayici aciliyor: http://localhost:5173
-echo Kapatmak icin bu pencereyi kapatin.
-call npx vite --open
+echo Proje Planlayici hazirlaniyor: http://localhost:5173
+echo Tarayicida adres cubugundaki "Yukle" simgesiyle ya da uygulamadaki "Uygulamayi yukle" dugmesiyle bilgisayara kurabilirsiniz.
+echo Kurduktan sonra bu pencereyi kapatabilirsiniz; uygulama internetsiz ve bu pencere olmadan da acilir.
+call npm start
 pause

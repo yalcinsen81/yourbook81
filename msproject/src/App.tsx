@@ -33,6 +33,7 @@ export default function App() {
   const [view, setView] = useState<View>("gantt");
   const [pickedResource, setPickedResource] = useState<string | null>(null);
   const [theme, setTheme] = useTheme();
+  const install = useInstallPrompt();
   const gridRef = useRef<HTMLDivElement>(null);
   const ganttRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -523,6 +524,18 @@ export default function App() {
             <span className="stat-value">{criticalCount} görev</span>
           </div>
         </div>
+        {install.available && (
+          <button className="chip install" onClick={install.prompt} title="Proje Planlayıcı'yı bilgisayara uygulama olarak yükle; internetsiz de açılır">
+            <Icon name="download" size={16} />
+            Uygulamayı yükle
+          </button>
+        )}
+        {fileLink.pendingName && !fileLink.fileName && (
+          <button className="chip reconnect" onClick={() => void fileLink.reconnect()} title="Önceki oturumda bağlı olan dosyaya yeniden bağlan">
+            <Icon name="plug" size={16} />
+            {fileLink.pendingName} · yeniden bağlan
+          </button>
+        )}
         <button
           className={`chip ${fileLink.fileName ? "linked" : ""}`}
           onClick={() => setLinkMenu((v) => !v)}
@@ -779,4 +792,34 @@ function useTheme(): [Theme, (t: Theme) => void] {
     }
   }, [theme]);
   return [theme, setTheme];
+}
+
+interface InstallEvent extends Event {
+  prompt(): Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+}
+
+/** Tarayıcının "uygulamayı yükle" önerisi (Chrome / Edge); yüklüyse ya da desteklenmiyorsa düğme çıkmaz */
+function useInstallPrompt() {
+  const [event, setEvent] = useState<InstallEvent | null>(null);
+  useEffect(() => {
+    const onPrompt = (e: Event) => {
+      e.preventDefault();
+      setEvent(e as InstallEvent);
+    };
+    const onInstalled = () => setEvent(null);
+    window.addEventListener("beforeinstallprompt", onPrompt);
+    window.addEventListener("appinstalled", onInstalled);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onPrompt);
+      window.removeEventListener("appinstalled", onInstalled);
+    };
+  }, []);
+  const prompt = useCallback(async () => {
+    if (!event) return;
+    await event.prompt();
+    await event.userChoice.catch(() => undefined);
+    setEvent(null);
+  }, [event]);
+  return { available: !!event, prompt };
 }

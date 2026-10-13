@@ -1293,3 +1293,17 @@ button {
   height: 14px;
   margin-inline-start: 6px;
 }
+
+/* Kurulum ve yeniden bağlanma düğmeleri */
+.chip.install {
+  border-style: solid;
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.chip.reconnect {
+  border-style: solid;
+  border-color: var(--crit);
+  color: var(--crit);
+  background: var(--holiday);
+}

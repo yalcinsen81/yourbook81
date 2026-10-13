@@ -25,14 +25,22 @@ veri tarayıcıda (localStorage) otomatik saklanır, JSON olarak indirilip geri 
 
 Takvim: Pazartesi–Cuma iş günü, projeye tanımlı tatiller hariç.
 
-## Bilgisayara kurulum
+## Bilgisayara kurulum (uygulama olarak)
 
-1. [nodejs.org](https://nodejs.org) adresinden Node.js'in **LTS** sürümünü kurun (bir kez).
+Proje Planlayıcı kurulabilir bir web uygulamasıdır (PWA): bir kez kurulunca kendi penceresinde, internetsiz ve
+sunucu çalıştırmadan açılır.
+
+1. [nodejs.org](https://nodejs.org) adresinden Node.js'in **LTS** sürümünü kurun (bir kez; Claude bağlantısı için de gerekir).
 2. Kodu indirip bir klasöre açın (ör. `C:\Projeler`).
-3. `msproject` klasöründeki **Baslat.bat** dosyasına çift tıklayın (macOS'ta `baslat.command`). İlk açılışta
-   paketler yüklenir; sonra uygulama tarayıcıda `http://localhost:5173` adresinde açılır. Pencere açık kaldıkça çalışır.
+3. `msproject` klasöründeki **Baslat.bat** dosyasına çift tıklayın (macOS'ta `baslat.command`). İlk açılışta paketler
+   yüklenir, uygulama derlenir ve Chrome/Edge'de `http://localhost:5173` adresinde açılır.
+4. Üstteki **Uygulamayı yükle** düğmesine (ya da adres çubuğundaki yükle simgesine) tıklayın. Uygulama Başlat menüsüne ve
+   masaüstüne eklenir. Artık siyah pencereyi kapatabilirsiniz.
+5. **Dosyaya bağla** ile projeyi bir `.json` dosyasına bağlayın ve Claude'u aynı dosyaya bağlayın (aşağıda). Uygulama bağlı
+   dosyayı hatırlar: sonraki açılışlarda kendiliğinden ya da tek tıkla ("yeniden bağlan") aynı dosyaya döner.
 
-Veriler tarayıcıda saklanır. Kalıcı bir dosyada tutmak ve Claude'la paylaşmak için **Dosyaya bağla** kullanın (Chrome/Edge).
+Yeni bir sürüm indirdiğinizde Baslat.bat'ı bir kez çalıştırıp uygulamayı açmanız yeterlidir; güncelleme kendiliğinden alınır.
+Veriler `localhost:5173` adresine bağlı saklanır; bu yüzden adres sabittir.
 
 ## Geliştirme
 ```

@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { clearHandle, loadHandle, saveHandle } from "./handleStore";
 import { sanitizeProject } from "./model/storage";
 import type { Project } from "./model/types";
 
 // Projeyi diskteki bir .json dosyasına bağlar (File System Access API; Chrome / Edge).
 // Bağlıyken her değişiklik dosyaya yazılır; dosya dışarıdan (ör. Claude'un MCP sunucusu) değişirse uygulamaya yüklenir.
+// Bağlı dosya hatırlanır: açılışta izin hâlâ varsa kendiliğinden, yoksa tek tıkla ("yeniden bağlan") aynı dosyaya dönülür.
 
 interface FileHandle {
   name: string;
@@ -29,6 +31,8 @@ export function serializeProject(project: Project): string {
 
 export function useFileLink(project: Project, replace: (p: Project) => void, notify: (text: string) => void) {
   const [handle, setHandle] = useState<FileHandle | null>(null);
+  /** Önceki oturumdan hatırlanan, izni yenilenmeyi bekleyen dosya */
+  const [pending, setPending] = useState<FileHandle | null>(null);
   const lastText = useRef<string>("");
   const lastModified = useRef(0);
   const writing = useRef(false);
@@ -46,29 +50,77 @@ export function useFileLink(project: Project, replace: (p: Project) => void, not
     }
   }, []);
 
+  /** Dosyayı bağla: dosyadaki proje yüklenir (dosya boşsa mevcut proje yazılır). */
+  const attach = useCallback(
+    async (h: FileHandle) => {
+      const file = await h.getFile();
+      const text = await file.text();
+      const parsed = text.trim() ? sanitizeProject(JSON.parse(text)) : null;
+      if (text.trim() && !parsed) throw new Error("invalid");
+      if (parsed) {
+        replace(parsed);
+        lastText.current = serializeProject(parsed);
+        lastModified.current = file.lastModified;
+      } else {
+        await write(h, serializeProject(project));
+      }
+      setHandle(h);
+      setPending(null);
+      void saveHandle(h);
+    },
+    [project, replace, write],
+  );
+
   /** Var olan dosyayı aç ve bağla: dosyadaki proje yüklenir. */
   const linkExisting = useCallback(async () => {
     const w = window as PickerWindow;
     try {
       const [h] = await w.showOpenFilePicker!({ types: PICKER_TYPES, multiple: false });
       if (h.requestPermission && (await h.requestPermission({ mode: "readwrite" })) !== "granted") return;
-      const file = await h.getFile();
-      const text = await file.text();
-      const parsed = text.trim() ? sanitizeProject(JSON.parse(text)) : null;
-      if (parsed) {
-        replace(parsed);
-        lastText.current = serializeProject(parsed);
-        lastModified.current = file.lastModified;
-      } else {
-        // Boş dosya: mevcut proje yazılır
-        await write(h, serializeProject(project));
-      }
-      setHandle(h);
+      await attach(h);
       notify(`"${h.name}" dosyasına bağlandı. Değişiklikler otomatik kaydedilir.`);
     } catch (e) {
       if ((e as Error)?.name !== "AbortError") notify("Dosya açılamadı ya da geçerli bir proje dosyası değil.");
     }
-  }, [notify, project, replace, write]);
+  }, [attach, notify]);
+
+  /** Hatırlanan dosyaya yeniden bağlan (izin istemi kullanıcı tıklamasıyla açılmalı). */
+  const reconnect = useCallback(async () => {
+    if (!pending) return;
+    try {
+      if (pending.requestPermission && (await pending.requestPermission({ mode: "readwrite" })) !== "granted") return;
+      await attach(pending);
+      notify(`"${pending.name}" dosyasına yeniden bağlandı.`);
+    } catch {
+      setPending(null);
+      void clearHandle();
+      notify(`"${pending.name}" açılamadı (taşınmış ya da silinmiş olabilir). "Dosyaya bağla" ile yeniden seçin.`);
+    }
+  }, [attach, notify, pending]);
+
+  // Açılışta hatırlanan dosya: izin sürüyorsa hemen bağlan, yoksa "yeniden bağlan" düğmesi gösterilir
+  const restored = useRef(false);
+  useEffect(() => {
+    if (restored.current || !fileLinkSupported) return;
+    restored.current = true;
+    void (async () => {
+      const h = await loadHandle<FileHandle>();
+      if (!h) return;
+      const state = h.queryPermission ? await h.queryPermission({ mode: "readwrite" }).catch(() => "prompt" as const) : "prompt";
+      if (state === "granted") {
+        try {
+          await attach(h);
+          notify(`"${h.name}" dosyasına bağlı: Claude'un değişiklikleri burada görünür.`);
+          return;
+        } catch {
+          // dosya yok: aşağıda yeniden bağlan önerilir
+        }
+      }
+      setPending(h);
+    })();
+    // Yalnızca ilk açılışta
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /** Mevcut projeyi yeni bir dosyaya kaydet ve bağla. */
   const linkNew = useCallback(async () => {
@@ -77,6 +129,8 @@ export function useFileLink(project: Project, replace: (p: Project) => void, not
       const h = await w.showSaveFilePicker!({ types: PICKER_TYPES, suggestedName: "proje.json" });
       await write(h, serializeProject(project));
       setHandle(h);
+      setPending(null);
+      void saveHandle(h);
       notify(`"${h.name}" oluşturuldu ve bağlandı.`);
     } catch (e) {
       if ((e as Error)?.name !== "AbortError") notify("Dosya oluşturulamadı.");
@@ -85,6 +139,8 @@ export function useFileLink(project: Project, replace: (p: Project) => void, not
 
   const unlink = useCallback(() => {
     setHandle(null);
+    setPending(null);
+    void clearHandle();
     notify("Dosya bağlantısı kaldırıldı; proje tarayıcıda saklanmaya devam ediyor.");
   }, [notify]);
 
@@ -94,7 +150,12 @@ export function useFileLink(project: Project, replace: (p: Project) => void, not
     const text = serializeProject(project);
     if (text === lastText.current) return;
     const t = window.setTimeout(() => {
-      write(handle, text).catch(() => notify("Dosyaya yazılamadı; bağlantı kaldırıldı."));
+      write(handle, text).catch(() => {
+        // İzin geri alındı ya da dosya kayboldu: bağlantı askıya alınır, tek tıkla yeniden bağlanılır
+        setHandle(null);
+        setPending(handle);
+        notify(`"${handle.name}" dosyasına yazılamadı. Yeniden bağlanmak için üstteki düğmeye tıklayın.`);
+      });
     }, 400);
     return () => window.clearTimeout(t);
   }, [handle, notify, project, write]);
@@ -125,5 +186,5 @@ export function useFileLink(project: Project, replace: (p: Project) => void, not
     return () => window.clearInterval(timer);
   }, [handle, notify, replace]);
 
-  return { fileName: handle?.name ?? null, linkExisting, linkNew, unlink };
+  return { fileName: handle?.name ?? null, pendingName: pending?.name ?? null, linkExisting, linkNew, unlink, reconnect };
 }

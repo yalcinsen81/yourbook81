@@ -6,5 +6,6 @@ if ! command -v node >/dev/null 2>&1; then
   exit 1
 fi
 [ -d node_modules ] || npm install || exit 1
-echo "Proje Planlayıcı açılıyor: http://localhost:5173 (kapatmak için Ctrl+C)"
-exec npx vite --open
+echo "Proje Planlayıcı açılıyor: http://localhost:5173"
+echo "Chrome/Edge'de 'Uygulamayı yükle' ile kurduktan sonra bu pencereyi kapatabilirsiniz (Ctrl+C)."
+exec npm start

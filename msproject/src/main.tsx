@@ -8,3 +8,12 @@ createRoot(document.getElementById("root")!).render(
     <App />
   </StrictMode>,
 );
+
+// Kurulabilir uygulama (PWA): derlenmiş sürümde service worker çevrimdışı açılışı sağlar
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch(() => {
+      // Desteklenmiyor ya da güvenli olmayan adres: uygulama yine çalışır
+    });
+  });
+}
