@@ -25,6 +25,15 @@ veri tarayıcıda (localStorage) otomatik saklanır, JSON olarak indirilip geri 
 
 Takvim: Pazartesi–Cuma iş günü, projeye tanımlı tatiller hariç.
 
+## Bilgisayara kurulum
+
+1. [nodejs.org](https://nodejs.org) adresinden Node.js'in **LTS** sürümünü kurun (bir kez).
+2. Kodu indirip bir klasöre açın (ör. `C:\Projeler`).
+3. `msproject` klasöründeki **Baslat.bat** dosyasına çift tıklayın (macOS'ta `baslat.command`). İlk açılışta
+   paketler yüklenir; sonra uygulama tarayıcıda `http://localhost:5173` adresinde açılır. Pencere açık kaldıkça çalışır.
+
+Veriler tarayıcıda saklanır. Kalıcı bir dosyada tutmak ve Claude'la paylaşmak için **Dosyaya bağla** kullanın (Chrome/Edge).
+
 ## Geliştirme
 ```
 cd msproject
