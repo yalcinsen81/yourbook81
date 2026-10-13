@@ -66,6 +66,13 @@ okur ve düzenler: görev ekler, siler, girintiler, bağlar, tatil tanımlar, ka
 okur, MS Project XML'ine aktarır.
 Çalıştırmak için yalnızca Node 20 veya üzeri gerekir; `npm install` yapmanız gerekmez.
 
+**En kolay yol (Claude Desktop eklentisi):** `mcp/dist/proje-planlayici.mcpb` dosyasına çift tıklayın (ya da Claude Desktop'ta
+Ayarlar > Uzantılar'a sürükleyin) ve **Yükle** deyin. Node kurmanız gerekmez; Claude Desktop kendi Node'unu kullanır. Proje dosyası
+varsayılan olarak `Belgeler/Proje Planlayici/proje.json` olur (kurulumda değiştirebilirsiniz) ve yoksa oluşturulur. Uygulamada
+**Dosyaya bağla > Var olan dosyayı aç ve bağla** ile bu dosyayı seçin. Eklentiyi yeniden üretmek için `npm run build:mcpb`.
+
+Elle yapılandırmak isterseniz:
+
 **Claude Desktop:** Ayarlar > Geliştirici > Yapılandırmayı düzenle ile `claude_desktop_config.json` dosyasını açıp şunu ekleyin:
 
 ```json

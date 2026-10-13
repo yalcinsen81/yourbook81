@@ -6,8 +6,9 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import { z } from "zod";
 import { formatDate, isValidDate } from "../src/model/calendar";
 import { toMspXml } from "../src/model/mspXml";
@@ -31,7 +32,17 @@ import { schedule } from "../src/model/schedule";
 import { sanitizeProject } from "../src/model/storage";
 import type { Project } from "../src/model/types";
 
-const file = resolve(process.argv[2] ?? process.env.MSPROJECT_FILE ?? "proje.json");
+/** "~", ${HOME}, ${DOCUMENTS}, ${DESKTOP} kısaltmalarını açar (Claude Desktop eklentisinin varsayılan yolu bunları içerir) */
+function expandPath(p: string): string {
+  const home = homedir();
+  return p
+    .replace(/^~(?=$|[\\/])/, home)
+    .replace(/\$\{HOME\}/g, home)
+    .replace(/\$\{DOCUMENTS\}/g, join(home, "Documents"))
+    .replace(/\$\{DESKTOP\}/g, join(home, "Desktop"));
+}
+
+const file = resolve(expandPath(process.argv[2] || process.env.MSPROJECT_FILE || "proje.json"));
 
 function load(): Project {
   if (!existsSync(file)) return emptyProject(formatDate(new Date()));
@@ -43,6 +54,7 @@ function load(): Project {
 }
 
 function save(p: Project): void {
+  mkdirSync(dirname(file), { recursive: true });
   // Önce geçici dosyaya yaz, sonra taşı: uygulama yarım dosya okumasın
   const tmp = `${file}.tmp`;
   writeFileSync(tmp, JSON.stringify(p, null, 2), "utf8");
@@ -362,6 +374,13 @@ server.registerTool(
       return `MS Project XML yazıldı: ${target}`;
     }),
 );
+
+// Dosya yoksa boş proje olarak oluşturulur: uygulamada "Dosyaya bağla" ile hemen açılabilsin
+try {
+  if (!existsSync(file)) save(emptyProject(formatDate(new Date())));
+} catch (e) {
+  console.error(`Proje dosyası oluşturulamadı (${file}): ${(e as Error).message}`);
+}
 
 await server.connect(new StdioServerTransport());
 console.error(`proje-planlayici MCP hazır: ${file}`);
