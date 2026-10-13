@@ -1,2 +1,5 @@
 node_modules
-dist
+/dist
+mcp/.mcpb-stage
+# Kökteki "dist" kuralına rağmen MCP sunucusu ve Claude Desktop eklentisi depoda olmalı
+!mcp/dist/
