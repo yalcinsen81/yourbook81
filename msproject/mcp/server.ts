@@ -31,9 +31,11 @@ import {
 import { curveSamples, plannedAt, progressCurves, projectWeight } from "../src/model/resources";
 import { emptyProject } from "../src/model/sample";
 import { schedule } from "../src/model/schedule";
-import { needsUpgradeBackup, sanitizeProject } from "../src/model/storage";
+import { CONSTRAINT_TYPES, needsUpgradeBackup, sanitizeProject } from "../src/model/storage";
+import { baselineVariance, clearBaseline, getBaseline, saveBaseline } from "../src/model/baseline";
+import { clearLeveling, overallocations, proposeLeveling } from "../src/model/leveling";
 import { detectLang, setLocale, t } from "../src/i18n";
-import type { Project } from "../src/model/types";
+import { BASELINE_SLOTS, type Project } from "../src/model/types";
 
 /** "~", ${HOME}, ${DOCUMENTS}, ${DESKTOP} kısaltmalarını açar (Claude Desktop eklentisinin varsayılan yolu bunları içerir) */
 function expandPath(p: string): string {
@@ -107,8 +109,22 @@ const resourcesArg = z
   .optional()
   .describe("Kaynak atamaları: 'Ali', 'Ali[50%]; Vinç', 'Kalıp ekibi[200%]'. Listede olmayan ad yeni kaynak olur.");
 const linkType = z.enum(["FS", "SS", "FF", "SF"]).describe("FS bitiş-başlangıç (varsayılan), SS, FF, SF");
+const constraintArgs = {
+  constraint_type: z
+    .enum(CONSTRAINT_TYPES as [string, ...string[]])
+    .optional()
+    .describe(
+      "Kısıt: ASAP (varsayılan), ALAP (olabildiğince geç), SNET (şu tarihten önce başlamasın), SNLT (şu tarihten geç başlamasın), " +
+        "MSO (şu tarihte başlamalı), MFO (şu tarihte bitmeli), FNET (şu tarihten önce bitmesin), FNLT (şu tarihten geç bitmesin)",
+    ),
+  constraint_date: z.string().optional().describe("Kısıt tarihi YYYY-AA-GG (ASAP/ALAP dışındakiler için gerekli)"),
+  deadline: z.string().optional().describe("Son tarih YYYY-AA-GG; aşılırsa uyarı. Boş metin kaldırır."),
+  fixed_cost: z.number().min(0).optional().describe("Kaynaktan bağımsız sabit maliyet; 0 kaldırır"),
+  cost_accrual: z.enum(["prorated", "start", "end"]).optional().describe("Maliyet dağılımı: eşit (varsayılan), başta, sonda"),
+};
+const dateRange = z.object({ from: z.string(), to: z.string(), name: z.string().optional() });
 
-const server = new McpServer({ name: "proje-planlayici", version: "0.5.0" });
+const server = new McpServer({ name: "proje-planlayici", version: "0.6.0" });
 
 server.registerTool(
   "get_project_summary",
@@ -153,13 +169,19 @@ server.registerTool(
       after_row: row.optional(),
       predecessors: z.string().optional().describe("Örn. '3' ya da '3;5SS+2'"),
       percent: z.number().min(0).max(100).optional(),
-      start_no_earlier_than: z.string().optional().describe("YYYY-AA-GG"),
+      start_no_earlier_than: z.string().optional().describe("YYYY-AA-GG (SNET kısıtının kısa yolu)"),
+      ...constraintArgs,
       resources: resourcesArg,
     },
   },
   async (a) =>
     mutate((p) => {
       const { project, row: r } = addTask(p, {
+        constraintType: a.constraint_type,
+        constraintDate: a.constraint_date,
+        deadline: a.deadline,
+        fixedCost: a.fixed_cost,
+        costAccrual: a.cost_accrual,
         resources: a.resources,
         name: a.name,
         duration: a.duration,
@@ -178,8 +200,10 @@ server.registerTool(
   {
     title: "Görevi güncelle",
     description:
-      "Görevin adını, süresini, öncüllerini (tamamen değiştirir; boş metin hepsini siler), yüzdesini ya da başlangıç kısıtını değiştirir. " +
-      "start_no_earlier_than için boş metin kısıtı kaldırır. resources atamaları tamamen değiştirir; boş metin hepsini kaldırır.",
+      "Görevin adını, süresini, öncüllerini (tamamen değiştirir; boş metin hepsini siler), yüzdesini, kısıtını, son tarihini, " +
+      "gerçekleşen tarihlerini, kalan süresini, sabit maliyetini ya da çalışılamayan dönemlerini değiştirir. " +
+      "start_no_earlier_than için boş metin kısıtı kaldırır. resources atamaları tamamen değiştirir; boş metin hepsini kaldırır. " +
+      "Yüzde girilince gerçekleşen başlangıç (ve %100'de bitiş) MS Project'teki gibi planlanan tarihle dolar; gerçekleşen başlangıçlı görev o tarihe sabitlenir.",
     inputSchema: {
       row,
       name: z.string().optional(),
@@ -187,12 +211,26 @@ server.registerTool(
       predecessors: z.string().optional(),
       percent: z.number().min(0).max(100).optional(),
       start_no_earlier_than: z.string().optional(),
+      ...constraintArgs,
+      actual_start: z.string().optional().describe("Gerçekleşen başlangıç YYYY-AA-GG; boş metin kaldırır (yüzde 0 olur)"),
+      actual_finish: z.string().optional().describe("Gerçekleşen bitiş: görev %100 olur, süre gerçek tarihlere göre ayarlanır"),
+      remaining_duration: z.number().min(0).optional().describe("Kalan süre (iş günü): süre = gerçekleşen + kalan"),
+      blackouts: z.array(z.string()).optional().describe("Uygulanacak çalışılamayan dönemlerin adları (listeyi değiştirir; [] kaldırır)"),
       resources: resourcesArg,
     },
   },
   async (a) =>
     mutate((p) => ({
       project: updateTask(p, a.row, {
+        constraintType: a.constraint_type,
+        constraintDate: a.constraint_date,
+        deadline: a.deadline,
+        fixedCost: a.fixed_cost,
+        costAccrual: a.cost_accrual,
+        actualStart: a.actual_start,
+        actualFinish: a.actual_finish,
+        remainingDuration: a.remaining_duration,
+        blackouts: a.blackouts,
         resources: a.resources,
         name: a.name,
         duration: a.duration,
@@ -274,7 +312,7 @@ server.registerTool(
     title: "Kaynakları listele",
     description:
       "Kaynaklar: kapasite (%), günlük ücret, toplam iş (adam-gün), maliyet, en yüksek yük ve kapasitenin aşıldığı tarih aralıkları " +
-      "ile o günlerde çalışan görevlerin satırları. Aşırı yükü çözmek için görevi kaydırabilir (start_no_earlier_than), birimi düşürebilir ya da kapasiteyi artırabilirsin.",
+      "ile o günlerde çalışan görevlerin satırları. Aşırı yükü çözmek için level_resources ile öneri al (önizleme), ya da görevi kaydır, birimi düşür, kapasiteyi artır.",
     inputSchema: {},
     annotations: { readOnlyHint: true },
   },
@@ -285,17 +323,36 @@ server.registerTool(
   "set_resource",
   {
     title: "Kaynak ekle / güncelle",
-    description: "Adına göre kaynağı günceller, yoksa ekler. max_units kapasite yüzdesi (100 = bir kişi, 300 = üç kişilik ekip), rate %100 birimde günlük ücret (₺).",
+    description:
+      "Adına göre kaynağı günceller, yoksa ekler. max_units kapasite yüzdesi (100 = bir kişi, 300 = üç kişilik ekip). " +
+      "type: work (işgücü), equipment (ekipman), material (malzeme; görevde 'Beton[12.5]' miktar yazılır, rate birim fiyattır). " +
+      "rate_type: day (gün başına, varsayılan), hour (saat başına), use (kullanım başına). " +
+      "workdays kaynağın kendi çalışma günleri (0 = pazar … 6 = cumartesi; [] proje takvimine döner); leaves izinler (listeyi değiştirir).",
     inputSchema: {
       name: z.string().min(1),
       new_name: z.string().optional().describe("Yeniden adlandırmak için"),
       max_units: z.number().min(1).optional(),
       rate: z.number().min(0).optional(),
+      type: z.enum(["work", "equipment", "material"]).optional(),
+      rate_type: z.enum(["day", "hour", "use"]).optional(),
+      unit_label: z.string().optional().describe("Malzeme birimi (m³, ton …)"),
+      workdays: z.array(z.number().int().min(0).max(6)).optional(),
+      leaves: z.array(dateRange).optional().describe("İzin aralıkları [{from, to, name?}] YYYY-AA-GG"),
     },
   },
   async (a) =>
     mutate((p) => {
-      const { project, created } = setResource(p, { name: a.name, newName: a.new_name, maxUnits: a.max_units, rate: a.rate });
+      const { project, created } = setResource(p, {
+        name: a.name,
+        newName: a.new_name,
+        maxUnits: a.max_units,
+        rate: a.rate,
+        type: a.type,
+        rateType: a.rate_type,
+        unitLabel: a.unit_label,
+        workdays: a.workdays,
+        leaves: a.leaves,
+      });
       return { project, message: created ? `"${a.name}" kaynağı eklendi.` : `"${a.name}" kaynağı güncellendi.` };
     }),
 );
@@ -366,22 +423,28 @@ server.registerTool(
   {
     title: "Proje takvimi ayarları",
     description:
-      "Haftanın çalışılan günlerini ve/veya ilerleme ağırlığını değiştirir. workdays: 0 = pazar, 1 = pazartesi … 6 = cumartesi " +
-      "(ör. Pzt–Cmt için [1,2,3,4,5,6]).",
+      "Haftanın çalışılan günlerini, ilerleme ağırlığını, arifelerin yarım gün sayılmasını, genel gider yüzdesini ve saatlik ücret için " +
+      "günlük saati değiştirir. workdays: 0 = pazar, 1 = pazartesi … 6 = cumartesi (ör. Pzt–Cmt için [1,2,3,4,5,6]).",
     inputSchema: {
       workdays: z.array(z.number().int().min(0).max(6)).min(1).optional(),
       progress_weight: weightArg.optional(),
+      half_day_mode: z.enum(["full", "half"]).optional().describe("full: arife iş günü (yalnızca işaret); half: yarım gün kapasite"),
+      overhead_percent: z.number().min(0).max(1000).optional().describe("Görev maliyetlerine eklenen genel gider %"),
+      hours_per_day: z.number().min(0.5).max(24).optional().describe("Saatlik ücretli kaynaklar için günlük saat (varsayılan 8)"),
     },
   },
   async (a) =>
-    mutate((p) => ({
-      project: {
+    mutate((p) => {
+      const next: Project = {
         ...p,
         ...(a.workdays ? { workdays: normalizeWorkdays(a.workdays) } : {}),
         ...(a.progress_weight ? { progressWeight: a.progress_weight } : {}),
-      },
-      message: "Takvim ayarları güncellendi.",
-    })),
+        ...(a.half_day_mode ? { halfDayMode: a.half_day_mode } : {}),
+        ...(a.overhead_percent !== undefined ? { overheadPercent: a.overhead_percent } : {}),
+        ...(a.hours_per_day !== undefined ? { hoursPerDay: a.hours_per_day } : {}),
+      };
+      return { project: next, message: "Takvim ayarları güncellendi." };
+    }),
 );
 
 server.registerTool(
@@ -431,12 +494,13 @@ server.registerTool(
   "set_holiday",
   {
     title: "Tatil ekle / kaldır",
-    description: "Tarihi tatil olarak ekler (remove=true ise kaldırır). Görevler tam gün tatilleri atlar; half_day yalnızca işarettir.",
+    description:
+      "Tarihi tatil olarak ekler (remove=true ise kaldırır). Görevler tam gün tatilleri atlar; half_day (arife) set_calendar half_day_mode=half ise yarım gün sayılır, değilse yalnızca işarettir.",
     inputSchema: {
       date: z.string().describe("YYYY-AA-GG"),
       name: z.string().optional(),
       remove: z.boolean().optional(),
-      half_day: z.boolean().optional().describe("Yarım gün (arife): iş günü sayılır, takvimde işaretlenir"),
+      half_day: z.boolean().optional().describe("Yarım gün (arife)"),
     },
   },
   async (a) =>
@@ -447,6 +511,130 @@ server.registerTool(
       holidays.sort((x, y) => x.date.localeCompare(y.date));
       return { project: { ...p, holidays }, message: a.remove ? `${a.date} tatilden çıkarıldı.` : `${a.date} tatil olarak eklendi.` };
     }),
+);
+
+server.registerTool(
+  "set_blackout",
+  {
+    title: "Çalışılamayan dönem",
+    description:
+      "Adlı çalışılamayan dönem ekler/günceller (ör. 'Kış' 2026-12-15 – 2027-02-28; dış işler durur) ya da remove=true ile siler. " +
+      "Dönem yalnızca update_task blackouts ile seçilen görevlere uygulanır.",
+    inputSchema: { name: z.string().min(1), from: z.string().optional(), to: z.string().optional(), remove: z.boolean().optional() },
+  },
+  async (a) =>
+    mutate((p) => {
+      const list = p.blackouts ?? [];
+      const key = a.name.trim().toLocaleLowerCase("tr");
+      const existing = list.find((b) => b.name.toLocaleLowerCase("tr") === key);
+      if (a.remove) {
+        if (!existing) throw new OpError(t("err.noBlackout", { name: a.name }));
+        const blackouts = list.filter((b) => b !== existing);
+        const tasks = p.tasks.map((x) => (x.blackouts?.includes(existing.id) ? { ...x, blackouts: x.blackouts.filter((id) => id !== existing.id) } : x));
+        return { project: { ...p, blackouts, tasks }, message: `"${a.name}" dönemi silindi.` };
+      }
+      if (!a.from || !isValidDate(a.from) || (a.to !== undefined && !isValidDate(a.to))) throw new OpError(t("err.date", { date: `${a.from ?? ""} ${a.to ?? ""}`.trim(), pattern: "YYYY-MM-DD" }));
+      const to = a.to ?? a.from;
+      const [from, until] = a.from <= to ? [a.from, to] : [to, a.from];
+      let n = list.length + 1;
+      while (list.some((b) => b.id === `b${n}`)) n++;
+      const item = { id: existing?.id ?? `b${n}`, name: a.name.trim(), from, to: until };
+      return {
+        project: { ...p, blackouts: existing ? list.map((b) => (b === existing ? item : b)) : [...list, item] },
+        message: `"${a.name}" dönemi ${from} – ${until} olarak kaydedildi.`,
+      };
+    }),
+);
+
+server.registerTool(
+  "save_baseline",
+  {
+    title: "Referans plan kaydet",
+    description: "Planın şimdiki tarihlerini, sürelerini ve maliyetlerini 1–3 numaralı referans plana (baseline) kaydeder; varsa üzerine yazar.",
+    inputSchema: {
+      number: z.number().int().min(1).max(BASELINE_SLOTS).optional().describe("1–3; varsayılan 1"),
+      name: z.string().optional(),
+      clear: z.boolean().optional().describe("true ise bu referans planı siler"),
+    },
+  },
+  async (a) =>
+    mutate((p) => {
+      const i = (a.number ?? 1) - 1;
+      if (a.clear) return { project: clearBaseline(p, i), message: `Referans plan ${i + 1} silindi.` };
+      return { project: saveBaseline(p, schedule(p), i, formatDate(new Date()), a.name), message: `Referans plan ${i + 1} kaydedildi.` };
+    }),
+);
+
+server.registerTool(
+  "get_baseline_variance",
+  {
+    title: "Referans plana göre sapma",
+    description: "Her görevin referans plandaki başlangıç/bitişi ve güncel plana göre sapması (proje iş günü; pozitif = gecikme), süre ve maliyet farkı.",
+    inputSchema: { number: z.number().int().min(1).max(BASELINE_SLOTS).optional().describe("1–3; varsayılan 1") },
+    annotations: { readOnlyHint: true },
+  },
+  async (a) =>
+    run(() => {
+      const p = load();
+      const s = schedule(p);
+      const i = (a.number ?? 1) - 1;
+      const b = getBaseline(p, i);
+      if (!b) throw new OpError(`Referans plan ${i + 1} kayıtlı değil (save_baseline ile kaydedin).`);
+      const v = baselineVariance(p, s, i);
+      return {
+        baseline: b.name,
+        savedAt: b.savedAt,
+        baselineFinish: b.finish,
+        currentFinish: s.finishDate,
+        tasks: p.tasks.flatMap((x, k) => {
+          const d = v.get(x.id);
+          if (!d) return [];
+          return [{ row: k + 1, name: x.name, baselineStart: b.tasks[x.id].start, baselineFinish: b.tasks[x.id].finish, start: s.rows[k].startDate, finish: s.rows[k].finishDate, startVarianceDays: d.start, finishVarianceDays: d.finish, durationVariance: d.duration, costVariance: Math.round(d.cost) }];
+        }),
+      };
+    }),
+);
+
+server.registerTool(
+  "level_resources",
+  {
+    title: "Kaynak seviyeleme",
+    description:
+      "Aşırı yüklü kaynaklar için üç çözüm önerir: delay (bolluğu fazla görevi geciktir), units (birimi düşür, süre uzar), capacity (kapasiteyi artır). " +
+      "apply verilmezse yalnızca önizleme döner (dosya değişmez); kullanıcı onaylarsa apply ile seçilen çözüm uygulanır. clear=true seviyeleme gecikmelerini siler.",
+    inputSchema: {
+      apply: z.enum(["delay", "units", "capacity"]).optional(),
+      clear: z.boolean().optional(),
+    },
+  },
+  async (a) => {
+    if (a.clear) return mutate((p) => ({ project: clearLeveling(p), message: "Seviyeleme gecikmeleri silindi." }));
+    if (a.apply) {
+      return mutate((p) => {
+        const option = proposeLeveling(p).find((o) => o.kind === a.apply);
+        if (!option) throw new OpError("Aşırı yüklü kaynak yok; seviyeleme gerekmiyor.");
+        return { project: option.project, message: `Seviyeleme (${a.apply}) uygulandı: ${option.changes.length} değişiklik, bitiş ${option.finishBefore} → ${option.finishAfter}.` };
+      });
+    }
+    return run(() => {
+      const p = load();
+      const over = overallocations(p);
+      if (!over.length) return "Aşırı yüklü kaynak yok.";
+      return {
+        overallocated: over,
+        options: proposeLeveling(p).map((o) => ({
+          strategy: o.kind,
+          finishBefore: o.finishBefore,
+          finishAfter: o.finishAfter,
+          costBefore: Math.round(o.costBefore),
+          costAfter: Math.round(o.costAfter),
+          remainingOverallocated: o.remainingOver,
+          changes: o.changes,
+        })),
+        note: "Önizlemedir; uygulamak için kullanıcıya sorup level_resources apply ile çağırın.",
+      };
+    });
+  },
 );
 
 server.registerTool(

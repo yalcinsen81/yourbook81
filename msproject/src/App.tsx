@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type UIEvent } from "react";
 import { addDays, diffDays, formatShort, isValidDate, nextWorkday, parseDate } from "./model/calendar";
-import { ancestorsOf, indent, isSummaryAt, move, normalizeOutline, outdent, subtreeEnd, wbsCodes } from "./model/outline";
+import { ancestorsOf, blockIndexes, cloneRows, dropAncestorLinks, indent, insertRows, isSummaryAt, move, moveBlockTo, normalizeOutline, outdent, subtreeEnd, wbsCodes } from "./model/outline";
 import { formatPredecessors, parsePredecessors } from "./model/predecessors";
 import { emptyProject, sampleProject } from "./model/sample";
 import { wouldCreateCycle } from "./model/schedule";
@@ -17,7 +17,11 @@ import { Icon, type IconName } from "./components/icons";
 import { ResourceView } from "./components/ResourceView";
 import { ChartsView } from "./components/ChartsView";
 import { assignFromText, formatAssignments, overallocatedTasks, progressCurves, projectWeight, resourceUsage, taskCost } from "./model/resources";
-import { progressWarnings } from "./model/ops";
+import { cycleError, issueText, progressWarnings, withPercent } from "./model/ops";
+import { baselineVariance, getBaseline } from "./model/baseline";
+import { TaskInfoDialog } from "./components/TaskInfoDialog";
+import { BaselineDialog } from "./components/BaselineDialog";
+import { LevelingDialog } from "./components/LevelingDialog";
 import { normalizeWorkdays } from "./model/calendar";
 import { ProjectSetupDialog } from "./components/ProjectSetupDialog";
 import { SettingsDialog } from "./components/SettingsDialog";
@@ -52,6 +56,13 @@ export default function App() {
   const [linkMenu, setLinkMenu] = useState(false);
   const [view, setView] = useState<View>("gantt");
   const [pickedResource, setPickedResource] = useState<string | null>(null);
+  const [infoId, setInfoId] = useState<string | null>(null);
+  const [baselineOpen, setBaselineOpen] = useState(false);
+  const [levelOpen, setLevelOpen] = useState(false);
+  // Gantt'ta gösterilen referans plan (-1 = yok); proje açılınca ilk referans plan seçilir
+  const [shownBaseline, setShownBaseline] = useState(() => project.baselines?.[0]?.index ?? -1);
+  // Kopyalanan satırlar (alt ağaçlarıyla, uygulama içi pano)
+  const clipboard = useRef<Task[]>([]);
   const [theme, setTheme] = useTheme();
   const install = useInstallPrompt();
   const gridRef = useRef<HTMLDivElement>(null);
@@ -83,6 +94,13 @@ export default function App() {
   const warnings = useMemo(() => progressWarnings(curves, projectWeight(project)), [curves, project]);
   const noCostRows = useMemo(() => new Set(curves.weight === "cost" ? curves.zeroCostRows : []), [curves]);
 
+  // Referans plan sapması (gösterilen referans plana göre)
+  const baseline = shownBaseline >= 0 ? getBaseline(project, shownBaseline) : undefined;
+  const variance = useMemo(
+    () => (baseline ? baselineVariance(project, schedule, baseline.index) : new Map<string, { finish: number }>()),
+    [baseline, project, schedule],
+  );
+
   // Görünür satırlar: kapalı özetlerin altları gizlenir
   const rows: GridRow[] = useMemo(() => {
     const wbs = wbsCodes(project.tasks);
@@ -92,6 +110,8 @@ export default function App() {
     const cost = project.tasks.map((_, i) =>
       schedule.rows[i].isSummary ? leafCost.slice(i + 1, subtreeEnd(project.tasks, i)).reduce((a, b) => a + b, 0) : leafCost[i],
     );
+    const issues = new Map<string, string[]>();
+    for (const is of schedule.issues) issues.set(is.taskId, [...(issues.get(is.taskId) ?? []), issueText(project, schedule, is)]);
     return project.tasks
       .map((task, i) => ({
         task,
@@ -103,11 +123,13 @@ export default function App() {
         noCost: noCostRows.has(i + 1),
         cost: cost[i],
         collapsed: collapsed.has(task.id),
+        issues: issues.get(task.id) ?? [],
+        variance: variance.get(task.id)?.finish,
       }))
       .filter((r) => !(anc.get(r.task.id) ?? []).some((a) => collapsed.has(a)));
     // loc: öncül metnindeki gecikme birimi (g / d) dile bağlı
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [project, schedule, collapsed, overTasks, noCostRows, loc]);
+  }, [project, schedule, collapsed, overTasks, noCostRows, variance, loc]);
 
   const cycle = useMemo(() => new Set(schedule.cycle), [schedule.cycle]);
   // Hazır tatillerin adı seçili dilde; kullanıcının girdiği ad olduğu gibi
@@ -117,6 +139,16 @@ export default function App() {
     [project.holidays, loc],
   );
   const workdays = useMemo(() => normalizeWorkdays(project.workdays), [project.workdays]);
+  const blackoutUse = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const x of project.tasks) for (const id of x.blackouts ?? []) m.set(id, (m.get(id) ?? 0) + 1);
+    return m;
+  }, [project.tasks]);
+  // Başka proje açılınca ilk referans planı göster
+  useEffect(() => {
+    setShownBaseline(project.baselines?.[0]?.index ?? -1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadToken]);
 
   // Gantt'ta sürükleme: taşıma "şundan önce başlamasın" kısıtı koyar (MS Project gibi), sağ uç süreyi değiştirir
   const onDragTask = useCallback(
@@ -126,10 +158,11 @@ export default function App() {
       const cal = schedule.calendar;
       if (mode === "move") {
         const start = cal.nextWorkday(addDays(r.startDate, days));
-        update((p) => ({ ...p, tasks: p.tasks.map((t) => (t.id === id ? { ...t, startNoEarlierThan: start } : t)) }));
+        update((p) => ({ ...p, tasks: p.tasks.map((t) => (t.id === id ? { ...t, constraint: { type: "SNET", date: start } } : t)) }));
       } else {
+        // Yeni bitişe kadar görevin kendi takviminde (yarım gün, kaynak takvimi) kaç iş günü var
         const finish = cal.prevWorkday(addDays(r.finishDate, days));
-        const duration = Math.max(1, cal.workdaysBetween(r.startDate, finish));
+        const duration = Math.max(1, Math.round(schedule.capacity(id, r.es, cal.toOffset(addDays(finish, 1)))));
         update((p) => ({ ...p, tasks: p.tasks.map((t) => (t.id === id ? { ...t, duration } : t)) }));
       }
     },
@@ -180,9 +213,18 @@ export default function App() {
   );
 
   // --- Görev işlemleri ---
+  // undefined değerli alan görevden silinir (dosyada boş alan kalmasın)
   const patchTask = useCallback(
     (id: string, patch: Partial<Task>) =>
-      update((p) => ({ ...p, tasks: p.tasks.map((t) => (t.id === id ? { ...t, ...patch } : t)) })),
+      update((p) => ({
+        ...p,
+        tasks: p.tasks.map((t) => {
+          if (t.id !== id) return t;
+          const next = { ...t, ...patch } as Record<string, unknown>;
+          for (const [k, v] of Object.entries(patch)) if (v === undefined) delete next[k];
+          return next as unknown as Task;
+        }),
+      })),
     [update],
   );
 
@@ -247,13 +289,7 @@ export default function App() {
           tasks = dir === 1 ? indent(tasks, idx) : outdent(tasks, idx);
         }
         // Görev kendi özetine bağlı kaldıysa bağı kopar (döngü olur)
-        const anc = ancestorsOf(tasks);
-        tasks = tasks.map((t) => {
-          const mine = new Set(anc.get(t.id));
-          const kept = t.predecessors.filter((pr) => !mine.has(pr.taskId) && !(anc.get(pr.taskId) ?? []).includes(t.id));
-          return kept.length === t.predecessors.length ? t : { ...t, predecessors: kept };
-        });
-        return { ...p, tasks };
+        return { ...p, tasks: dropAncestorLinks(tasks) };
       });
     },
     [selectedIndexes, update],
@@ -265,6 +301,58 @@ export default function App() {
       update((p) => ({ ...p, tasks: move(p.tasks, primary, dir) }));
     },
     [primary, update],
+  );
+
+  // --- Kopyala / yapıştır / çoğalt / sürükle-bırak ---
+  const copySelected = useCallback(() => {
+    if (!selectedIndexes.length) return;
+    clipboard.current = cloneRows(project.tasks, selectedIndexes, () => "");
+    const n = blockIndexes(project.tasks, selectedIndexes).length;
+    // Sistem panosuna da sekmeyle ayrılmış metin (Excel'e yapıştırılabilir)
+    const text = blockIndexes(project.tasks, selectedIndexes)
+      .map((i) => {
+        const r = schedule.rows[i];
+        return [project.tasks[i].name, r.duration, r.startDate, r.finishDate].join("\t");
+      })
+      .join("\n");
+    void navigator.clipboard?.writeText(text).catch(() => undefined);
+    flash(t("msg.copied", { n }));
+  }, [flash, project.tasks, schedule.rows, selectedIndexes]);
+
+  const pasteRows = useCallback(
+    (source: Task[]) => {
+      if (!source.length) return;
+      const fresh = cloneRows(source, source.flatMap((x, i) => (x.outline === 0 ? [i] : [])), newId);
+      update((p) => {
+        // Seçili satırın (alt ağacıyla) altına, onun düzeyinde; seçim yoksa sona
+        const last = selectedIndexes[selectedIndexes.length - 1];
+        const at = last === undefined ? p.tasks.length : subtreeEnd(p.tasks, last);
+        const level = last === undefined ? 0 : p.tasks[last].outline;
+        return { ...p, tasks: insertRows(p.tasks, at, fresh, level) };
+      });
+      setSelection(new Set(fresh.filter((x) => x.outline === 0).map((x) => x.id)));
+    },
+    [selectedIndexes, update],
+  );
+
+  const duplicateSelected = useCallback(() => {
+    if (!selectedIndexes.length) return;
+    pasteRows(cloneRows(project.tasks, selectedIndexes, () => ""));
+  }, [pasteRows, project.tasks, selectedIndexes]);
+
+  const onMoveRow = useCallback(
+    (id: string, beforeId: string | null) =>
+      update((p) => {
+        const from = p.tasks.findIndex((x) => x.id === id);
+        const to = beforeId === null ? p.tasks.length : p.tasks.findIndex((x) => x.id === beforeId);
+        const tasks = moveBlockTo(p.tasks, from, to);
+        if (tasks === p.tasks) {
+          flash(t("msg.cannotMoveInto"));
+          return p;
+        }
+        return { ...p, tasks };
+      }),
+    [flash, update],
   );
 
   const linkSelected = useCallback(() => {
@@ -345,9 +433,9 @@ export default function App() {
       tasks: project.tasks.map((t) => (t.id === id ? { ...t, predecessors: [] } : t)),
     };
     for (const pr of predecessors) {
-      if (wouldCreateCycle(base, id, pr.taskId)) {
-        const row = project.tasks.findIndex((t) => t.id === pr.taskId) + 1;
-        flash(t("err.cycleRow", { row: String(row) }));
+      const msg = cycleError(base, id, pr.taskId);
+      if (msg) {
+        flash(msg);
         return false;
       }
     }
@@ -356,9 +444,13 @@ export default function App() {
   };
 
   const onPercent = (id: string, text: string) => {
-    const m = /^\s*(\d+)\s*%?\s*$/.exec(text);
+    // "45", "%45", "45%"; gerçekleşen başlangıç/bitiş MS Project'teki gibi güncellenir
+    const m = /^\s*%?\s*(\d+)\s*%?\s*$/.exec(text);
     if (!m) return false;
-    patchTask(id, { percent: Math.min(100, Number(m[1])) });
+    const task = project.tasks.find((x) => x.id === id);
+    if (!task) return false;
+    const next = withPercent(task, Math.min(100, Number(m[1])), schedule);
+    update((p) => ({ ...p, tasks: p.tasks.map((x) => (x.id === id ? next : x)) }));
     return true;
   };
 
@@ -572,6 +664,18 @@ export default function App() {
       } else if (e.altKey && e.shiftKey && e.key === "ArrowLeft") {
         e.preventDefault();
         shiftOutline(-1);
+      } else if (mod && e.key.toLowerCase() === "c" && !editing && !window.getSelection()?.toString()) {
+        e.preventDefault();
+        copySelected();
+      } else if (mod && e.key.toLowerCase() === "v" && !editing) {
+        e.preventDefault();
+        pasteRows(clipboard.current);
+      } else if (mod && e.key.toLowerCase() === "d" && !editing) {
+        e.preventDefault();
+        duplicateSelected();
+      } else if (e.shiftKey && e.key === "F2" && !editing) {
+        e.preventDefault();
+        if (primary >= 0) setInfoId(project.tasks[primary].id);
       } else if (e.key === "Insert") {
         e.preventDefault();
         insertTask();
@@ -601,7 +705,7 @@ export default function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [deleteSelected, fitProject, insertTask, linkSelected, project.start, redo, schedule.finishDate, scrollToDate, shiftOutline, undo, view, zoomTo]);
+  }, [copySelected, deleteSelected, duplicateSelected, fitProject, insertTask, linkSelected, pasteRows, primary, project.start, project.tasks, redo, schedule.finishDate, scrollToDate, shiftOutline, undo, view, zoomTo]);
 
   // --- Bölücü sürükleme ---
   const startResize = (e: MouseEvent) => {
@@ -619,7 +723,8 @@ export default function App() {
 
   const leafCount = schedule.rows.filter((r) => !r.isSummary).length;
   const progress = Math.round(curves.earnedPercent);
-  const totalCost = usage.reduce((s, u) => s + u.cost, 0);
+  const totalCost = curves.totalCost;
+  const overCount = usage.filter((u) => u.overDays.length && u.resource.type !== "material").length;
   const criticalCount = schedule.rows.filter((r) => !r.isSummary && r.critical).length;
   const hasSel = selection.size > 0;
 
@@ -746,6 +851,9 @@ export default function App() {
           <ToolButton icon="plus" label={t("tb.task")} primary onClick={() => insertTask()} title={t("tb.taskTitle")} />
           <ToolButton icon="milestone" label={t("tb.milestone")} onClick={() => insertTask(true)} title={t("tb.milestoneTitle")} />
           <ToolButton icon="trash" onClick={deleteSelected} disabled={!hasSel} title={t("tb.delete")} />
+          <ToolButton icon="copy" onClick={copySelected} disabled={!hasSel} title={t("tb.copy")} />
+          <ToolButton icon="paste" onClick={() => pasteRows(clipboard.current)} disabled={!clipboard.current.length} title={t("tb.paste")} />
+          <ToolButton icon="duplicate" onClick={duplicateSelected} disabled={!hasSel} title={t("tb.duplicate")} />
         </div>
         <div className="tgroup">
           <ToolButton icon="outdent" onClick={() => shiftOutline(-1)} disabled={!hasSel} title={t("tb.outdent")} />
@@ -756,6 +864,16 @@ export default function App() {
         <div className="tgroup">
           <ToolButton icon="link" label={t("tb.link")} onClick={linkSelected} disabled={selection.size < 2} title={t("tb.linkTitle")} />
           <ToolButton icon="unlink" onClick={unlinkSelected} disabled={!hasSel} title={t("tb.unlink")} />
+          <ToolButton icon="info" onClick={() => primary >= 0 && setInfoId(project.tasks[primary].id)} disabled={primary < 0} title={t("tb.info")} />
+        </div>
+        <div className="tgroup">
+          <ToolButton icon="flag" label={t("tb.baseline")} onClick={() => setBaselineOpen(true)} title={t("tb.baselineTitle")} />
+          <ToolButton
+            icon="level"
+            label={t("tb.level")}
+            onClick={() => setLevelOpen(true)}
+            title={overCount ? t("tb.levelTitleOver", { n: overCount }) : t("tb.levelTitle")}
+          />
         </div>
         <div className="tgroup">
           <ToolButton icon="undo" onClick={undo} disabled={!canUndo} title={t("tb.undo")} />
@@ -861,6 +979,9 @@ export default function App() {
             onPercent={onPercent}
             onResources={onResources}
             onAddAtEnd={() => insertTask(false, true)}
+            onInfo={setInfoId}
+            onMoveRow={onMoveRow}
+            showVariance={!!baseline}
           />
         </div>
         <div className="splitter" onMouseDown={startResize} role="separator" aria-orientation="vertical" aria-label={t("app.splitter")} />
@@ -878,6 +999,9 @@ export default function App() {
           holidays={holidayMap}
           workdays={workdays}
           onDragTask={onDragTask}
+          baseline={baseline?.tasks}
+          baselineName={baseline?.name}
+          onInfo={setInfoId}
         />
       </main>
 
@@ -885,9 +1009,72 @@ export default function App() {
         <CalendarDialog
           holidays={project.holidays}
           workdays={workdays}
+          halfDayMode={project.halfDayMode ?? "full"}
+          blackouts={project.blackouts ?? []}
+          blackoutUse={blackoutUse}
           projectStart={project.start}
-          onSave={(holidays, days) => update((p) => ({ ...p, holidays, workdays: days }))}
+          finishYear={Number(schedule.finishDate.slice(0, 4))}
+          onSave={(c) =>
+            update((p) => {
+              // Silinen dönemler görevlerden de kalkar
+              const ids = new Set(c.blackouts.map((b) => b.id));
+              const next: Project = {
+                ...p,
+                holidays: c.holidays,
+                workdays: c.workdays,
+                halfDayMode: c.halfDayMode,
+                blackouts: c.blackouts,
+                tasks: p.tasks.map((x) => {
+                  if (!x.blackouts?.some((id) => !ids.has(id))) return x;
+                  const kept = x.blackouts.filter((id) => ids.has(id));
+                  const task: Task = { ...x, blackouts: kept };
+                  if (!kept.length) delete task.blackouts;
+                  return task;
+                }),
+              };
+              if (c.halfDayMode === "full") delete next.halfDayMode;
+              if (!c.blackouts.length) delete next.blackouts;
+              return next;
+            })
+          }
           onClose={() => setCalendarOpen(false)}
+        />
+      )}
+      {infoId && project.tasks.some((x) => x.id === infoId) && (
+        <TaskInfoDialog
+          project={project}
+          schedule={schedule}
+          taskId={infoId}
+          issues={rows.find((r) => r.task.id === infoId)?.issues ?? schedule.issues.filter((x) => x.taskId === infoId).map((x) => issueText(project, schedule, x))}
+          baseline={
+            baseline?.tasks[infoId]
+              ? { ...baseline.tasks[infoId], name: baseline.name, variance: baselineVariance(project, schedule, baseline.index).get(infoId) }
+              : undefined
+          }
+          onSave={(task) => update((p) => ({ ...p, tasks: p.tasks.map((x) => (x.id === task.id ? task : x)) }))}
+          onClose={() => setInfoId(null)}
+        />
+      )}
+      {baselineOpen && (
+        <BaselineDialog
+          project={project}
+          schedule={schedule}
+          today={today}
+          shown={baseline ? baseline.index : -1}
+          onShow={setShownBaseline}
+          update={update}
+          onClose={() => setBaselineOpen(false)}
+        />
+      )}
+      {levelOpen && (
+        <LevelingDialog
+          project={project}
+          schedule={schedule}
+          onApply={(next) => {
+            update(() => next);
+            flash(t("msg.leveled"));
+          }}
+          onClose={() => setLevelOpen(false)}
         />
       )}
       {setupOpen && (
@@ -918,7 +1105,16 @@ export default function App() {
           <i className="sw normal" /> {t("legend.normal")} <i className="sw critical" /> {t("legend.critical")} <i className="sw summary" />{" "}
           {t("legend.summary")} <i className="sw ms" /> {t("legend.milestone")} <i className="sw over">!</i> {t("legend.over")}
         </span>
-        {schedule.cycle.length > 0 && <span className="warn">{t("warn.cycleStatus")}</span>}
+        {schedule.cycle.length > 0 && (
+          <span className="warn" title={schedule.cyclePath.map((id) => project.tasks.findIndex((x) => x.id === id) + 1).join(" → ")}>
+            {t("warn.cycleStatus")}
+          </span>
+        )}
+        {schedule.issues.length > 0 && (
+          <span className="warn" title={schedule.issues.map((x) => issueText(project, schedule, x)).join("\n")}>
+            {t("status.issues", { n: schedule.issues.length })}
+          </span>
+        )}
         <span className="spacer" />
         <span className="save-state" title={fileLink.fileName ?? undefined}>
           {fileLink.fileName ? t("status.saveFile", { name: fileLink.fileName }) : t("status.saveBrowser")}

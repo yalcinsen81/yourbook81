@@ -31,6 +31,11 @@ const PATHS = {
   zoomIn: "M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4M8 11h6M11 8v6",
   zoomOut: "M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4M8 11h6",
   fit: "M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5",
+  copy: "M9 9h11v11H9zM5 15H4V4h11v1",
+  paste: "M9 4h6v3H9zM8 5H5v16h14V5h-3M9 12h6M9 16h4",
+  duplicate: "M8 8h12v12H8zM4 16V4h12M14 11v6M11 14h6",
+  flag: "M5 21V4M5 4h11l-2 4 2 4H5",
+  level: "M4 20h16M7 16V9M12 16V5M17 16v-4M4 9h6M14 12h6",
   crosshair: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 3v4M12 17v4M3 12h4M17 12h4",
 } as const;
 

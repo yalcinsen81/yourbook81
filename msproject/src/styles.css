@@ -30,6 +30,10 @@
   --link: #a8a29e;
   --good: #15803d;
   --good-soft: rgba(21, 128, 61, 0.1);
+  /* Zamanlama uyarısı (kısıt çatışması, son tarih aşımı) ve referans plan */
+  --danger: #c0262d;
+  --danger-soft: rgba(192, 38, 45, 0.08);
+  --baseline: #8a8580;
   --heat-1: #e0e7ff;
   --heat-2: #a5b4fc;
   --heat-3: #6366f1;
@@ -71,6 +75,9 @@
   --link: #5d5d6b;
   --good: #4ade80;
   --good-soft: rgba(74, 222, 128, 0.12);
+  --danger: #f87171;
+  --danger-soft: rgba(248, 113, 113, 0.12);
+  --baseline: #8e8e9c;
   --heat-1: rgba(129, 140, 248, 0.22);
   --heat-2: rgba(129, 140, 248, 0.5);
   --heat-3: #818cf8;
@@ -1744,4 +1751,293 @@ button {
 }
 .save-state {
   max-width: 40ch;
+}
+
+/* --- Faz 2B: görev bilgisi, referans plan, seviyeleme, kaynak takvimi --- */
+.modal.wide {
+  width: min(680px, calc(100vw - 32px));
+}
+.modal > .settings {
+  min-height: 0;
+  flex: 1 1 auto;
+}
+.modal h2 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.field-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  align-items: flex-end;
+}
+.field-row > .field {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+.field-row > .field.narrow {
+  flex: 0 1 120px;
+}
+.field-row .grow {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 5px 8px;
+  background: var(--surface);
+  color: var(--ink);
+}
+.field.readonly b {
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 13.5px;
+  padding: 6px 0;
+}
+.field small,
+.hint {
+  color: var(--muted);
+  font-size: 11.5px;
+}
+.with-clear {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.link-btn {
+  border: 0;
+  background: none;
+  color: var(--accent);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  padding: 0;
+}
+.issue-box {
+  border: 1px solid var(--danger);
+  background: var(--danger-soft);
+  color: var(--danger);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12.5px;
+}
+.issue-box p {
+  margin: 2px 0;
+}
+.form-error {
+  margin: 0;
+  padding: 6px 16px 0;
+  color: var(--danger);
+  font-size: 12.5px;
+}
+.cost-breakdown {
+  margin: 4px 0 0;
+  display: grid;
+  gap: 2px;
+  font-size: 12.5px;
+}
+.cost-breakdown div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 2px 0;
+  border-bottom: 1px dashed var(--line-soft);
+}
+.cost-breakdown dt {
+  color: var(--muted);
+}
+.cost-breakdown dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.cost-breakdown .total {
+  font-weight: 650;
+  border-bottom: 0;
+}
+.row-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.row-buttons button,
+.level-kinds button {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font: inherit;
+}
+.modal .holiday-list.compact {
+  min-height: 0;
+  flex: none;
+  max-height: 180px;
+}
+.holiday-list.compact li {
+  padding: 4px 10px;
+}
+.holiday-list .pill {
+  margin-inline-start: 6px;
+}
+.level-kinds {
+  align-self: flex-start;
+}
+.level-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.level-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.level-table th,
+.level-table td {
+  text-align: start;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.level-table th {
+  color: var(--muted);
+  font-weight: 500;
+}
+.level-table .num {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.muted {
+  color: var(--muted);
+}
+.cell-select {
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 2px 2px;
+  min-width: 0;
+}
+.cell-select:hover,
+.cell-select:focus {
+  border-color: var(--line);
+  background: var(--surface);
+}
+.cost-settings {
+  display: flex;
+  gap: 14px;
+  margin-inline-start: auto;
+  margin-inline-end: 12px;
+}
+.field.inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.field.inline .cell-input {
+  width: 70px;
+}
+.res-calendar {
+  border-top: 1px solid var(--line);
+  margin-top: 8px;
+  padding-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.res-calendar h3,
+.res-calendar h4 {
+  margin: 0;
+  font-size: 13px;
+}
+.res-calendar h4 {
+  font-weight: 500;
+  color: var(--muted);
+}
+.res-calendar .holiday-add {
+  padding: 0;
+}
+
+/* Görev tablosu: gösterge sütunu, sapma, sürükle-bırak */
+.gc-ind {
+  justify-content: center;
+  padding: 0;
+}
+.ind {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+.ind.issue {
+  background: var(--danger);
+  color: #fff;
+}
+.ind.constraint {
+  color: var(--muted);
+}
+.ind.constraint.hard {
+  color: var(--accent);
+}
+.ind.done {
+  color: var(--good);
+}
+.ind.deadline {
+  color: var(--good);
+}
+.grid-row.has-issue .gc-finish {
+  color: var(--danger);
+}
+.gc-var.late {
+  color: var(--danger);
+}
+.gc-var.early {
+  color: var(--good);
+}
+.gc-row[draggable="true"] {
+  cursor: grab;
+}
+.grid-row.dragging {
+  opacity: 0.45;
+}
+.grid-row.drop-before {
+  box-shadow: inset 0 2px 0 var(--accent);
+}
+
+/* Gantt: referans plan, son tarih, uyarı */
+.baseline-bar {
+  fill: var(--baseline);
+  opacity: 0.75;
+}
+.baseline-ms {
+  fill: none;
+  stroke: var(--baseline);
+  stroke-width: 1.5;
+}
+.deadline {
+  fill: var(--good);
+}
+.deadline.missed {
+  fill: var(--danger);
+}
+.issue-outline {
+  fill: none;
+  stroke: var(--danger);
+  stroke-width: 2;
+  pointer-events: none;
+}
+.bar-tip-issue {
+  color: var(--danger);
+  font-size: 12px;
+  margin: 2px 0 4px;
 }

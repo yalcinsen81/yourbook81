@@ -12,9 +12,12 @@ export function initHistory<T>(present: T): History<T> {
   return { past: [], present, future: [] };
 }
 
-/** Yeni durum: aynı nesneyse geçmiş değişmez; yinele listesi temizlenir */
+/**
+ * Yeni durum: aynı nesne ya da içerikçe aynıysa geçmiş değişmez (ör. Enter ile kaydedilen hücrenin ardından gelen blur
+ * ikinci, boş bir adım eklemesin); yinele listesi temizlenir.
+ */
 export function push<T>(h: History<T>, next: T, limit = HISTORY_LIMIT): History<T> {
-  if (next === h.present) return h;
+  if (next === h.present || JSON.stringify(next) === JSON.stringify(h.present)) return h;
   return { past: [...h.past.slice(-(limit - 1)), h.present], present: next, future: [] };
 }
 

@@ -59,5 +59,25 @@ const summary = JSON.parse(await call("get_project_summary"));
 if (!fridays || curve.curve[0].plannedPercent !== 0 || !sameKeys || summary.progressWeight !== "duration" || summary.workdays.length !== 6) {
   throw new Error(`Faz 1 sonucu beklenen gibi değil: ${JSON.stringify({ fridays, first: curve.curve[0], sameKeys, w: summary.progressWeight, d: summary.workdays })}`);
 }
+// Faz 2B: kısıt, son tarih, referans plan, seviyeleme, malzeme, dönem
+await call("set_calendar", { workdays: [1, 2, 3, 4, 5] });
+await call("save_baseline", { number: 1, name: "İlk plan" });
+await call("update_task", { row: 4, constraint_type: "SNET", constraint_date: "2026-11-09", deadline: "2026-11-10" });
+const variance = JSON.parse(await call("get_baseline_variance", { number: 1 }));
+const v5 = variance.tasks.find((x) => x.row === 4);
+const lev = JSON.parse(await call("level_resources"));
+await call("level_resources", { apply: "delay" });
+const afterLevel = await call("level_resources");
+await call("set_resource", { name: "Beton", type: "material", rate: 2000, unit_label: "m³" });
+await call("update_task", { row: 3, resources: "Ali; Vinç[50%]; Beton[3]" });
+await call("set_blackout", { name: "Kış", from: "2026-12-15", to: "2027-02-28" });
+await call("update_task", { row: 5, blackouts: ["Kış"], fixed_cost: 5000 });
+const cyc = await client.callTool({ name: "update_task", arguments: { row: 1, predecessors: "4" } });
+const res2 = JSON.parse(await call("list_resources"));
+const sum2 = JSON.parse(await call("get_project_summary"));
+console.log({ v5, levelOptions: lev.options?.map((o) => o.strategy), afterLevel, cycle: cyc.content[0].text, total: sum2.totalCost });
+if (v5.finishVarianceDays <= 0 || lev.options?.length !== 3 || !afterLevel.startsWith("Aşırı yüklü kaynak yok") || !cyc.isError || res2.find((r) => r.name === "Beton").type !== "material") {
+  throw new Error("Faz 2B sonucu beklenen gibi değil");
+}
 console.log("Tamam:", file);
 await client.close();

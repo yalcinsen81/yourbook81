@@ -284,6 +284,16 @@ describe("B2 geri al / yinele", () => {
     expect(h.past).toHaveLength(100);
     expect(h.past[0]).toBe(50);
   });
+
+  it("içerikçe aynı durum yeni adım eklemez (Enter + blur çift kaydı)", () => {
+    const p = referenceProject();
+    let h = initHistory(p);
+    const longer = { ...p, tasks: p.tasks.map((x, i) => (i === 2 ? { ...x, duration: 30 } : x)) };
+    h = push(h, longer);
+    h = push(h, { ...longer, tasks: longer.tasks.map((x) => ({ ...x })) });
+    expect(h.past).toHaveLength(1);
+    expect(undo(h).present).toBe(p);
+  });
 });
 
 describe("B2 referans plan", () => {

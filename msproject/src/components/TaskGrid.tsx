@@ -1,5 +1,5 @@
-import { useRef, type MouseEvent, type RefObject, type UIEvent } from "react";
-import { datePattern, formatDateLocal, formatNumber, parseDateLocal, t, type MessageKey } from "../i18n";
+import { useRef, useState, type DragEvent, type MouseEvent, type RefObject, type UIEvent } from "react";
+import { datePattern, formatDateLocal, formatNumber, formatPercent, parseDateLocal, t, type MessageKey } from "../i18n";
 import { formatShort } from "../model/calendar";
 import { visibleRange } from "../model/timescale";
 import type { ScheduledTask, Task } from "../model/types";
@@ -22,6 +22,10 @@ export interface GridRow {
   /** Görev maliyeti; özet görevde alt görevlerin toplamı */
   cost: number;
   collapsed: boolean;
+  /** Zamanlama uyarıları (seçili dilde) */
+  issues: string[];
+  /** Gösterilen referans plana göre bitiş sapması (iş günü); referans planda yoksa undefined */
+  variance?: number;
 }
 
 interface Props {
@@ -39,10 +43,17 @@ interface Props {
   onPercent: (id: string, text: string) => boolean;
   onResources: (id: string, text: string) => boolean;
   onAddAtEnd: () => void;
+  /** Görev bilgisi penceresi (çift tık) */
+  onInfo: (id: string) => void;
+  /** Sürükle-bırak: görevi (alt ağacıyla) `beforeId` satırının önüne, null ise sona taşır */
+  onMoveRow: (id: string, beforeId: string | null) => void;
+  /** Sapma sütunu (referans plan gösteriliyorsa) */
+  showVariance: boolean;
 }
 
 export const COLUMNS: { key: string; label: MessageKey | ""; width: number }[] = [
   { key: "row", label: "", width: 40 },
+  { key: "ind", label: "", width: 26 },
   { key: "wbs", label: "col.wbs", width: 52 },
   { key: "name", label: "col.name", width: 250 },
   { key: "duration", label: "col.duration", width: 72 },
@@ -52,13 +63,33 @@ export const COLUMNS: { key: string; label: MessageKey | ""; width: number }[] =
   { key: "resources", label: "col.resources", width: 150 },
   { key: "percent", label: "col.percent", width: 64 },
   { key: "slack", label: "col.slack", width: 64 },
+  { key: "variance", label: "col.variance", width: 64 },
 ];
 
 export const GRID_WIDTH = COLUMNS.reduce((s, c) => s + c.width, 0);
 
 export function TaskGrid(props: Props) {
   const { rows, selection, cycle, scrollRef, onScroll } = props;
-  const template = COLUMNS.map((c) => `${c.width}px`).join(" ");
+  const columns = COLUMNS.filter((c) => c.key !== "variance" || props.showVariance);
+  const template = columns.map((c) => `${c.width}px`).join(" ");
+  const width = columns.reduce((sum, c) => sum + c.width, 0);
+  // Sürükle-bırak: sürüklenen satır ve üzerine gelinen satır (bırakılınca önüne girer)
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dropId, setDropId] = useState<string | null | undefined>(undefined);
+  const dropProps = (beforeId: string | null) => ({
+    onDragOver: (e: DragEvent) => {
+      if (!dragId) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      if (dropId !== beforeId) setDropId(beforeId);
+    },
+    onDrop: (e: DragEvent) => {
+      e.preventDefault();
+      if (dragId && dragId !== beforeId) props.onMoveRow(dragId, beforeId);
+      setDragId(null);
+      setDropId(undefined);
+    },
+  });
   const vp = useViewport(scrollRef);
   // Yalnızca görünen satırlar çizilir (1000+ görevde akıcı kaydırma); üst ve alt boşluk yüksekliği korur
   const { first, last } = visibleRange(vp.top, vp.height - HEADER_H, ROW_H, rows.length);
@@ -66,9 +97,9 @@ export function TaskGrid(props: Props) {
 
   return (
     <div className="pane grid-pane" ref={scrollRef} onScroll={onScroll}>
-      <div style={{ width: GRID_WIDTH }}>
+      <div style={{ width }}>
         <div className="grid-header" style={{ gridTemplateColumns: template, height: HEADER_H }}>
-          {COLUMNS.map((c) => {
+          {columns.map((c) => {
             const label = c.label ? t(c.label) : "";
             return (
               <div key={c.key} className={`gh gh-${c.key}`} title={label}>
@@ -88,6 +119,9 @@ export function TaskGrid(props: Props) {
             sched.isSummary && "summary",
             sched.critical && "critical",
             cycle.has(task.id) && "cyclic",
+            r.issues.length > 0 && "has-issue",
+            dropId === task.id && dragId !== task.id && "drop-before",
+            dragId === task.id && "dragging",
           ]
             .filter(Boolean)
             .join(" ");
@@ -97,11 +131,34 @@ export function TaskGrid(props: Props) {
               key={task.id}
               className={cls}
               style={{ gridTemplateColumns: template, height: ROW_H }}
-              onMouseDown={(e) => props.onSelect(task.id, e)}
+              onMouseDown={(e) => {
+                // Shift ile aralık seçerken tarayıcı metin seçmesin (yoksa Ctrl+C metni kopyalar)
+                if (e.shiftKey && (e.target as HTMLElement).tagName !== "INPUT") e.preventDefault();
+                props.onSelect(task.id, e);
+              }}
+              onDoubleClick={(e) => {
+                // Hücre düzenlemesi değilse görev bilgisini aç
+                if ((e.target as HTMLElement).tagName !== "INPUT") props.onInfo(task.id);
+              }}
+              {...dropProps(task.id)}
             >
-              <div className="gc gc-row" title={t("grid.row", { row })}>
+              <div
+                className="gc gc-row"
+                title={`${t("grid.row", { row })}\n${t("grid.dragHint")}`}
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.effectAllowed = "move";
+                  e.dataTransfer.setData("text/plain", task.name);
+                  setDragId(task.id);
+                }}
+                onDragEnd={() => {
+                  setDragId(null);
+                  setDropId(undefined);
+                }}
+              >
                 {sched.row}
               </div>
+              <Indicators row={r} />
               <div className="gc gc-wbs" title={r.wbs}>
                 {r.wbs}
               </div>
@@ -192,8 +249,9 @@ export function TaskGrid(props: Props) {
               </div>
               <div className="gc">
                 <EditableCell
-                  value={`${task.percent}%`}
+                  value={formatPercent(sched.percent)}
                   readOnly={sched.isSummary}
+                  title={sched.isSummary ? t("grid.summaryPercent") : undefined}
                   row={i}
                   col="percent"
                   className="num"
@@ -202,13 +260,21 @@ export function TaskGrid(props: Props) {
                 />
               </div>
               <div className={`gc gc-slack num ${sched.slack <= 0 ? "zero" : ""}`}>
-                {formatNumber(sched.slack)} {dayLetter}
+                {formatNumber(sched.slack, 1)} {dayLetter}
               </div>
+              {props.showVariance && (
+                <div
+                  className={`gc num gc-var ${r.variance && r.variance > 0 ? "late" : r.variance && r.variance < 0 ? "early" : ""}`}
+                  title={r.variance === undefined ? t("grid.varianceNone") : t("grid.varianceHint")}
+                >
+                  {r.variance === undefined ? "—" : `${r.variance > 0 ? "+" : ""}${formatNumber(r.variance)} ${dayLetter}`}
+                </div>
+              )}
             </div>
           );
         })}
         <div style={{ height: (rows.length - last) * ROW_H }} aria-hidden />
-        <div className="grid-row add-row" style={{ gridTemplateColumns: template, height: ROW_H }}>
+        <div className={`grid-row add-row ${dropId === null ? "drop-before" : ""}`} style={{ gridTemplateColumns: template, height: ROW_H }} {...dropProps(null)}>
           <div className="gc" />
           <div className="gc" />
           <button className="add-task" onClick={props.onAddAtEnd}>
@@ -284,6 +350,38 @@ function DateCell(props: {
           />
         </>
       )}
+    </div>
+  );
+}
+
+/** Gösterge sütunu (MS Project'teki gibi): uyarı, kısıt, son tarih, tamamlandı */
+function Indicators({ row }: { row: GridRow }) {
+  const { task, sched } = row;
+  const notes: string[] = [...row.issues];
+  const c = task.constraint;
+  if (c && !sched.isSummary) notes.push(`${t(`constraint.${c.type}`)}${c.date ? `: ${formatShort(c.date)}` : ""}`);
+  if (task.deadline) notes.push(`${t("info.deadline")}: ${formatShort(task.deadline)}`);
+  if (task.levelingDelay) notes.push(t("grid.levelingDelay", { n: String(task.levelingDelay) }));
+  if (!sched.isSummary && task.percent === 100) notes.push(t("grid.complete"));
+  return (
+    <div className="gc gc-ind" title={notes.join("\n") || undefined}>
+      {row.issues.length > 0 ? (
+        <span className="ind issue" aria-label={row.issues.join(" ")}>
+          !
+        </span>
+      ) : c && !sched.isSummary ? (
+        <span className={`ind constraint ${c.type === "MSO" || c.type === "MFO" ? "hard" : ""}`} aria-label={notes[0]}>
+          <Icon name="calendar" size={12} />
+        </span>
+      ) : !sched.isSummary && task.percent === 100 ? (
+        <span className="ind done" aria-label={t("grid.complete")}>
+          ✓
+        </span>
+      ) : task.deadline ? (
+        <span className="ind deadline" aria-label={notes[0]}>
+          ⇩
+        </span>
+      ) : null}
     </div>
   );
 }

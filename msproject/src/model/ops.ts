@@ -17,7 +17,20 @@ import {
   taskCost,
   type Curves,
 } from "./resources";
-import type { ConstraintType, CostAccrual, LinkType, ProgressWeight, Project, Resource, Schedule, ScheduleIssue, Task } from "./types";
+import type {
+  ConstraintType,
+  CostAccrual,
+  Leave,
+  LinkType,
+  ProgressWeight,
+  Project,
+  RateType,
+  Resource,
+  ResourceType,
+  Schedule,
+  ScheduleIssue,
+  Task,
+} from "./types";
 
 // Projeyi değiştiren saf işlemler. Satır numaraları 1'den başlar (tablodaki # sütunu, öncüllerdeki numaralar).
 // MCP sunucusu (Claude bağlantısı) bunları kullanır; hatalar seçili dildeki mesajla fırlatılır.
@@ -496,8 +509,15 @@ export interface ResourceInput {
   newName?: string;
   /** Kapasite %: 100 = bir kişi, 300 = üç kişilik ekip */
   maxUnits?: number;
-  /** %100 birimde günlük ücret */
+  /** %100 birimde ücret (gün/saat/kullanım başına) ya da malzemede birim fiyat */
   rate?: number;
+  type?: ResourceType;
+  rateType?: RateType;
+  unitLabel?: string;
+  /** Kaynağın kendi çalışma günleri (0 = pazar); boş dizi proje takvimine döndürür */
+  workdays?: number[];
+  /** İzinler (listeyi tamamen değiştirir) */
+  leaves?: Leave[];
 }
 
 /** Kaynağı adına göre bulur ve günceller; yoksa ekler. */
@@ -513,10 +533,21 @@ export function setResource(p: Project, input: ResourceInput): { project: Projec
     const clash = findResource(p, nn);
     if (clash && clash !== existing) throw new OpError(t("err.resourceExists", { name: nn }));
   }
-  const fields = {
+  for (const l of input.leaves ?? []) {
+    checkDate(l.from);
+    checkDate(l.to);
+  }
+  const fields: Partial<Resource> = {
     ...(input.newName !== undefined ? { name: input.newName.trim() } : {}),
     ...(input.maxUnits !== undefined ? { maxUnits: Math.round(input.maxUnits) } : {}),
     ...(input.rate !== undefined ? { rate: input.rate } : {}),
+    ...(input.type !== undefined ? { type: input.type === "work" ? undefined : input.type } : {}),
+    ...(input.rateType !== undefined ? { rateType: input.rateType === "day" ? undefined : input.rateType } : {}),
+    ...(input.unitLabel !== undefined ? { unitLabel: input.unitLabel.trim() || undefined } : {}),
+    ...(input.workdays !== undefined ? { workdays: input.workdays.length ? normalizeWorkdays(input.workdays) : undefined } : {}),
+    ...(input.leaves !== undefined
+      ? { leaves: input.leaves.length ? input.leaves.map((l) => (l.from <= l.to ? l : { ...l, from: l.to, to: l.from })) : undefined }
+      : {}),
   };
   if (existing) {
     return { project: { ...p, resources: p.resources.map((r) => (r === existing ? { ...r, ...fields } : r)) }, created: false };
@@ -547,10 +578,17 @@ export function listResources(p: Project) {
         from = -1;
       }
     });
+    const r = u.resource;
     return {
-      name: u.resource.name,
-      maxUnitsPercent: u.resource.maxUnits,
-      dailyRate: u.resource.rate,
+      name: r.name,
+      type: r.type ?? "work",
+      rateType: r.type === "material" ? "unit" : (r.rateType ?? "day"),
+      ...(r.unitLabel ? { unitLabel: r.unitLabel } : {}),
+      maxUnitsPercent: r.maxUnits,
+      rate: r.rate,
+      workdays: r.workdays ?? "project",
+      leaves: r.leaves ?? [],
+      /** İş (adam-gün); malzemede toplam miktar */
       workPersonDays: Math.round(u.work * 10) / 10,
       cost: Math.round(u.cost),
       peakPercent: u.peak,

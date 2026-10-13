@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "proje-planlayici",
   "display_name": "Proje Planlayıcı",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "MS Project benzeri iş programını Claude'a bağlar: görev, bağ, tatil, kaynak, aşırı yük, S eğrisi ve MS Project XML.",
   "long_description": "Proje Planlayıcı uygulamasının proje dosyasını (proje.json) okur ve düzenler. Uygulamada 'Dosyaya bağla' ile aynı dosya açıkken Claude'un yaptığı değişiklikler ekranda anında görünür.",
   "author": { "name": "yalcinsen81" },

@@ -1,11 +1,14 @@
 import { useMemo } from "react";
 import { formatMoney, formatNumber, formatPercent, parseNumberLocal, t } from "../i18n";
-import { formatShort } from "../model/calendar";
+import { formatShort, isValidDate, normalizeWorkdays } from "../model/calendar";
 import { newResourceId, removeResource, type ResourceUsage } from "../model/resources";
-import type { Project, Resource, Schedule } from "../model/types";
+import type { Project, RateType, Resource, ResourceType, Schedule } from "../model/types";
+import { WorkdayPicker } from "./CalendarSettings";
 import { LoadHistogram } from "./charts";
+import { DateInput } from "./DateInput";
 import { EditableCell } from "./EditableCell";
 import { Icon } from "./icons";
+import { useState } from "react";
 
 interface Props {
   project: Project;
@@ -57,7 +60,21 @@ export function ResourceView({ project, schedule, usage, selected, onSelect, upd
     });
   }, [current, project.tasks, schedule.rows]);
 
-  const template = "minmax(160px, 1.6fr) 96px 120px 90px 120px 92px minmax(120px, 1fr) 40px";
+  const template = "minmax(150px, 1.6fr) 112px 96px 112px 120px 90px 120px 82px minmax(110px, 1fr) 40px";
+  const [leaveFrom, setLeaveFrom] = useState("");
+  const [leaveTo, setLeaveTo] = useState("");
+  const [leaveName, setLeaveName] = useState("");
+  const addLeave = (r: Resource) => {
+    if (!isValidDate(leaveFrom)) return;
+    const to = isValidDate(leaveTo) ? leaveTo : leaveFrom;
+    const [from, until] = leaveFrom <= to ? [leaveFrom, to] : [to, leaveFrom];
+    patch(r.id, { leaves: [...(r.leaves ?? []), { from, to: until, ...(leaveName.trim() ? { name: leaveName.trim() } : {}) }] });
+    setLeaveFrom("");
+    setLeaveTo("");
+    setLeaveName("");
+  };
+  const rateLabel = (r: Resource) =>
+    r.type === "material" ? t("res.rate.unitPrice", { unit: r.unitLabel || t("res.unitDefault") }) : t(`res.rate.${r.rateType ?? "day"}`);
 
   return (
     <div className="page">
@@ -67,6 +84,48 @@ export function ResourceView({ project, schedule, usage, selected, onSelect, upd
             <h2>{t("res.title")}</h2>
             <p className="card-sub">{t("res.sub")}</p>
           </div>
+          <div className="cost-settings">
+            <label className="field inline" title={t("res.overheadHint")}>
+              <span>{t("res.overhead")}</span>
+              <EditableCell
+                value={formatPercent(project.overheadPercent ?? 0)}
+                row={0}
+                col="overhead"
+                className="num"
+                ariaLabel={t("res.overhead")}
+                onCommit={(v) => {
+                  const n = num(v, 0);
+                  if (n === null || n > 1000) return false;
+                  update((p) => {
+                    const next: Project = { ...p, overheadPercent: n };
+                    if (!n) delete next.overheadPercent;
+                    return next;
+                  });
+                  return true;
+                }}
+              />
+            </label>
+            <label className="field inline" title={t("res.hoursPerDayHint")}>
+              <span>{t("res.hoursPerDay")}</span>
+              <EditableCell
+                value={formatNumber(project.hoursPerDay ?? 8, 2)}
+                row={0}
+                col="hpd"
+                className="num"
+                ariaLabel={t("res.hoursPerDay")}
+                onCommit={(v) => {
+                  const n = num(v, 0.5);
+                  if (n === null || n > 24) return false;
+                  update((p) => {
+                    const next: Project = { ...p, hoursPerDay: n };
+                    if (n === 8) delete next.hoursPerDay;
+                    return next;
+                  });
+                  return true;
+                }}
+              />
+            </label>
+          </div>
           <button className="tbtn primary" onClick={add}>
             <Icon name="plus" size={17} />
             <span>{t("res.add")}</span>
@@ -75,7 +134,9 @@ export function ResourceView({ project, schedule, usage, selected, onSelect, upd
         <div className="rtable" role="table" aria-label={t("res.tableAria")}>
           <div className="rrow rhead" role="row" style={{ gridTemplateColumns: template }}>
             <span>{t("res.col.name")}</span>
+            <span>{t("res.col.type")}</span>
             <span className="r">{t("res.col.capacity")}</span>
+            <span>{t("res.col.rateType")}</span>
             <span className="r">{t("res.col.rate")}</span>
             <span className="r">{t("res.col.work")}</span>
             <span className="r">{t("res.col.cost")}</span>
@@ -113,20 +174,70 @@ export function ResourceView({ project, schedule, usage, selected, onSelect, upd
                     return true;
                   }}
                 />
-                <EditableCell
-                  value={formatPercent(r.maxUnits)}
-                  row={i}
-                  col="rmax"
-                  className="num"
-                  ariaLabel={t("res.aria.capacity", { name: r.name })}
-                  onCommit={(v) => {
-                    const n = num(v, 1);
-                    if (n === null) return false;
-                    patch(r.id, { maxUnits: Math.round(n) });
-                    return true;
+                <select
+                  className="cell-select"
+                  value={r.type ?? "work"}
+                  aria-label={t("res.aria.type", { name: r.name })}
+                  onChange={(e) => {
+                    const type = e.target.value as ResourceType;
+                    patch(r.id, { type: type === "work" ? undefined : type });
                   }}
-                />
+                >
+                  {(["work", "equipment", "material"] as const).map((k) => (
+                    <option key={k} value={k}>
+                      {t(`res.type.${k}`)}
+                    </option>
+                  ))}
+                </select>
+                {r.type === "material" ? (
+                  <span className="r muted" title={t("res.materialNoCapacity")}>—</span>
+                ) : (
+                  <EditableCell
+                    value={formatPercent(r.maxUnits)}
+                    row={i}
+                    col="rmax"
+                    className="num"
+                    ariaLabel={t("res.aria.capacity", { name: r.name })}
+                    onCommit={(v) => {
+                      const n = num(v, 1);
+                      if (n === null) return false;
+                      patch(r.id, { maxUnits: Math.round(n) });
+                      return true;
+                    }}
+                  />
+                )}
+                {r.type === "material" ? (
+                  <EditableCell
+                    value={r.unitLabel ?? ""}
+                    placeholder={t("res.unitPlaceholder")}
+                    row={i}
+                    col="runit"
+                    ariaLabel={t("res.aria.unit", { name: r.name })}
+                    title={t("res.unitHint")}
+                    onCommit={(v) => {
+                      patch(r.id, { unitLabel: v.trim().slice(0, 12) || undefined });
+                      return true;
+                    }}
+                  />
+                ) : (
+                  <select
+                    className="cell-select"
+                    value={r.rateType ?? "day"}
+                    aria-label={t("res.aria.rateType", { name: r.name })}
+                    onChange={(e) => {
+                      const rateType = e.target.value as RateType;
+                      patch(r.id, { rateType: rateType === "day" ? undefined : rateType });
+                    }}
+                  >
+                    {(["day", "hour", "use"] as const).map((k) => (
+                      <option key={k} value={k}>
+                        {t(`res.rate.${k}`)}
+                      </option>
+                    ))}
+                  </select>
+                )}
                 <EditableCell
+                  title={rateLabel(r)}
                   value={formatMoney(r.rate)}
                   row={i}
                   col="rrate"
@@ -139,9 +250,9 @@ export function ResourceView({ project, schedule, usage, selected, onSelect, upd
                     return true;
                   }}
                 />
-                <span className="r num">{fmtDays(u.work)}</span>
+                <span className="r num">{r.type === "material" ? `${formatNumber(u.work, 2)} ${r.unitLabel ?? ""}`.trim() : fmtDays(u.work)}</span>
                 <span className="r num">{formatMoney(u.cost)}</span>
-                <span className={`r num ${over ? "over-text" : ""}`}>{formatPercent(u.peak)}</span>
+                <span className={`r num ${over ? "over-text" : ""}`}>{r.type === "material" ? "—" : formatPercent(u.peak)}</span>
                 <span>
                   {u.work === 0 ? (
                     <span className="pill idle">{t("res.idle")}</span>
@@ -179,6 +290,64 @@ export function ResourceView({ project, schedule, usage, selected, onSelect, upd
           ) : (
             <p className="empty">{t("res.noDuration")}</p>
           )}
+          {current.resource.type !== "material" && (
+            <div className="res-calendar">
+              <h3>{t("res.calTitle")}</h3>
+              <label className="check">
+                <input
+                  type="checkbox"
+                  checked={!!current.resource.workdays}
+                  onChange={(e) =>
+                    patch(current.resource.id, { workdays: e.target.checked ? normalizeWorkdays(project.workdays) : undefined })
+                  }
+                />
+                <span>
+                  {t("res.ownWeek")}
+                  <small>{t("res.ownWeekHint")}</small>
+                </span>
+              </label>
+              {current.resource.workdays && (
+                <WorkdayPicker value={current.resource.workdays} onChange={(days) => patch(current.resource.id, { workdays: days })} />
+              )}
+              <h4>{t("res.leaves")}</h4>
+              <ul className="holiday-list compact">
+                {(current.resource.leaves ?? []).map((l, k) => (
+                  <li key={`${l.from}-${k}`}>
+                    <span className="date">
+                      {formatShort(l.from)}
+                      {l.to !== l.from && ` – ${formatShort(l.to)}`}
+                    </span>
+                    <span className="name">{l.name ?? ""}</span>
+                    <button
+                      aria-label={t("res.removeLeave")}
+                      onClick={() => {
+                        const leaves = (current.resource.leaves ?? []).filter((_, j) => j !== k);
+                        patch(current.resource.id, { leaves: leaves.length ? leaves : undefined });
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </li>
+                ))}
+                {!current.resource.leaves?.length && <li className="name">{t("res.noLeaves")}</li>}
+              </ul>
+              <div className="holiday-add">
+                <DateInput value={leaveFrom} ariaLabel={t("res.leaveFrom")} onChange={setLeaveFrom} />
+                <DateInput value={leaveTo} ariaLabel={t("res.leaveTo")} onChange={setLeaveTo} />
+                <input
+                  type="text"
+                  value={leaveName}
+                  placeholder={t("res.leaveNamePlaceholder")}
+                  aria-label={t("res.leaveName")}
+                  onChange={(e) => setLeaveName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && addLeave(current.resource)}
+                />
+                <button onClick={() => addLeave(current.resource)} disabled={!isValidDate(leaveFrom)}>
+                  {t("common.add")}
+                </button>
+              </div>
+            </div>
+          )}
           {tasksOf.length > 0 && (
             <div className="assign-list">
               {tasksOf.map((a) => (
@@ -190,7 +359,9 @@ export function ResourceView({ project, schedule, usage, selected, onSelect, upd
                   <span className="assign-dates">
                     {formatShort(a.start)} – {formatShort(a.finish)}
                   </span>
-                  <span className="assign-units">{formatPercent(a.units)}</span>
+                  <span className="assign-units">
+                    {current.resource.type === "material" ? `${formatNumber(a.units, 2)} ${current.resource.unitLabel ?? ""}`.trim() : formatPercent(a.units)}
+                  </span>
                 </div>
               ))}
             </div>
