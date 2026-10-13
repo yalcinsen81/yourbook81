@@ -1,4 +1,4 @@
-import { t } from "../i18n";
+import { getLang, t } from "../i18n";
 import { formatDate, isValidDate, normalizeWorkdays } from "./calendar";
 import { indent, normalizeOutline, outdent, subtreeEnd, wbsCodes, ancestorsOf } from "./outline";
 import { formatPredecessors, parsePredecessors } from "./predecessors";
@@ -19,31 +19,31 @@ import {
 import type { LinkType, ProgressWeight, Project, Resource, Task } from "./types";
 
 // Projeyi değiştiren saf işlemler. Satır numaraları 1'den başlar (tablodaki # sütunu, öncüllerdeki numaralar).
-// MCP sunucusu (Claude bağlantısı) bunları kullanır; hatalar kullanıcıya gösterilecek Türkçe mesajla fırlatılır.
+// MCP sunucusu (Claude bağlantısı) bunları kullanır; hatalar seçili dildeki mesajla fırlatılır.
 
 export class OpError extends Error {}
 
 function taskAt(p: Project, row: number): Task {
-  const t = p.tasks[row - 1];
-  if (!Number.isInteger(row) || !t) throw new OpError(`${row}. satır yok. Görev sayısı: ${p.tasks.length}.`);
-  return t;
+  const task = p.tasks[row - 1];
+  if (!Number.isInteger(row) || !task) throw new OpError(t("err.noRow", { row: String(row), count: p.tasks.length }));
+  return task;
 }
 
 function setPredecessors(p: Project, task: Task, text: string): Task {
   const { predecessors, errors } = parsePredecessors(text, p.tasks, task.id);
-  if (errors.length) throw new OpError(`Anlaşılamayan öncül: ${errors.join(", ")}. Örnek: "2", "3SS", "4FS+2".`);
+  if (errors.length) throw new OpError(t("err.predecessor", { parts: errors.join(", ") }));
   const base: Project = { ...p, tasks: p.tasks.map((t) => (t.id === task.id ? { ...t, predecessors: [] } : t)) };
   for (const pr of predecessors) {
     if (wouldCreateCycle(base, task.id, pr.taskId)) {
       const row = p.tasks.findIndex((t) => t.id === pr.taskId) + 1;
-      throw new OpError(`${row}. satır öncül olamaz: döngü ya da özet–alt görev bağı oluşur.`);
+      throw new OpError(t("err.cycleRow", { row: String(row) }));
     }
   }
   return { ...task, predecessors };
 }
 
 function checkDate(d: string | undefined): void {
-  if (d && !isValidDate(d)) throw new OpError(`Geçersiz tarih: ${d}. Biçim YYYY-AA-GG olmalı.`);
+  if (d && !isValidDate(d)) throw new OpError(t("err.date", { date: d, pattern: getLang() === "tr" ? "YYYY-AA-GG" : "YYYY-MM-DD" }));
 }
 
 export interface TaskInput {
@@ -62,7 +62,7 @@ export interface TaskInput {
 
 function setResources(p: Project, taskId: string, text: string): Project {
   const { project, errors } = assignFromText(p, taskId, text);
-  if (errors.length) throw new OpError(`Anlaşılamayan kaynak: ${errors.join(", ")}. Örnek: "Ali", "Ali[50%]; Vinç".`);
+  if (errors.length) throw new OpError(t("err.resource", { parts: errors.join(", ") }));
   return project;
 }
 
@@ -137,7 +137,7 @@ export function shiftTask(p: Project, row: number, direction: "in" | "out"): Pro
   taskAt(p, row);
   let tasks = direction === "in" ? indent(p.tasks, row - 1) : outdent(p.tasks, row - 1);
   if (tasks === p.tasks) {
-    throw new OpError(direction === "in" ? "Bu görev daha fazla içeri alınamaz." : "Bu görev zaten en üst düzeyde.");
+    throw new OpError(t(direction === "in" ? "err.cannotIndent" : "err.cannotOutdent"));
   }
   // Görev kendi özetine bağlı kaldıysa bağ kopar
   const anc = ancestorsOf(tasks);
@@ -152,13 +152,13 @@ export function shiftTask(p: Project, row: number, direction: "in" | "out"): Pro
 export function linkTasks(p: Project, fromRow: number, toRow: number, type: LinkType = "FS", lag = 0): Project {
   const from = taskAt(p, fromRow);
   const to = taskAt(p, toRow);
-  if (from.id === to.id) throw new OpError("Görev kendisine bağlanamaz.");
+  if (from.id === to.id) throw new OpError(t("err.selfLink"));
   const without: Project = {
     ...p,
     tasks: p.tasks.map((t) => (t.id === to.id ? { ...t, predecessors: t.predecessors.filter((x) => x.taskId !== from.id) } : t)),
   };
   if (wouldCreateCycle(without, to.id, from.id)) {
-    throw new OpError(`${fromRow} → ${toRow} bağı döngü ya da özet–alt görev bağı oluşturur.`);
+    throw new OpError(t("err.cycleLink", { from: String(fromRow), to: String(toRow) }));
   }
   return {
     ...without,
@@ -171,7 +171,7 @@ export function linkTasks(p: Project, fromRow: number, toRow: number, type: Link
 export function unlinkTasks(p: Project, fromRow: number, toRow: number): Project {
   const from = taskAt(p, fromRow);
   const to = taskAt(p, toRow);
-  if (!to.predecessors.some((x) => x.taskId === from.id)) throw new OpError(`${fromRow} ile ${toRow} arasında bağ yok.`);
+  if (!to.predecessors.some((x) => x.taskId === from.id)) throw new OpError(t("err.noLink", { from: String(fromRow), to: String(toRow) }));
   return {
     ...p,
     tasks: p.tasks.map((t) => (t.id === to.id ? { ...t, predecessors: t.predecessors.filter((x) => x.taskId !== from.id) } : t)),
@@ -261,7 +261,7 @@ export function projectSummary(p: Project, today = formatDate(new Date())) {
     resources: p.resources.length,
     totalCost: Math.round(usage.reduce((sum, u) => sum + u.cost, 0)),
     overallocatedResources: usage.filter((u) => u.overDays.length).map((u) => u.resource.name),
-    cycleWarning: s.cycle.length ? `Döngüsel bağ var: ${s.cycle.map((id) => p.tasks.findIndex((t) => t.id === id) + 1).join(", ")}. satırlar` : "",
+    cycleWarning: s.cycle.length ? t("warn.cycle", { rows: s.cycle.map((id) => p.tasks.findIndex((task) => task.id === id) + 1).join(", ") }) : "",
     /** Bilgilendirme (hata değil): ör. maliyeti olmayan görevler */
     warnings: progressWarnings(curves, projectWeight(p)),
   };
@@ -279,12 +279,12 @@ export function progressWarnings(curves: Curves, requested: ProgressWeight): str
 const round1 = (n: number) => Math.round(n * 10) / 10;
 
 function clampDuration(n: number): number {
-  if (!Number.isFinite(n) || n < 0) throw new OpError("Süre 0 ya da pozitif bir iş günü sayısı olmalı.");
+  if (!Number.isFinite(n) || n < 0) throw new OpError(t("err.duration"));
   return Math.min(10_000, Math.round(n));
 }
 
 function clampPercent(n: number): number {
-  if (!Number.isFinite(n)) throw new OpError("Yüzde 0–100 arasında olmalı.");
+  if (!Number.isFinite(n)) throw new OpError(t("err.percent"));
   return Math.min(100, Math.max(0, Math.round(n)));
 }
 
@@ -305,15 +305,15 @@ export interface ResourceInput {
 /** Kaynağı adına göre bulur ve günceller; yoksa ekler. */
 export function setResource(p: Project, input: ResourceInput): { project: Project; created: boolean } {
   const name = input.name.trim();
-  if (!name || /[;,[\]]/.test(name)) throw new OpError("Kaynak adı boş olamaz ve ; , [ ] içeremez.");
-  if (input.maxUnits !== undefined && !(input.maxUnits >= 1)) throw new OpError("Kapasite en az %1 olmalı.");
-  if (input.rate !== undefined && !(input.rate >= 0)) throw new OpError("Ücret 0 ya da pozitif olmalı.");
+  if (!name || /[;,[\]]/.test(name)) throw new OpError(t("err.resourceName"));
+  if (input.maxUnits !== undefined && !(input.maxUnits >= 1)) throw new OpError(t("err.capacity"));
+  if (input.rate !== undefined && !(input.rate >= 0)) throw new OpError(t("err.rate"));
   const existing = findResource(p, name);
   if (input.newName !== undefined) {
     const nn = input.newName.trim();
-    if (!nn || /[;,[\]]/.test(nn)) throw new OpError("Yeni ad boş olamaz ve ; , [ ] içeremez.");
+    if (!nn || /[;,[\]]/.test(nn)) throw new OpError(t("err.resourceName"));
     const clash = findResource(p, nn);
-    if (clash && clash !== existing) throw new OpError(`"${nn}" adında bir kaynak zaten var.`);
+    if (clash && clash !== existing) throw new OpError(t("err.resourceExists", { name: nn }));
   }
   const fields = {
     ...(input.newName !== undefined ? { name: input.newName.trim() } : {}),
@@ -329,7 +329,7 @@ export function setResource(p: Project, input: ResourceInput): { project: Projec
 
 export function deleteResource(p: Project, name: string): { project: Project; unassigned: number } {
   const r = findResource(p, name);
-  if (!r) throw new OpError(`"${name}" adında kaynak yok. Kaynaklar: ${p.resources.map((x) => x.name).join(", ") || "(yok)"}.`);
+  if (!r) throw new OpError(t("err.noResource", { name, list: p.resources.map((x) => x.name).join(", ") || t("common.none") }));
   const unassigned = p.tasks.filter((t) => t.assignments?.some((a) => a.resourceId === r.id)).length;
   return { project: removeResource(p, r.id), unassigned };
 }

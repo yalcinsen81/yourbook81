@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
+/// <reference types="vitest/config" />
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 
@@ -86,4 +87,6 @@ export default defineConfig({
   // Başlat dosyası ve kurulu uygulama hep aynı adresi kullanır (veriler adrese bağlıdır)
   server: { port: 5173, strictPort: true },
   preview: { port: 5173, strictPort: true },
+  // Testler Türkçe metinle yazıldı; dil testleri kendi içinde İngilizceye geçer
+  test: { setupFiles: ["./src/test-setup.ts"] },
 });

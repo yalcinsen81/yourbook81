@@ -1,9 +1,12 @@
-import type { MouseEvent, RefObject, UIEvent } from "react";
-import { t } from "../i18n";
+import { useRef, type MouseEvent, type RefObject, type UIEvent } from "react";
+import { datePattern, formatDateLocal, formatNumber, parseDateLocal, t, type MessageKey } from "../i18n";
 import { formatShort } from "../model/calendar";
+import { visibleRange } from "../model/timescale";
 import type { ScheduledTask, Task } from "../model/types";
 import { EditableCell } from "./EditableCell";
+import { Icon } from "./icons";
 import { HEADER_H, ROW_H } from "./layout";
+import { useViewport } from "./useViewport";
 
 export interface GridRow {
   task: Task;
@@ -16,6 +19,8 @@ export interface GridRow {
   overallocated: boolean;
   /** Maliyet ağırlığında maliyeti olmayan görev (ilerleme ağırlığı 0) */
   noCost?: boolean;
+  /** Görev maliyeti; özet görevde alt görevlerin toplamı */
+  cost: number;
   collapsed: boolean;
 }
 
@@ -36,36 +41,45 @@ interface Props {
   onAddAtEnd: () => void;
 }
 
-export const COLUMNS = [
+export const COLUMNS: { key: string; label: MessageKey | ""; width: number }[] = [
   { key: "row", label: "", width: 40 },
-  { key: "wbs", label: "WBS", width: 52 },
-  { key: "name", label: "Görev Adı", width: 250 },
-  { key: "duration", label: "Süre", width: 64 },
-  { key: "start", label: "Başlangıç", width: 128 },
-  { key: "finish", label: "Bitiş", width: 104 },
-  { key: "preds", label: "Öncüller", width: 92 },
-  { key: "resources", label: "Kaynaklar", width: 150 },
-  { key: "percent", label: "% Tam.", width: 58 },
-  { key: "slack", label: "Bolluk", width: 58 },
-] as const;
+  { key: "wbs", label: "col.wbs", width: 52 },
+  { key: "name", label: "col.name", width: 250 },
+  { key: "duration", label: "col.duration", width: 72 },
+  { key: "start", label: "col.start", width: 128 },
+  { key: "finish", label: "col.finish", width: 112 },
+  { key: "preds", label: "col.predecessors", width: 92 },
+  { key: "resources", label: "col.resources", width: 150 },
+  { key: "percent", label: "col.percent", width: 64 },
+  { key: "slack", label: "col.slack", width: 64 },
+];
 
 export const GRID_WIDTH = COLUMNS.reduce((s, c) => s + c.width, 0);
 
 export function TaskGrid(props: Props) {
   const { rows, selection, cycle, scrollRef, onScroll } = props;
   const template = COLUMNS.map((c) => `${c.width}px`).join(" ");
+  const vp = useViewport(scrollRef);
+  // Yalnızca görünen satırlar çizilir (1000+ görevde akıcı kaydırma); üst ve alt boşluk yüksekliği korur
+  const { first, last } = visibleRange(vp.top, vp.height - HEADER_H, ROW_H, rows.length);
+  const dayLetter = t("unit.dayLetter");
 
   return (
     <div className="pane grid-pane" ref={scrollRef} onScroll={onScroll}>
       <div style={{ width: GRID_WIDTH }}>
         <div className="grid-header" style={{ gridTemplateColumns: template, height: HEADER_H }}>
-          {COLUMNS.map((c) => (
-            <div key={c.key} className={`gh gh-${c.key}`}>
-              {c.label}
-            </div>
-          ))}
+          {COLUMNS.map((c) => {
+            const label = c.label ? t(c.label) : "";
+            return (
+              <div key={c.key} className={`gh gh-${c.key}`} title={label}>
+                {label}
+              </div>
+            );
+          })}
         </div>
-        {rows.map((r, i) => {
+        <div style={{ height: first * ROW_H }} aria-hidden />
+        {rows.slice(first, last).map((r, k) => {
+          const i = first + k;
           const { task, sched } = r;
           const selected = selection.has(task.id);
           const cls = [
@@ -77,6 +91,7 @@ export function TaskGrid(props: Props) {
           ]
             .filter(Boolean)
             .join(" ");
+          const row = String(sched.row);
           return (
             <div
               key={task.id}
@@ -84,15 +99,17 @@ export function TaskGrid(props: Props) {
               style={{ gridTemplateColumns: template, height: ROW_H }}
               onMouseDown={(e) => props.onSelect(task.id, e)}
             >
-              <div className="gc gc-row" title={`Satır ${sched.row}`}>
+              <div className="gc gc-row" title={t("grid.row", { row })}>
                 {sched.row}
               </div>
-              <div className="gc gc-wbs">{r.wbs}</div>
+              <div className="gc gc-wbs" title={r.wbs}>
+                {r.wbs}
+              </div>
               <div className="gc gc-name" style={{ paddingInlineStart: 4 + task.outline * 16 }}>
                 {sched.isSummary ? (
                   <button
                     className="twisty"
-                    aria-label={r.collapsed ? "Alt görevleri göster" : "Alt görevleri gizle"}
+                    aria-label={r.collapsed ? t("grid.expand") : t("grid.collapse")}
                     aria-expanded={!r.collapsed}
                     onMouseDown={(e) => e.stopPropagation()}
                     onClick={() => props.onToggle(task.id)}
@@ -106,47 +123,48 @@ export function TaskGrid(props: Props) {
                   value={task.name}
                   row={i}
                   col="name"
-                  ariaLabel={`Satır ${sched.row} görev adı`}
+                  ariaLabel={t("grid.aria.name", { row })}
+                  title={task.name}
                   onCommit={(v) => props.onName(task.id, v)}
                 />
               </div>
               <div className="gc">
                 <EditableCell
-                  value={`${sched.isSummary ? sched.duration : task.duration} g`}
+                  value={`${formatNumber(sched.isSummary ? sched.duration : task.duration)} ${dayLetter}`}
                   readOnly={sched.isSummary}
                   row={i}
                   col="duration"
                   className="num"
-                  ariaLabel={`Satır ${sched.row} süre`}
-                  title={sched.isSummary ? "Özet görevin süresi alt görevlerinden hesaplanır" : "İş günü; 0 = kilometre taşı"}
+                  ariaLabel={t("grid.aria.duration", { row })}
+                  title={sched.isSummary ? t("grid.summaryDuration") : t("grid.durationHint")}
                   onCommit={(v) => props.onDuration(task.id, v)}
                 />
               </div>
               <div className="gc">
-                <EditableCell
-                  type="date"
-                  value={sched.startDate}
+                <DateCell
+                  iso={sched.startDate}
                   readOnly={sched.isSummary}
                   row={i}
-                  col="start"
-                  className={task.startNoEarlierThan ? "constrained" : ""}
-                  ariaLabel={`Satır ${sched.row} başlangıç`}
+                  constrained={!!task.startNoEarlierThan}
+                  ariaLabel={t("grid.aria.start", { row })}
                   title={
                     task.startNoEarlierThan
-                      ? `Kısıt: ${formatShort(task.startNoEarlierThan)} tarihinden önce başlamaz. Kaldırmak için tarihi silin.`
-                      : "Tarih girmek 'şundan önce başlamasın' kısıtı koyar"
+                      ? t("grid.constraint", { date: formatShort(task.startNoEarlierThan) })
+                      : t("grid.startHint", { pattern: datePattern() })
                   }
                   onCommit={(v) => props.onStart(task.id, v)}
                 />
               </div>
-              <div className="gc gc-finish">{formatShort(sched.finishDate)}</div>
+              <div className="gc gc-finish" title={formatShort(sched.finishDate)}>
+                {formatShort(sched.finishDate)}
+              </div>
               <div className="gc">
                 <EditableCell
                   value={r.predText}
                   row={i}
                   col="preds"
-                  ariaLabel={`Satır ${sched.row} öncüller`}
-                  title="Örnek: 2 · 3SS · 4FS+2g · 5FF-1g (birden çoksa ; ile ayırın)"
+                  ariaLabel={t("grid.aria.predecessors", { row })}
+                  title={t("grid.predHint")}
                   onCommit={(v) => props.onPredecessors(task.id, v)}
                 />
               </div>
@@ -157,7 +175,7 @@ export function TaskGrid(props: Props) {
                   </span>
                 )}
                 {r.overallocated && (
-                  <span className="over-flag" title="Atanan kaynaklardan biri bu görev sırasında kapasitesini aşıyor">
+                  <span className="over-flag" title={t("grid.overallocated")}>
                     !
                   </span>
                 )}
@@ -167,12 +185,8 @@ export function TaskGrid(props: Props) {
                   readOnly={sched.isSummary}
                   row={i}
                   col="resources"
-                  ariaLabel={`Satır ${sched.row} kaynaklar`}
-                  title={
-                    sched.isSummary
-                      ? "Özet göreve kaynak atanmaz"
-                      : "Örnek: Ali · Ali[50%]; Vinç (yeni ad yazılırsa kaynak listesine eklenir)"
-                  }
+                  ariaLabel={t("grid.aria.resources", { row })}
+                  title={sched.isSummary ? t("grid.summaryNoResource") : r.resText ? `${r.resText}\n${t("grid.resourceHint")}` : t("grid.resourceHint")}
                   onCommit={(v) => props.onResources(task.id, v)}
                 />
               </div>
@@ -183,22 +197,93 @@ export function TaskGrid(props: Props) {
                   row={i}
                   col="percent"
                   className="num"
-                  ariaLabel={`Satır ${sched.row} tamamlanma yüzdesi`}
+                  ariaLabel={t("grid.aria.percent", { row })}
                   onCommit={(v) => props.onPercent(task.id, v)}
                 />
               </div>
-              <div className={`gc gc-slack num ${sched.slack <= 0 ? "zero" : ""}`}>{sched.slack} g</div>
+              <div className={`gc gc-slack num ${sched.slack <= 0 ? "zero" : ""}`}>
+                {formatNumber(sched.slack)} {dayLetter}
+              </div>
             </div>
           );
         })}
+        <div style={{ height: (rows.length - last) * ROW_H }} aria-hidden />
         <div className="grid-row add-row" style={{ gridTemplateColumns: template, height: ROW_H }}>
           <div className="gc" />
           <div className="gc" />
           <button className="add-task" onClick={props.onAddAtEnd}>
-            + Yeni görev
+            {t("grid.addTask")}
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Tarih hücresi: seçili biçimde (TR 13.11.2026, EN 11/13/2026, ISO) yazılır; yanındaki düğme tarayıcının takvimini açar.
+ * Boş bırakmak kısıtı kaldırır.
+ */
+function DateCell(props: {
+  iso: string;
+  readOnly?: boolean;
+  row: number;
+  constrained: boolean;
+  ariaLabel: string;
+  title: string;
+  onCommit: (iso: string) => boolean;
+}) {
+  const picker = useRef<HTMLInputElement>(null);
+  return (
+    <div className="date-cell">
+      <EditableCell
+        value={formatDateLocal(props.iso)}
+        readOnly={props.readOnly}
+        row={props.row}
+        col="start"
+        className={props.constrained ? "constrained" : ""}
+        ariaLabel={props.ariaLabel}
+        title={props.title}
+        placeholder={datePattern()}
+        onCommit={(text) => {
+          if (!text.trim()) return props.onCommit("");
+          const iso = parseDateLocal(text);
+          return iso ? props.onCommit(iso) : false;
+        }}
+      />
+      {!props.readOnly && (
+        <>
+          <button
+            className="date-pick"
+            tabIndex={-1}
+            title={t("grid.pickDate")}
+            aria-label={t("grid.pickDate")}
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={() => {
+              const el = picker.current;
+              if (!el) return;
+              el.value = props.iso;
+              try {
+                el.showPicker();
+              } catch {
+                el.click();
+              }
+            }}
+          >
+            <Icon name="calendar" size={13} />
+          </button>
+          <input
+            ref={picker}
+            type="date"
+            className="date-picker-hidden"
+            tabIndex={-1}
+            aria-hidden
+            onChange={(e) => {
+              if (e.target.value) props.onCommit(e.target.value);
+            }}
+          />
+        </>
+      )}
     </div>
   );
 }

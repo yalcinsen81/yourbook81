@@ -31,7 +31,8 @@ import {
 import { curveSamples, plannedAt, progressCurves, projectWeight } from "../src/model/resources";
 import { emptyProject } from "../src/model/sample";
 import { schedule } from "../src/model/schedule";
-import { sanitizeProject } from "../src/model/storage";
+import { needsUpgradeBackup, sanitizeProject } from "../src/model/storage";
+import { detectLang, setLocale, t } from "../src/i18n";
 import type { Project } from "../src/model/types";
 
 /** "~", ${HOME}, ${DOCUMENTS}, ${DESKTOP} kısaltmalarını açar (Claude Desktop eklentisinin varsayılan yolu bunları içerir) */
@@ -46,17 +47,30 @@ function expandPath(p: string): string {
 
 const file = resolve(expandPath(process.argv[2] || process.env.MSPROJECT_FILE || "proje.json"));
 
+// Hata ve uyarı metinlerinin dili: MSPROJECT_LANG (tr/en), yoksa işletim sistemi dili
+setLocale({ lang: process.env.MSPROJECT_LANG === "en" || process.env.MSPROJECT_LANG === "tr" ? process.env.MSPROJECT_LANG : detectLang() });
+
+/** Eski sürümlü dosyanın özgün metni: ilk kayıttan önce <dosya>.bak olarak saklanır */
+let upgradeBackup: string | null = null;
+
 function load(): Project {
   if (!existsSync(file)) return emptyProject(formatDate(new Date()));
   const text = readFileSync(file, "utf8");
   if (!text.trim()) return emptyProject(formatDate(new Date()));
-  const p = sanitizeProject(JSON.parse(text));
-  if (!p) throw new OpError(`${file} geçerli bir proje dosyası değil.`);
+  const raw = JSON.parse(text);
+  const p = sanitizeProject(raw);
+  if (!p) throw new OpError(t("err.invalidFile", { file }));
+  upgradeBackup = needsUpgradeBackup(raw) ? text : null;
   return p;
 }
 
 function save(p: Project): void {
   mkdirSync(dirname(file), { recursive: true });
+  if (upgradeBackup !== null) {
+    // Var olan yedeğin üzerine yazılmaz (ilk yükseltmedeki özgün dosya korunur)
+    if (!existsSync(`${file}.bak`)) writeFileSync(`${file}.bak`, upgradeBackup, "utf8");
+    upgradeBackup = null;
+  }
   // Önce geçici dosyaya yaz, sonra taşı: uygulama yarım dosya okumasın
   const tmp = `${file}.tmp`;
   writeFileSync(tmp, JSON.stringify(p, null, 2), "utf8");
@@ -94,7 +108,7 @@ const resourcesArg = z
   .describe("Kaynak atamaları: 'Ali', 'Ali[50%]; Vinç', 'Kalıp ekibi[200%]'. Listede olmayan ad yeni kaynak olur.");
 const linkType = z.enum(["FS", "SS", "FF", "SF"]).describe("FS bitiş-başlangıç (varsayılan), SS, FF, SF");
 
-const server = new McpServer({ name: "proje-planlayici", version: "0.4.0" });
+const server = new McpServer({ name: "proje-planlayici", version: "0.5.0" });
 
 server.registerTool(
   "get_project_summary",

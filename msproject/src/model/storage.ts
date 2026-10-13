@@ -1,5 +1,6 @@
 import { isValidDate, normalizeWorkdays } from "./calendar";
-import type { Holiday } from "./holidays";
+import { t } from "../i18n";
+import { tagBuiltinHolidays, type Holiday } from "./holidays";
 import { normalizeOutline } from "./outline";
 import { defaultHolidays } from "./sample";
 import { PROJECT_VERSION, type Assignment, type LinkType, type Predecessor, type ProgressWeight, type Project, type Resource, type Task } from "./types";
@@ -64,30 +65,56 @@ export function sanitizeProject(raw: unknown): Project | null {
     ? (r.holidays as unknown[]).flatMap((h) => {
         const o = h as Record<string, unknown> | null;
         return o && typeof o.date === "string" && isValidDate(o.date)
-          ? [{ date: o.date, name: typeof o.name === "string" ? o.name : "", ...(o.halfDay === true ? { halfDay: true } : {}) }]
+          ? [
+              {
+                date: o.date,
+                name: typeof o.name === "string" ? o.name : "",
+                ...(typeof o.src === "string" && o.src ? { src: o.src } : {}),
+                ...(o.halfDay === true ? { halfDay: true } : {}),
+              },
+            ]
           : [];
       })
     : defaultHolidays(r.start);
   return {
     ...migrate(r),
-    name: typeof r.name === "string" ? r.name : "Proje",
+    name: typeof r.name === "string" ? r.name : t("default.projectFallback"),
     start: r.start,
     tasks: normalizeOutline(tasks),
-    holidays: holidays.sort((a, b) => a.date.localeCompare(b.date)),
+    holidays: (fileVersion(r) < 3 ? tagBuiltinHolidays(holidays) : holidays).sort((a, b) => a.date.localeCompare(b.date)),
     resources,
   };
 }
 
+/** Ham dosya verisinin biçim sürümü (alan yoksa 1) */
+export function fileVersion(raw: unknown): number {
+  const v = raw && typeof raw === "object" ? (raw as Record<string, unknown>).version : undefined;
+  return typeof v === "number" && Number.isInteger(v) && v >= 1 ? v : 1;
+}
+
+/** Dosya bu sürümün yazacağı biçimden eskiyse kaydetmeden önce yedeği alınmalı */
+export function needsUpgradeBackup(raw: unknown): boolean {
+  return fileVersion(raw) < PROJECT_VERSION;
+}
+
 /**
  * Sürüm yükseltme. Sürüm alanı olmayan dosyalar 1. sürümdür: pazartesi–cuma çalışılır, tatil listesi olduğu gibi
- * kalır (kullanıcının tatillerine dokunulmaz). İlerleme ağırlığı yoksa maliyettir.
+ * kalır (kullanıcının tatillerine dokunulmaz). İlerleme ağırlığı yoksa maliyettir. Sürüm 3: para birimi yoksa TRY;
+ * hazır tatillere kaynak anahtarı verilir (bkz. tagBuiltinHolidays).
  */
-function migrate(r: Record<string, unknown>): Pick<Project, "version" | "workdays" | "progressWeight"> {
+function migrate(r: Record<string, unknown>): Pick<Project, "version" | "workdays" | "progressWeight" | "currency"> {
   return {
     version: PROJECT_VERSION,
     workdays: normalizeWorkdays(r.workdays),
     progressWeight: WEIGHTS.includes(r.progressWeight as ProgressWeight) ? (r.progressWeight as ProgressWeight) : "cost",
+    currency: normalizeCurrency(r.currency),
   };
+}
+
+/** Para birimi kodu: 1–8 harf/simge, büyük harfe çevrilir; geçersizse TRY */
+export function normalizeCurrency(v: unknown): string {
+  const s = typeof v === "string" ? v.trim().toUpperCase() : "";
+  return /^[\p{L}\p{Sc}]{1,8}$/u.test(s) ? s : "TRY";
 }
 
 const WEIGHTS: ProgressWeight[] = ["cost", "work", "duration"];

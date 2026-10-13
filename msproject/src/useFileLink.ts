@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { clearHandle, loadHandle, saveHandle } from "./handleStore";
-import { sanitizeProject } from "./model/storage";
+import { t } from "./i18n";
+import { needsUpgradeBackup, sanitizeProject } from "./model/storage";
+import { addBackup } from "./settings";
 import type { Project } from "./model/types";
 
 // Projeyi diskteki bir .json dosyasına bağlar (File System Access API; Chrome / Edge).
@@ -20,7 +22,7 @@ type PickerWindow = Window & {
   showSaveFilePicker?: (opts: object) => Promise<FileHandle>;
 };
 
-const PICKER_TYPES = [{ description: "Proje dosyası", accept: { "application/json": [".json"] } }];
+const pickerTypes = () => [{ description: t("link.pickerType"), accept: { "application/json": [".json"] } }];
 const POLL_MS = 1500;
 
 export const fileLinkSupported = typeof window !== "undefined" && "showOpenFilePicker" in window;
@@ -55,8 +57,14 @@ export function useFileLink(project: Project, replace: (p: Project) => void, not
     async (h: FileHandle) => {
       const file = await h.getFile();
       const text = await file.text();
-      const parsed = text.trim() ? sanitizeProject(JSON.parse(text)) : null;
+      const raw = text.trim() ? JSON.parse(text) : null;
+      const parsed = raw ? sanitizeProject(raw) : null;
       if (text.trim() && !parsed) throw new Error("invalid");
+      if (parsed && needsUpgradeBackup(raw)) {
+        // Eski biçimli dosya yeni biçimle üzerine yazılmadan önce özgün metin saklanır (Ayarlar > Yedeği indir)
+        addBackup(h.name, text);
+        notify(t("link.upgraded", { name: h.name }));
+      }
       if (parsed) {
         replace(parsed);
         lastText.current = serializeProject(parsed);
@@ -75,12 +83,12 @@ export function useFileLink(project: Project, replace: (p: Project) => void, not
   const linkExisting = useCallback(async () => {
     const w = window as PickerWindow;
     try {
-      const [h] = await w.showOpenFilePicker!({ types: PICKER_TYPES, multiple: false });
+      const [h] = await w.showOpenFilePicker!({ types: pickerTypes(), multiple: false });
       if (h.requestPermission && (await h.requestPermission({ mode: "readwrite" })) !== "granted") return;
       await attach(h);
-      notify(`"${h.name}" dosyasına bağlandı. Değişiklikler otomatik kaydedilir.`);
+      notify(t("link.linked", { name: h.name }));
     } catch (e) {
-      if ((e as Error)?.name !== "AbortError") notify("Dosya açılamadı ya da geçerli bir proje dosyası değil.");
+      if ((e as Error)?.name !== "AbortError") notify(t("link.openFailed"));
     }
   }, [attach, notify]);
 
@@ -90,11 +98,11 @@ export function useFileLink(project: Project, replace: (p: Project) => void, not
     try {
       if (pending.requestPermission && (await pending.requestPermission({ mode: "readwrite" })) !== "granted") return;
       await attach(pending);
-      notify(`"${pending.name}" dosyasına yeniden bağlandı.`);
+      notify(t("link.reconnected", { name: pending.name }));
     } catch {
       setPending(null);
       void clearHandle();
-      notify(`"${pending.name}" açılamadı (taşınmış ya da silinmiş olabilir). "Dosyaya bağla" ile yeniden seçin.`);
+      notify(t("link.missing", { name: pending.name }));
     }
   }, [attach, notify, pending]);
 
@@ -110,7 +118,7 @@ export function useFileLink(project: Project, replace: (p: Project) => void, not
       if (state === "granted") {
         try {
           await attach(h);
-          notify(`"${h.name}" dosyasına bağlı: Claude'un değişiklikleri burada görünür.`);
+          notify(t("link.restored", { name: h.name }));
           return;
         } catch {
           // dosya yok: aşağıda yeniden bağlan önerilir
@@ -126,14 +134,14 @@ export function useFileLink(project: Project, replace: (p: Project) => void, not
   const linkNew = useCallback(async () => {
     const w = window as PickerWindow;
     try {
-      const h = await w.showSaveFilePicker!({ types: PICKER_TYPES, suggestedName: "proje.json" });
+      const h = await w.showSaveFilePicker!({ types: pickerTypes(), suggestedName: `${t("default.fileName")}.json` });
       await write(h, serializeProject(project));
       setHandle(h);
       setPending(null);
       void saveHandle(h);
-      notify(`"${h.name}" oluşturuldu ve bağlandı.`);
+      notify(t("link.created", { name: h.name }));
     } catch (e) {
-      if ((e as Error)?.name !== "AbortError") notify("Dosya oluşturulamadı.");
+      if ((e as Error)?.name !== "AbortError") notify(t("link.createFailed"));
     }
   }, [notify, project, write]);
 
@@ -141,7 +149,7 @@ export function useFileLink(project: Project, replace: (p: Project) => void, not
     setHandle(null);
     setPending(null);
     void clearHandle();
-    notify("Dosya bağlantısı kaldırıldı; proje tarayıcıda saklanmaya devam ediyor.");
+    notify(t("link.unlinked"));
   }, [notify]);
 
   // Uygulamadaki değişikliği dosyaya yaz (kısa gecikmeyle)
@@ -149,15 +157,15 @@ export function useFileLink(project: Project, replace: (p: Project) => void, not
     if (!handle) return;
     const text = serializeProject(project);
     if (text === lastText.current) return;
-    const t = window.setTimeout(() => {
+    const timer = window.setTimeout(() => {
       write(handle, text).catch(() => {
         // İzin geri alındı ya da dosya kayboldu: bağlantı askıya alınır, tek tıkla yeniden bağlanılır
         setHandle(null);
         setPending(handle);
-        notify(`"${handle.name}" dosyasına yazılamadı. Yeniden bağlanmak için üstteki düğmeye tıklayın.`);
+        notify(t("link.writeFailed", { name: handle.name }));
       });
     }, 400);
-    return () => window.clearTimeout(t);
+    return () => window.clearTimeout(timer);
   }, [handle, notify, project, write]);
 
   // Dosya dışarıdan değişti mi? (Claude / MCP ya da başka bir düzenleyici)
@@ -173,12 +181,14 @@ export function useFileLink(project: Project, replace: (p: Project) => void, not
           lastModified.current = file.lastModified;
           return;
         }
-        const parsed = sanitizeProject(JSON.parse(text));
+        const raw = JSON.parse(text);
+        const parsed = sanitizeProject(raw);
         if (!parsed) return;
+        if (needsUpgradeBackup(raw)) addBackup(handle.name, text);
         lastModified.current = file.lastModified;
         lastText.current = serializeProject(parsed);
         replace(parsed);
-        notify("Proje dosyası dışarıdan güncellendi, değişiklikler yüklendi.");
+        notify(t("link.externalUpdate"));
       } catch {
         // Yazma sırasında yarım okunan dosya: bir sonraki turda yeniden denenir
       }

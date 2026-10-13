@@ -33,7 +33,7 @@ export interface Resource {
   name: string;
   /** Azami birim (%): 100 = bir kişi tam gün, 300 = üç kişilik ekip. */
   maxUnits: number;
-  /** %100 birimde günlük ücret (₺/gün). */
+  /** %100 birimde günlük ücret (proje para birimiyle, gün başına). */
   rate: number;
 }
 
@@ -46,8 +46,11 @@ export interface Assignment {
 /** İlerleme ağırlığı: planlanan %, gerçekleşen %, kazanılan değer ve sapma aynı ağırlıkla hesaplanır. */
 export type ProgressWeight = "cost" | "work" | "duration";
 
-/** Dosya biçimi sürümü. 1: sürüm alanı olmayan ilk biçim. 2: çalışma günleri ve ilerleme ağırlığı eklendi. */
-export const PROJECT_VERSION = 2;
+/**
+ * Dosya biçimi sürümü. 1: sürüm alanı olmayan ilk biçim. 2: çalışma günleri ve ilerleme ağırlığı eklendi.
+ * 3: para birimi ve hazır tatillerin kaynak anahtarı (ad seçili dilde gösterilir) eklendi.
+ */
+export const PROJECT_VERSION = 3;
 
 export interface Project {
   /** Dosya biçimi sürümü (sanitizeProject eski dosyaları otomatik yükseltir) */
@@ -63,6 +66,8 @@ export interface Project {
   workdays?: number[];
   /** Yoksa "cost" (maliyet) */
   progressWeight?: ProgressWeight;
+  /** Para birimi kodu (TRY, USD, EUR, GBP ya da özel kod). Tutar dönüştürülmez, yalnızca sembol. Yoksa TRY. */
+  currency?: string;
 }
 
 /** Hesaplanmış satır: zamanlama motorunun her görev için ürettiği sonuç. */

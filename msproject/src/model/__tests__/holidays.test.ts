@@ -5,7 +5,7 @@ import { RELIGIOUS_HOLIDAYS } from "../holidayData";
 import { emptyProject, sampleProject } from "../sample";
 import { schedule } from "../schedule";
 import { sanitizeProject } from "../storage";
-import type { Project, Task } from "../types";
+import { PROJECT_VERSION, type Project, type Task } from "../types";
 
 const task = (id: string, duration: number, extra: Partial<Task> = {}): Task => ({
   id,
@@ -106,7 +106,7 @@ describe("Madde 3: çalışma günleri kullanıcı seçimi", () => {
 
   it("yeni proje seçilen takvimle kurulur", () => {
     const p = emptyProject("2026-11-02", { name: "Ev", holidays: { official: true, religious: false, halfDays: false }, progressWeight: "work" });
-    expect(p).toMatchObject({ name: "Ev", version: 2, workdays: [1, 2, 3, 4, 5], progressWeight: "work" });
+    expect(p).toMatchObject({ name: "Ev", version: PROJECT_VERSION, workdays: [1, 2, 3, 4, 5], progressWeight: "work" });
     expect(p.holidays.every((h) => !/Ramazan|Kurban/.test(h.name))).toBe(true);
   });
 });
@@ -116,7 +116,7 @@ describe("dosya sürümü ve otomatik yükseltme", () => {
     const v1 = JSON.parse(JSON.stringify({ ...sampleProject("2026-10-12"), version: undefined, workdays: undefined, progressWeight: undefined }));
     v1.holidays.push({ date: "2026-08-14", name: "Kullanıcının tatili" });
     const p = sanitizeProject(v1)!;
-    expect(p.version).toBe(2);
+    expect(p.version).toBe(PROJECT_VERSION);
     expect(p.workdays).toEqual([1, 2, 3, 4, 5]);
     expect(p.progressWeight).toBe("cost");
     expect(p.holidays).toHaveLength(42);

@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { addDays, formatShort, monthLabel, parseDate, type WorkCalendar } from "../model/calendar";
+import { formatPercent, monthName, t, weekStartDay } from "../i18n";
+import { addDays, formatShort, parseDate, type WorkCalendar } from "../model/calendar";
 import type { ResourceUsage } from "../model/resources";
 
 // Bağımlılıksız SVG grafikler. Genişlik kabın gerçek genişliğinden alınır (yazılar ölçeklenip bulanıklaşmasın).
@@ -30,8 +31,9 @@ function monthTicks(calendar: WorkCalendar, days: number): { day: number; label:
     const m = iso.slice(0, 7);
     if (m !== last) {
       // Ay adının ilk üç harfi; yıl yalnızca ilk etikette ve ocakta
-      const [name, year] = monthLabel(iso).split(" ");
-      ticks.push({ day: d, label: !ticks.length || m.endsWith("-01") ? `${name.slice(0, 3)} ${year}` : name.slice(0, 3) });
+      const name = monthName(Number(iso.slice(5, 7)) - 1, true);
+      const year = iso.slice(0, 4);
+      ticks.push({ day: d, label: !ticks.length || m.endsWith("-01") ? `${name} ${year}` : name });
       last = m;
     }
   }
@@ -108,7 +110,7 @@ export function LoadHistogram({ usage, calendar, height = 240 }: { usage: Resour
   const y = (v: number) => PAD.t + ih - (v / yMax) * ih;
   return (
     <div ref={ref} className="chart-box">
-      <Frame width={width} height={height} days={days} calendar={calendar} yMax={yMax} yFormat={(v) => `%${Math.round(v)}`} label={`${usage.resource.name} yük histogramı`}>
+      <Frame width={width} height={height} days={days} calendar={calendar} yMax={yMax} yFormat={(v) => formatPercent(v)} label={t("chart.histAria", { name: usage.resource.name })}>
         {usage.load.map((v, d) => {
           if (!v) return null;
           const x = PAD.l + d * bw + (bw > 4 ? 0.75 : 0);
@@ -116,7 +118,7 @@ export function LoadHistogram({ usage, calendar, height = 240 }: { usage: Resour
           const within = Math.min(v, cap);
           return (
             <g key={d}>
-              <title>{`${formatShort(calendar.toDate(d))}: %${v}${v > cap ? ` (kapasite %${cap})` : ""}`}</title>
+              <title>{t(v > cap ? "chart.dayLoadOver" : "chart.dayLoad", { date: formatShort(calendar.toDate(d)), load: String(v), cap: String(cap) })}</title>
               <rect x={x} y={y(within)} width={w} height={y(0) - y(within)} className="hbar ok" />
               {v > cap && <rect x={x} y={y(v)} width={w} height={y(cap) - y(v)} className="hbar over" />}
             </g>
@@ -124,7 +126,7 @@ export function LoadHistogram({ usage, calendar, height = 240 }: { usage: Resour
         })}
         <line x1={PAD.l} x2={PAD.l + iw} y1={y(cap)} y2={y(cap)} className="cap-line" />
         <text x={PAD.l + iw} y={y(cap) - 5} className="axis-label cap-text" textAnchor="end">
-          Kapasite %{cap}
+          {t("chart.capacity", { cap: String(cap) })}
         </text>
       </Frame>
     </div>
@@ -169,11 +171,11 @@ export function CurveChart(props: {
           <>
             <line x1={tx} x2={tx} y1={PAD.t} y2={PAD.t + ih} className="today-line" />
             <text x={tx + 4} y={PAD.t + 10} className="axis-label today-text">
-              Bugün
+              {t("chart.today")}
             </text>
             {plannedToday !== undefined && (
               <circle cx={tx} cy={y(plannedToday)} r={4} className="dot planned">
-                <title>{`Planlanan: ${yFormat(plannedToday)}`}</title>
+                <title>{t("chart.plannedTip", { value: yFormat(plannedToday) })}</title>
               </circle>
             )}
             {actual && (
@@ -221,7 +223,7 @@ export function LoadHeatmap({ usage, calendar, onPick }: { usage: ResourceUsage[
   let lastWeek = "";
   for (let d = 0; d < days; d++) {
     const iso = calendar.toDate(d);
-    const week = addDays(iso, -((parseDate(iso).getUTCDay() + 6) % 7));
+    const week = addDays(iso, -((parseDate(iso).getUTCDay() - weekStartDay() + 7) % 7));
     if (week !== lastWeek) {
       weeks.push({ from: d, to: d + 1, label: formatShort(week) });
       lastWeek = week;
@@ -231,8 +233,8 @@ export function LoadHeatmap({ usage, calendar, onPick }: { usage: ResourceUsage[
     <div className="heatmap" style={{ gridTemplateColumns: `minmax(110px, 160px) repeat(${weeks.length}, minmax(10px, 1fr))` }}>
       {usage.map((u) => (
         <div key={u.resource.id} className="heat-row" role="row">
-          <button className="heat-name" onClick={() => onPick?.(u.resource.id)} title="Histogramı göster">
-            {u.resource.name || "(adsız)"}
+          <button className="heat-name" onClick={() => onPick?.(u.resource.id)} title={`${u.resource.name} · ${t("chart.showHist")}`}>
+            {u.resource.name || t("common.unnamed")}
           </button>
           {weeks.map((w) => {
             const slice = u.load.slice(w.from, w.to);
@@ -240,7 +242,7 @@ export function LoadHeatmap({ usage, calendar, onPick }: { usage: ResourceUsage[
             const ratio = peak / u.resource.maxUnits;
             const cls = peak === 0 ? "l0" : ratio > 1 ? "over" : ratio > 0.75 ? "l3" : ratio > 0.4 ? "l2" : "l1";
             return (
-              <span key={w.from} className={`heat-cell ${cls}`} title={`${u.resource.name} · ${w.label} haftası: en çok %${peak} (kapasite %${u.resource.maxUnits})`} />
+              <span key={w.from} className={`heat-cell ${cls}`} title={t("chart.heatCell", { name: u.resource.name, week: w.label, peak: String(peak), cap: String(u.resource.maxUnits) })} />
             );
           })}
         </div>

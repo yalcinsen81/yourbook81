@@ -303,8 +303,5 @@ export function curveSamples(curves: Curves, schedule: Schedule, today?: string)
   });
 }
 
-/** Boş ya da geçersiz değer "—" gösterilir (arayüz çökmesin) */
-export function formatMoney(n: number | null | undefined): string {
-  if (typeof n !== "number" || !Number.isFinite(n)) return "—";
-  return `${Math.round(n).toLocaleString("tr-TR")} ₺`;
-}
+/** Boş ya da geçersiz değer "—" gösterilir (arayüz çökmesin). Dil ve proje para birimine göre biçimlenir. */
+export { formatMoney } from "../i18n";

@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { t, type MessageKey } from "../i18n";
 import { isValidDate, nextWorkday } from "../model/calendar";
+import { normalizeCurrency } from "../model/storage";
+import { DateInput } from "./DateInput";
 import { DEFAULT_SETUP, type ProjectSetup } from "../model/sample";
 import type { ProgressWeight } from "../model/types";
-import { HolidayOptionsPicker, WorkdayPicker } from "./CalendarSettings";
+import { CurrencyPicker, HolidayOptionsPicker, WorkdayPicker } from "./CalendarSettings";
 
 interface Props {
   today: string;
@@ -15,7 +17,7 @@ const WEIGHTS: ProgressWeight[] = ["cost", "work", "duration"];
 
 /** Yeni proje: ad, başlangıç, çalışma günleri, tatiller ve ilerleme ağırlığı kullanıcı tarafından seçilir. */
 export function ProjectSetupDialog({ today, onCreate, onClose }: Props) {
-  const [setup, setSetup] = useState<ProjectSetup>({ ...DEFAULT_SETUP, start: nextWorkday(today) });
+  const [setup, setSetup] = useState<ProjectSetup>({ ...DEFAULT_SETUP, name: t("default.project"), start: nextWorkday(today) });
   const year = Number(setup.start.slice(0, 4)) || Number(today.slice(0, 4));
 
   useEffect(() => {
@@ -38,7 +40,7 @@ export function ProjectSetupDialog({ today, onCreate, onClose }: Props) {
           </label>
           <label className="field">
             <span>{t("setup.start")}</span>
-            <input type="date" value={setup.start} onChange={(e) => setSetup({ ...setup, start: e.target.value })} />
+            <DateInput value={setup.start} ariaLabel={t("setup.start")} onChange={(start) => setSetup({ ...setup, start })} />
           </label>
           <WorkdayPicker value={setup.workdays} onChange={(workdays) => setSetup({ ...setup, workdays })} />
           <HolidayOptionsPicker
@@ -57,10 +59,11 @@ export function ProjectSetupDialog({ today, onCreate, onClose }: Props) {
               ))}
             </select>
           </label>
+          <CurrencyPicker value={setup.currency} onChange={(currency) => setSetup({ ...setup, currency })} />
         </div>
         <div className="modal-actions">
           <button onClick={onClose}>{t("common.cancel")}</button>
-          <button className="primary" disabled={!valid} onClick={() => onCreate({ ...setup, name: setup.name.trim() })}>
+          <button className="primary" disabled={!valid} onClick={() => onCreate({ ...setup, name: setup.name.trim(), currency: normalizeCurrency(setup.currency) })}>
             {t("setup.create")}
           </button>
         </div>

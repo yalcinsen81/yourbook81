@@ -1,5 +1,6 @@
+import { t as tx } from "../i18n";
 import { addDays, DEFAULT_WORKDAYS, isValidDate, normalizeWorkdays } from "./calendar";
-import type { Holiday } from "./holidays";
+import { tagBuiltinHolidays, type Holiday } from "./holidays";
 import { normalizeOutline, wbsCodes } from "./outline";
 import type { Assignment, LinkType, Predecessor, Project, Resource, Schedule, Task } from "./types";
 
@@ -46,7 +47,7 @@ export function parseMspXml(xml: string): ImportResult {
   const doc = new DOMParser().parseFromString(xml, "application/xml");
   const root = doc.documentElement;
   if (!root || root.localName !== "Project" || doc.getElementsByTagName("parsererror").length) {
-    throw new Error("Bu dosya bir MS Project XML dosyası değil.");
+    throw new Error(tx("err.notMspXml"));
   }
   const warnings: string[] = [];
   const minutesPerDay = Number(text(root, "MinutesPerDay")) || 480;
@@ -130,16 +131,16 @@ export function parseMspXml(xml: string): ImportResult {
     const list: Assignment[] = (task.assignments ??= []);
     if (!list.some((x) => x.resourceId === resourceId)) list.push({ resourceId, units });
   }
-  if (skippedRes) warnings.push(`${skippedRes} malzeme/maliyet kaynağı desteklenmiyor, alınmadı.`);
-  if (manual) warnings.push(`${manual} elle zamanlanan görev, başlangıç tarihi kısıtıyla alındı.`);
-  if (percentLags) warnings.push(`${percentLags} yüzdeli gecikme desteklenmiyor, 0 alındı.`);
+  if (skippedRes) warnings.push(tx("xml.skippedResources", { n: skippedRes }));
+  if (manual) warnings.push(tx("xml.manualTasks", { n: manual }));
+  if (percentLags) warnings.push(tx("xml.percentLags", { n: percentLags }));
 
   return {
     project: {
       name: text(root, "Title") || text(root, "Name").replace(/\.xml$/i, "") || "MS Project",
       start,
       tasks: normalizeOutline(tasks),
-      holidays: readHolidays(root),
+      holidays: tagBuiltinHolidays(readHolidays(root)),
       resources,
       workdays: readWorkdays(root),
     },
@@ -224,7 +225,7 @@ export function toMspXml(project: Project, schedule: Schedule): string {
   out.push(`  <Calendars>`);
   out.push(`    <Calendar>`);
   out.push(`      <UID>1</UID>`);
-  out.push(`      <Name>Standart</Name>`);
+  out.push(`      <Name>${tx("xml.calendarName")}</Name>`);
   out.push(`      <IsBaseCalendar>1</IsBaseCalendar>`);
   out.push(`      <WeekDays>`);
   for (let day = 1; day <= 7; day++) {

@@ -1,39 +1,54 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent, type UIEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type UIEvent } from "react";
 import { addDays, diffDays, formatShort, isValidDate, nextWorkday, parseDate } from "./model/calendar";
 import { ancestorsOf, indent, isSummaryAt, move, normalizeOutline, outdent, subtreeEnd, wbsCodes } from "./model/outline";
 import { formatPredecessors, parsePredecessors } from "./model/predecessors";
 import { emptyProject, sampleProject } from "./model/sample";
 import { wouldCreateCycle } from "./model/schedule";
 import { parseMspXml, toMspXml } from "./model/mspXml";
-import { newId, sanitizeProject } from "./model/storage";
+import { newId, normalizeCurrency, sanitizeProject } from "./model/storage";
 import type { Project, Task } from "./model/types";
 import { CalendarDialog } from "./components/CalendarDialog";
 import { Gantt } from "./components/Gantt";
 import { TaskGrid, GRID_WIDTH, type GridRow } from "./components/TaskGrid";
-import { PX_PER_DAY, type Zoom } from "./components/layout";
+import { ROW_H } from "./components/layout";
 import { todayIso, useProject } from "./useProject";
 import { fileLinkSupported, useFileLink } from "./useFileLink";
 import { Icon, type IconName } from "./components/icons";
 import { ResourceView } from "./components/ResourceView";
 import { ChartsView } from "./components/ChartsView";
-import { assignFromText, formatAssignments, formatMoney, overallocatedTasks, progressCurves, projectWeight, resourceUsage } from "./model/resources";
+import { assignFromText, formatAssignments, overallocatedTasks, progressCurves, projectWeight, resourceUsage, taskCost } from "./model/resources";
 import { progressWarnings } from "./model/ops";
 import { normalizeWorkdays } from "./model/calendar";
 import { ProjectSetupDialog } from "./components/ProjectSetupDialog";
-import { t } from "./i18n";
+import { SettingsDialog } from "./components/SettingsDialog";
+import { DateInput } from "./components/DateInput";
+import { formatMoney, formatNumber, setCurrency, t, weekStartDay, type MessageKey } from "./i18n";
+import { useLocale } from "./i18n/react";
+import { holidayLabel } from "./model/holidays";
+import { parseDuration } from "./model/duration";
+import { anchoredScroll, clampPpd, fitPpd, MAX_PPD, scaleFor, ZOOM_STEP } from "./model/timescale";
+import { loadView, saveView, viewKey } from "./settings";
 
 type View = "gantt" | "resources" | "charts";
 
 export default function App() {
   const { project, schedule, update, undo, redo, canUndo, canRedo } = useProject();
+  // Dil ya da tarih biçimi değişince yeniden çizilir; metin üreten useMemo'lar buna bağlıdır
+  const loc = useLocale();
+  // Para birimi proje ayarıdır; biçimleyiciler her çizimde güncel projeninkini kullanır
+  setCurrency(project.currency);
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [anchor, setAnchor] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-  const [zoom, setZoom] = useState<Zoom>("day");
+  const [ppd, setPpd] = useState(26);
+  const [ganttWidth, setGanttWidth] = useState(900);
+  /** Proje bütünüyle değişti (dosya açıldı, yeni proje): kayıtlı Gantt görünümü geri yüklenir */
+  const [loadToken, setLoadToken] = useState(0);
   const [gridWidth, setGridWidth] = useState(() => Math.min(GRID_WIDTH, Math.max(700, Math.round(window.innerWidth * 0.56))));
   const [message, setMessage] = useState<string | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [setupOpen, setSetupOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [linkMenu, setLinkMenu] = useState(false);
   const [view, setView] = useState<View>("gantt");
   const [pickedResource, setPickedResource] = useState<string | null>(null);
@@ -55,6 +70,7 @@ export default function App() {
     (p: Project) => {
       update(() => p);
       setSelection(new Set());
+      setLoadToken((n) => n + 1);
     },
     [update],
   );
@@ -71,6 +87,11 @@ export default function App() {
   const rows: GridRow[] = useMemo(() => {
     const wbs = wbsCodes(project.tasks);
     const anc = ancestorsOf(project.tasks);
+    // Özet görevin maliyeti alt görevlerinin toplamı
+    const leafCost = project.tasks.map((task, i) => (schedule.rows[i].isSummary ? 0 : taskCost(task, project.resources)));
+    const cost = project.tasks.map((_, i) =>
+      schedule.rows[i].isSummary ? leafCost.slice(i + 1, subtreeEnd(project.tasks, i)).reduce((a, b) => a + b, 0) : leafCost[i],
+    );
     return project.tasks
       .map((task, i) => ({
         task,
@@ -80,15 +101,20 @@ export default function App() {
         resText: schedule.rows[i].isSummary ? "" : formatAssignments(task.assignments, project.resources),
         overallocated: overTasks.has(task.id),
         noCost: noCostRows.has(i + 1),
+        cost: cost[i],
         collapsed: collapsed.has(task.id),
       }))
       .filter((r) => !(anc.get(r.task.id) ?? []).some((a) => collapsed.has(a)));
-  }, [project.tasks, project.resources, schedule, collapsed, overTasks, noCostRows]);
+    // loc: öncül metnindeki gecikme birimi (g / d) dile bağlı
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project.tasks, project.resources, schedule, collapsed, overTasks, noCostRows, loc]);
 
   const cycle = useMemo(() => new Set(schedule.cycle), [schedule.cycle]);
+  // Hazır tatillerin adı seçili dilde; kullanıcının girdiği ad olduğu gibi
   const holidayMap = useMemo(
-    () => new Map(project.holidays.map((h) => [h.date, { name: h.name, halfDay: !!h.halfDay }])),
-    [project.holidays],
+    () => new Map(project.holidays.map((h) => [h.date, { name: holidayLabel(h), halfDay: !!h.halfDay }])),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [project.holidays, loc],
   );
   const workdays = useMemo(() => normalizeWorkdays(project.workdays), [project.workdays]);
 
@@ -110,14 +136,16 @@ export default function App() {
     [schedule, update],
   );
 
-  // Zaman çizelgesi: proje başlangıcından önceki pazartesi, bitişten 3 hafta sonrası
+  // Zaman çizelgesi: proje başlangıcından önceki hafta başı (bir hafta pay), bitişten 4 hafta sonrası;
+  // uzaklaştırınca görünür alanı dolduracak kadar uzar
   const timeline = useMemo(() => {
     const first = parseDate(project.start).getUTCDay();
-    const start = addDays(project.start, -((first + 6) % 7) - 7);
+    const start = addDays(project.start, -((first - weekStartDay() + 7) % 7) - 7);
     const lastDate = [schedule.finishDate, today].sort()[1];
-    const days = Math.max(diffDays(start, lastDate) + 28, 70);
+    const days = Math.max(diffDays(start, lastDate) + 28, 70, Math.ceil(ganttWidth / ppd) + 7);
     return { start, days };
-  }, [project.start, schedule.finishDate, today]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project.start, schedule.finishDate, today, ganttWidth, ppd, loc]);
 
   // --- Seçim ---
   const selectedIndexes = useMemo(
@@ -168,7 +196,7 @@ export default function App() {
         const outline = at > 0 ? p.tasks[at - 1].outline + (isSummaryAt(p.tasks, at - 1) ? 1 : 0) : 0;
         const task: Task = {
           id,
-          name: milestone ? "Yeni kilometre taşı" : "Yeni görev",
+          name: milestone ? t("default.milestone") : t("default.task"),
           duration: milestone ? 0 : 1,
           outline,
           percent: 0,
@@ -179,10 +207,14 @@ export default function App() {
       });
       setSelection(new Set([id]));
       setAnchor(id);
-      // Yeni satırın adını hemen düzenlemeye aç
+      // Yeni satırın adını hemen düzenlemeye aç (satır görünür alana kaydırılınca çizilir)
       requestAnimationFrame(() => {
-        const el = document.querySelector<HTMLInputElement>(`[data-row][data-col="name"][aria-label^="Satır ${visibleRow + 1} "]`);
-        el?.focus();
+        const grid = gridRef.current;
+        if (grid) {
+          const y = visibleRow * ROW_H;
+          if (y < grid.scrollTop || y > grid.scrollTop + grid.clientHeight - 2 * ROW_H) grid.scrollTop = Math.max(0, y - grid.clientHeight / 2);
+        }
+        requestAnimationFrame(() => document.querySelector<HTMLInputElement>(`input[data-row="${visibleRow}"][data-col="name"]`)?.focus());
       });
     },
     [primary, update],
@@ -237,7 +269,7 @@ export default function App() {
 
   const linkSelected = useCallback(() => {
     if (selectedIndexes.length < 2) {
-      flash("Bağlamak için en az iki görev seçin (Ctrl veya Shift ile).");
+      flash(t("msg.linkNeedTwo"));
       return;
     }
     let skipped = 0;
@@ -261,7 +293,7 @@ export default function App() {
       }
       return next;
     });
-    if (skipped) flash(`${skipped} bağ döngü oluşturacağı için eklenmedi.`);
+    if (skipped) flash(t("msg.linksSkipped", { n: skipped }));
   }, [flash, selectedIndexes, update]);
 
   const unlinkSelected = useCallback(() => {
@@ -281,12 +313,14 @@ export default function App() {
 
   // --- Hücre düzenleme ---
   const onDuration = (id: string, text: string) => {
-    const m = /^\s*(\d+)\s*(g|gün|gun|d)?\s*$/i.exec(text);
-    if (!m) {
-      flash("Süre iş günü olarak girilir: ör. 5 ya da 5g.");
+    // 5, 5g, 5d (iş günü) · 2w (hafta) · 4h (saat, güne yukarı yuvarlanır)
+    const parsed = parseDuration(text, workdays.length);
+    if (!parsed) {
+      flash(t("err.duration"));
       return false;
     }
-    patchTask(id, { duration: Math.min(10_000, Number(m[1])) });
+    if (parsed.hours !== undefined) flash(t("msg.hoursRounded", { hours: formatNumber(parsed.hours), days: String(parsed.days) }));
+    patchTask(id, { duration: Math.min(10_000, parsed.days) });
     return true;
   };
 
@@ -303,7 +337,7 @@ export default function App() {
   const onPredecessors = (id: string, text: string) => {
     const { predecessors, errors } = parsePredecessors(text, project.tasks, id);
     if (errors.length) {
-      flash(`Anlaşılamayan öncül: ${errors.join(", ")}. Örnek: 2 · 3SS · 4FS+2g`);
+      flash(t("err.predecessor", { parts: errors.join(", ") }));
       return false;
     }
     const base: Project = {
@@ -313,7 +347,7 @@ export default function App() {
     for (const pr of predecessors) {
       if (wouldCreateCycle(base, id, pr.taskId)) {
         const row = project.tasks.findIndex((t) => t.id === pr.taskId) + 1;
-        flash(`${row}. satır öncül olamaz: döngü ya da özet–alt görev bağı oluşur.`);
+        flash(t("err.cycleRow", { row: String(row) }));
         return false;
       }
     }
@@ -331,27 +365,29 @@ export default function App() {
   const onResources = (id: string, text: string) => {
     const result = assignFromText(project, id, text);
     if (result.errors.length) {
-      flash(`Anlaşılamayan kaynak: ${result.errors.join(", ")}. Örnek: Ali · Ali[50%]; Vinç`);
+      flash(t("err.resource", { parts: result.errors.join(", ") }));
       return false;
     }
     update(() => result.project);
     if (result.created.length) {
-      flash(`Kaynak listesine eklendi: ${result.created.map((r) => r.name).join(", ")}. Ücret ve kapasiteyi Kaynaklar sayfasından girin.`);
+      flash(t("msg.resourcesCreated", { names: result.created.map((r) => r.name).join(", ") }));
     }
     return true;
   };
 
   // --- Dosya ---
-  const download = (content: string, type: string, ext: string) => {
+  const downloadAs = (content: string, type: string, fileName: string) => {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([content], { type }));
-    a.download = `${safeFileName(project.name) || "proje"}.${ext}`;
+    a.download = fileName;
     document.body.appendChild(a);
     a.click();
     a.remove();
     // İndirme başlamadan bağlantı iptal edilmesin
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   };
+  const download = (content: string, type: string, ext: string) =>
+    downloadAs(content, type, `${safeFileName(project.name) || t("default.fileName")}.${ext}`);
   const exportJson = () => download(JSON.stringify(project, null, 2), "application/json", "json");
   const exportMsp = () => download(toMspXml(project, schedule), "application/xml", "xml");
 
@@ -372,12 +408,13 @@ export default function App() {
       update(() => opened);
       setSelection(new Set());
       setCollapsed(new Set());
-      flash([`"${opened.name}" açıldı (${opened.tasks.length} görev).`, ...warnings].join(" "));
+      setLoadToken((n) => n + 1);
+      flash([t("msg.opened", { name: opened.name, n: opened.tasks.length }), ...warnings].join(" "));
     } catch (e) {
       flash(
         isXml
-          ? `MS Project dosyası okunamadı${e instanceof Error && e.message ? `: ${e.message}` : "."} MS Project'te "XML Biçimi" ile kaydedin.`
-          : "Dosya okunamadı: geçerli bir proje dosyası değil.",
+          ? t("msg.xmlFailed", { detail: e instanceof Error && e.message ? `: ${e.message}` : "." })
+          : t("msg.fileInvalid"),
       );
     }
   };
@@ -388,11 +425,133 @@ export default function App() {
       setSetupOpen(true);
       return;
     }
-    if (!window.confirm("Örnek proje yüklensin mi? Mevcut proje değiştirilir (Geri Al ile dönebilirsiniz).")) return;
+    if (!window.confirm(t("msg.confirmSample"))) return;
     update(() => sampleProject(nextWorkday(today)));
     setSelection(new Set());
     setCollapsed(new Set());
+    setLoadToken((n) => n + 1);
   };
+
+  // --- Kaydırma eşitleme ---
+  const syncing = useRef(false);
+  const syncScroll = (source: "grid" | "gantt") => (e: UIEvent<HTMLDivElement>) => {
+    if (source === "gantt") rememberView();
+    if (syncing.current) {
+      syncing.current = false;
+      return;
+    }
+    const other = source === "grid" ? ganttRef.current : gridRef.current;
+    if (other && other.scrollTop !== e.currentTarget.scrollTop) {
+      syncing.current = true;
+      other.scrollTop = e.currentTarget.scrollTop;
+    }
+  };
+
+  // --- Gantt yakınlaştırma ---
+  // Uzaklaştırma sınırı: proje görünür alana sığar; yakınlaştırma sınırı günde 40 piksel
+  const projectDays = diffDays(project.start, schedule.finishDate) + 1;
+  const minPpd = fitPpd(ganttWidth, projectDays);
+  const ppdRef = useRef(ppd);
+  ppdRef.current = ppd;
+  const pendingLeft = useRef<number | null>(null);
+
+  useEffect(() => {
+    const el = ganttRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => setGanttWidth(el.clientWidth || 900));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  /** Yeni ölçek; `anchorX` (görünümün solundan piksel) altındaki tarih yerinde kalır */
+  const zoomTo = useCallback(
+    (next: number, anchorX?: number) => {
+      const el = ganttRef.current;
+      const clamped = clampPpd(next, minPpd);
+      const old = ppdRef.current;
+      if (!el || Math.abs(clamped - old) < 1e-6) return;
+      const x = anchorX ?? el.clientWidth / 2;
+      pendingLeft.current = anchoredScroll(el.scrollLeft, x, old, clamped);
+      setPpd(clamped);
+    },
+    [minPpd],
+  );
+
+  // Ölçek değişince kaydırma, yeni genişlik çizildikten sonra uygulanır (titreme olmasın)
+  useLayoutEffect(() => {
+    const el = ganttRef.current;
+    if (el && pendingLeft.current !== null) {
+      el.scrollLeft = pendingLeft.current;
+      pendingLeft.current = null;
+    }
+  }, [ppd]);
+
+  const scrollToDate = useCallback(
+    (iso: string, at = 80) => {
+      const el = ganttRef.current;
+      if (!el) return;
+      el.scrollLeft = Math.max(0, diffDays(timeline.start, iso) * ppdRef.current - at);
+    },
+    [timeline.start],
+  );
+
+  const fitProject = useCallback(() => {
+    const next = fitPpd(ganttRef.current?.clientWidth ?? ganttWidth, projectDays);
+    pendingLeft.current = Math.max(0, (diffDays(timeline.start, project.start) - 7) * next);
+    setPpd(next);
+  }, [ganttWidth, project.start, projectDays, timeline.start]);
+
+  const goToSelected = useCallback(() => {
+    if (primary < 0) return;
+    const id = project.tasks[primary].id;
+    const r = schedule.byId.get(id);
+    const index = rows.findIndex((row) => row.task.id === id);
+    const el = ganttRef.current;
+    if (!r || !el) return;
+    scrollToDate(r.startDate);
+    if (index >= 0) el.scrollTop = Math.max(0, index * ROW_H - el.clientHeight / 3);
+  }, [primary, project.tasks, rows, schedule.byId, scrollToDate]);
+
+  // Görünüm (ölçek, sol kenardaki tarih, dikey kaydırma) projeye göre bu bilgisayarda saklanır
+  const key = viewKey(project.name, project.start);
+  const keyRef = useRef(key);
+  keyRef.current = key;
+  const saveTimer = useRef<number | undefined>(undefined);
+  const rememberView = useCallback(() => {
+    window.clearTimeout(saveTimer.current);
+    saveTimer.current = window.setTimeout(() => {
+      const el = ganttRef.current;
+      if (!el) return;
+      const day = Math.round(el.scrollLeft / ppdRef.current);
+      saveView(keyRef.current, { ppd: ppdRef.current, date: addDays(timeline.start, day), scrollTop: el.scrollTop });
+    }, 300);
+  }, [timeline.start]);
+  useEffect(() => rememberView(), [ppd, rememberView]);
+
+  useLayoutEffect(() => {
+    // Açılışta ve proje bütünüyle değişince: kayıtlı görünüm, yoksa günlük ölçekte proje başı
+    const saved = loadView(key);
+    const el = ganttRef.current;
+    if (saved && Number.isFinite(saved.ppd) && saved.ppd > 0) {
+      const next = Math.min(MAX_PPD, saved.ppd);
+      pendingLeft.current = Math.max(0, diffDays(timeline.start, saved.date) * next);
+      setPpd(next);
+      if (next === ppdRef.current && el) {
+        el.scrollLeft = pendingLeft.current;
+        pendingLeft.current = null;
+      }
+      if (el) el.scrollTop = saved.scrollTop || 0;
+    } else {
+      pendingLeft.current = Math.max(0, diffDays(timeline.start, project.start) * 26 - 80);
+      setPpd(26);
+      if (ppdRef.current === 26 && el) {
+        el.scrollLeft = pendingLeft.current;
+        pendingLeft.current = null;
+      }
+    }
+    // Yalnızca proje yüklenince
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadToken]);
 
   // --- Klavye kısayolları (MS Project'tekilere yakın) ---
   useEffect(() => {
@@ -422,38 +581,27 @@ export default function App() {
       } else if (mod && e.key === "F2") {
         e.preventDefault();
         linkSelected();
+      } else if (mod && (e.key === "+" || e.key === "=" || e.code === "NumpadAdd")) {
+        // Tarayıcının sayfa yakınlaştırması yerine Gantt yakınlaştırması
+        e.preventDefault();
+        zoomTo(ppdRef.current * ZOOM_STEP);
+      } else if (mod && (e.key === "-" || e.code === "NumpadSubtract")) {
+        e.preventDefault();
+        zoomTo(ppdRef.current / ZOOM_STEP);
+      } else if (mod && (e.key === "0" || e.code === "Numpad0")) {
+        e.preventDefault();
+        fitProject();
+      } else if (e.key === "Home" && !editing) {
+        e.preventDefault();
+        scrollToDate(project.start);
+      } else if (e.key === "End" && !editing) {
+        e.preventDefault();
+        scrollToDate(schedule.finishDate, (ganttRef.current?.clientWidth ?? 600) - 120);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [deleteSelected, insertTask, linkSelected, redo, shiftOutline, undo, view]);
-
-  // --- Kaydırma eşitleme ---
-  const syncing = useRef(false);
-  const syncScroll = (source: "grid" | "gantt") => (e: UIEvent<HTMLDivElement>) => {
-    if (syncing.current) {
-      syncing.current = false;
-      return;
-    }
-    const other = source === "grid" ? ganttRef.current : gridRef.current;
-    if (other && other.scrollTop !== e.currentTarget.scrollTop) {
-      syncing.current = true;
-      other.scrollTop = e.currentTarget.scrollTop;
-    }
-  };
-
-  const scrollToDate = (iso: string) => {
-    const el = ganttRef.current;
-    if (!el) return;
-    const ppd = PX_PER_DAY[zoom];
-    el.scrollLeft = Math.max(0, diffDays(timeline.start, iso) * ppd - 80);
-  };
-
-  useEffect(() => {
-    scrollToDate(project.start);
-    // İlk açılışta, ölçek ya da proje başlangıcı değişince (ör. dosya açılınca)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [zoom, project.start]);
+  }, [deleteSelected, fitProject, insertTask, linkSelected, project.start, redo, schedule.finishDate, scrollToDate, shiftOutline, undo, view, zoomTo]);
 
   // --- Bölücü sürükleme ---
   const startResize = (e: MouseEvent) => {
@@ -485,51 +633,51 @@ export default function App() {
           <input
             className="project-name"
             value={project.name}
-            aria-label="Proje adı"
+            aria-label={t("app.projectName")}
+            title={project.name}
             onChange={(e) => {
               const name = e.target.value;
               update((p) => ({ ...p, name }));
             }}
           />
           <label className="project-start">
-            Başlangıç
-            <input
-              type="date"
+            {t("app.start")}
+            <DateInput
               value={project.start}
-              onChange={(e) => {
-                const start = e.target.value;
-                if (isValidDate(start)) update((p) => ({ ...p, start }));
+              ariaLabel={t("app.start")}
+              onChange={(start) => {
+                if (isValidDate(start) && start !== project.start) update((p) => ({ ...p, start }));
               }}
             />
           </label>
         </div>
-        <div className="stats" aria-label="Proje özeti">
+        <div className="stats">
           <div className="stat">
-            <span className="stat-label">Bitiş</span>
+            <span className="stat-label">{t("stat.finish")}</span>
             <span className="stat-value">{formatShort(schedule.finishDate)}</span>
           </div>
           <div className="stat">
-            <span className="stat-label">Süre</span>
-            <span className="stat-value">{schedule.finish} iş günü</span>
+            <span className="stat-label">{t("stat.duration")}</span>
+            <span className="stat-value">{t("unit.workdays", { n: schedule.finish })}</span>
           </div>
           <div className="stat" title={t("stat.progressTitle", { weight: t(`weight.${curves.weight}`) })}>
-            <span className="stat-label">İlerleme</span>
+            <span className="stat-label">{t("stat.progress")}</span>
             <span className="stat-value">
               <span className="meter" aria-hidden>
                 <span style={{ width: `${progress}%` }} />
               </span>
-              %{progress}
+              {pct(progress)}
             </span>
           </div>
           {totalCost > 0 && (
             <div className="stat">
-              <span className="stat-label">Maliyet</span>
+              <span className="stat-label">{t("stat.cost")}</span>
               <span className="stat-value">{formatMoney(totalCost)}</span>
             </div>
           )}
           <div className="stat crit">
-            <span className="stat-label">Kritik</span>
-            <span className="stat-value">{criticalCount} görev</span>
+            <span className="stat-label">{t("stat.critical")}</span>
+            <span className="stat-value">{t("unit.tasks", { n: criticalCount })}</span>
           </div>
           {warnings.length > 0 && (
             <div className="stat info" title={warnings.join("\n")} role="note">
@@ -542,15 +690,15 @@ export default function App() {
           )}
         </div>
         {install.available && (
-          <button className="chip install" onClick={install.prompt} title="Proje Planlayıcı'yı bilgisayara uygulama olarak yükle; internetsiz de açılır">
+          <button className="chip install" onClick={install.prompt} title={t("install.title")}>
             <Icon name="download" size={16} />
-            Uygulamayı yükle
+            {t("install.button")}
           </button>
         )}
         {fileLink.pendingName && !fileLink.fileName && (
-          <button className="chip reconnect" onClick={() => void fileLink.reconnect()} title="Önceki oturumda bağlı olan dosyaya yeniden bağlan">
+          <button className="chip reconnect" onClick={() => void fileLink.reconnect()} title={t("link.reconnectTitle")}>
             <Icon name="plug" size={16} />
-            {fileLink.pendingName} · yeniden bağlan
+            {t("link.reconnect", { name: fileLink.pendingName })}
           </button>
         )}
         <button
@@ -558,66 +706,67 @@ export default function App() {
           onClick={() => setLinkMenu((v) => !v)}
           disabled={!fileLinkSupported}
           title={
-            fileLinkSupported
-              ? "Projeyi diskteki bir dosyaya bağla: Claude (MCP) aynı dosyayı düzenleyebilir"
-              : "Dosyaya bağlama Chrome ve Edge'de çalışır"
+            fileLinkSupported ? t("link.title") : t("link.unsupported")
           }
           aria-expanded={linkMenu}
         >
           <Icon name="plug" size={16} />
-          {fileLink.fileName ?? "Dosyaya bağla"}
+          {fileLink.fileName ?? t("link.button")}
         </button>
         {linkMenu && (
           <div className="menu" role="menu" onMouseLeave={() => setLinkMenu(false)}>
             <button role="menuitem" onClick={() => { setLinkMenu(false); void fileLink.linkExisting(); }}>
-              Var olan dosyayı aç ve bağla
+              {t("link.openExisting")}
             </button>
             <button role="menuitem" onClick={() => { setLinkMenu(false); void fileLink.linkNew(); }}>
-              Bu projeyi yeni dosyaya kaydet ve bağla
+              {t("link.saveNew")}
             </button>
             {fileLink.fileName && (
               <button role="menuitem" onClick={() => { setLinkMenu(false); fileLink.unlink(); }}>
-                Bağlantıyı kaldır
+                {t("link.unlink")}
               </button>
             )}
           </div>
         )}
+        <button className="icon-btn" onClick={() => setSettingsOpen(true)} title={t("settings.button")} aria-label={t("settings.title")}>
+          <Icon name="gear" />
+        </button>
         <button
           className="icon-btn"
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          title={theme === "dark" ? "Açık tema" : "Koyu tema"}
-          aria-label={theme === "dark" ? "Açık temaya geç" : "Koyu temaya geç"}
+          title={theme === "dark" ? t("theme.light") : t("theme.dark")}
+          aria-label={theme === "dark" ? t("theme.toLight") : t("theme.toDark")}
         >
           <Icon name={theme === "dark" ? "sun" : "moon"} />
         </button>
       </header>
 
-      <nav className="toolbar" aria-label="Araç çubuğu">
+      <nav className="toolbar" aria-label={t("toolbar.aria")}>
         <div className="tgroup">
-          <ToolButton icon="plus" label="Görev" primary onClick={() => insertTask()} title="Seçili satırın altına görev ekle (Insert)" />
-          <ToolButton icon="milestone" label="Kilometre taşı" onClick={() => insertTask(true)} title="Kilometre taşı ekle (süre 0)" />
-          <ToolButton icon="trash" onClick={deleteSelected} disabled={!hasSel} title="Seçili görevleri sil (Delete)" />
+          <ToolButton icon="plus" label={t("tb.task")} primary onClick={() => insertTask()} title={t("tb.taskTitle")} />
+          <ToolButton icon="milestone" label={t("tb.milestone")} onClick={() => insertTask(true)} title={t("tb.milestoneTitle")} />
+          <ToolButton icon="trash" onClick={deleteSelected} disabled={!hasSel} title={t("tb.delete")} />
         </div>
         <div className="tgroup">
-          <ToolButton icon="outdent" onClick={() => shiftOutline(-1)} disabled={!hasSel} title="Girintiyi azalt (Alt+Shift+←)" />
-          <ToolButton icon="indent" onClick={() => shiftOutline(1)} disabled={!hasSel} title="Girintile: özet görev oluşturur (Alt+Shift+→)" />
-          <ToolButton icon="up" onClick={() => moveSelected(-1)} disabled={primary < 0} title="Yukarı taşı" />
-          <ToolButton icon="down" onClick={() => moveSelected(1)} disabled={primary < 0} title="Aşağı taşı" />
+          <ToolButton icon="outdent" onClick={() => shiftOutline(-1)} disabled={!hasSel} title={t("tb.outdent")} />
+          <ToolButton icon="indent" onClick={() => shiftOutline(1)} disabled={!hasSel} title={t("tb.indent")} />
+          <ToolButton icon="up" onClick={() => moveSelected(-1)} disabled={primary < 0} title={t("tb.up")} />
+          <ToolButton icon="down" onClick={() => moveSelected(1)} disabled={primary < 0} title={t("tb.down")} />
         </div>
         <div className="tgroup">
-          <ToolButton icon="link" label="Bağla" onClick={linkSelected} disabled={selection.size < 2} title="Seçili görevleri sırayla Bitiş-Başlangıç bağla (Ctrl+F2)" />
-          <ToolButton icon="unlink" onClick={unlinkSelected} disabled={!hasSel} title="Seçili görevlerin bağlarını kaldır" />
+          <ToolButton icon="link" label={t("tb.link")} onClick={linkSelected} disabled={selection.size < 2} title={t("tb.linkTitle")} />
+          <ToolButton icon="unlink" onClick={unlinkSelected} disabled={!hasSel} title={t("tb.unlink")} />
         </div>
         <div className="tgroup">
-          <ToolButton icon="undo" onClick={undo} disabled={!canUndo} title="Geri al (Ctrl+Z)" />
-          <ToolButton icon="redo" onClick={redo} disabled={!canRedo} title="Yinele (Ctrl+Y)" />
+          <ToolButton icon="undo" onClick={undo} disabled={!canUndo} title={t("tb.undo")} />
+          <ToolButton icon="redo" onClick={redo} disabled={!canRedo} title={t("tb.redo")} />
         </div>
         <div className="tgroup">
           <ToolButton icon="file" onClick={() => newProject(false)} title={t("setup.buttonTitle")} />
-          <ToolButton icon="open" label="Aç" onClick={() => fileRef.current?.click()} title="Proje dosyası aç: .json ya da MS Project'ten XML olarak kaydedilmiş .xml" />
-          <ToolButton icon="share" label="MS Project" onClick={exportMsp} title="MS Project'te açılabilen XML dosyası indir" />
-          <ToolButton icon="download" onClick={exportJson} title="Projeyi JSON olarak indir" />
-          <ToolButton icon="sparkle" onClick={() => newProject(true)} title="Örnek konut inşaatı projesi" />
+          <ToolButton icon="open" label={t("tb.open")} onClick={() => fileRef.current?.click()} title={t("tb.openTitle")} />
+          <ToolButton icon="share" label={t("tb.msp")} onClick={exportMsp} title={t("tb.mspTitle")} />
+          <ToolButton icon="download" onClick={exportJson} title={t("tb.json")} />
+          <ToolButton icon="sparkle" onClick={() => newProject(true)} title={t("tb.sample")} />
           <input
             ref={fileRef}
             type="file"
@@ -631,34 +780,34 @@ export default function App() {
           />
         </div>
         <div className="toolbar-end">
-          <div className="segmented views" role="tablist" aria-label="Görünüm">
+          <div className="segmented views" role="tablist" aria-label={t("view.label")}>
             {(
               [
-                ["gantt", "gantt", "Gantt"],
-                ["resources", "users", "Kaynaklar"],
-                ["charts", "chart", "Grafikler"],
-              ] as [View, IconName, string][]
+                ["gantt", "gantt", "view.gantt"],
+                ["resources", "users", "view.resources"],
+                ["charts", "chart", "view.charts"],
+              ] as [View, IconName, MessageKey][]
             ).map(([v, icon, label]) => (
               <button key={v} role="tab" aria-selected={view === v} className={view === v ? "on" : ""} onClick={() => setView(v)}>
                 <Icon name={icon} size={15} />
-                {label}
-                {v === "resources" && usage.some((u) => u.overDays.length) && <i className="dot-alert" aria-label="aşırı yük var" />}
+                {t(label)}
+                {v === "resources" && usage.some((u) => u.overDays.length) && <i className="dot-alert" aria-label={t("view.overAlert")} />}
               </button>
             ))}
           </div>
-          <ToolButton icon="calendar" label="Takvim" onClick={() => setCalendarOpen(true)} title={t("calendar.buttonTitle")} />
           {view === "gantt" && (
-            <ToolButton icon="target" label="Bugün" onClick={() => scrollToDate(today)} title="Gantt'ı bugüne kaydır" />
+            <div className="tgroup zoombar" role="toolbar" aria-label={t("zoom.label")}>
+              <ToolButton icon="zoomOut" onClick={() => zoomTo(ppd / ZOOM_STEP)} disabled={ppd <= minPpd + 1e-6} title={t("zoom.out")} />
+              <span className="zoom-level" title={t("zoom.hint")}>
+                {t("zoom.level", { scale: t(`zoom.scale.${scaleFor(ppd)}`), px: formatNumber(ppd, ppd < 10 ? 1 : 0) })}
+              </span>
+              <ToolButton icon="zoomIn" onClick={() => zoomTo(ppd * ZOOM_STEP)} disabled={ppd >= MAX_PPD - 1e-6} title={t("zoom.in")} />
+              <ToolButton icon="fit" label={t("zoom.fitShort")} onClick={fitProject} title={t("zoom.fit")} />
+              <ToolButton icon="target" label={t("tb.today")} onClick={() => scrollToDate(today, (ganttRef.current?.clientWidth ?? 600) / 2)} title={t("tb.todayTitle")} />
+              <ToolButton icon="crosshair" onClick={goToSelected} disabled={primary < 0} title={t("zoom.selected")} />
+            </div>
           )}
-          {view === "gantt" && (
-          <div className="segmented" role="radiogroup" aria-label="Zaman ölçeği">
-            {(["day", "week", "month"] as Zoom[]).map((z) => (
-              <button key={z} role="radio" aria-checked={zoom === z} className={zoom === z ? "on" : ""} onClick={() => setZoom(z)}>
-                {{ day: "Gün", week: "Hafta", month: "Ay" }[z]}
-              </button>
-            ))}
-          </div>
-          )}
+          <ToolButton icon="calendar" label={t("tb.calendar")} onClick={() => setCalendarOpen(true)} title={t("calendar.buttonTitle")} />
         </div>
       </nav>
 
@@ -714,12 +863,13 @@ export default function App() {
             onAddAtEnd={() => insertTask(false, true)}
           />
         </div>
-        <div className="splitter" onMouseDown={startResize} role="separator" aria-orientation="vertical" aria-label="Tablo genişliği" />
+        <div className="splitter" onMouseDown={startResize} role="separator" aria-orientation="vertical" aria-label={t("app.splitter")} />
         <Gantt
           rows={rows}
           timelineStart={timeline.start}
           days={timeline.days}
-          zoom={zoom}
+          ppd={ppd}
+          onZoom={zoomTo}
           today={today}
           selection={selection}
           scrollRef={ganttRef}
@@ -749,19 +899,30 @@ export default function App() {
             setSelection(new Set());
             setCollapsed(new Set());
             setSetupOpen(false);
+            setLoadToken((n) => n + 1);
           }}
+        />
+      )}
+      {settingsOpen && (
+        <SettingsDialog
+          currency={project.currency ?? "TRY"}
+          onCurrency={(code) => update((p) => ({ ...p, currency: code.trim() ? normalizeCurrency(code) : code }))}
+          download={(content, fileName) => downloadAs(content, "application/json", fileName)}
+          onClose={() => setSettingsOpen(false)}
         />
       )}
 
       <footer className="statusbar">
-        <span>{leafCount} görev</span>
+        <span>{t("unit.tasks", { n: leafCount })}</span>
         <span className="legend">
-          <i className="sw normal" /> Normal <i className="sw critical" /> Kritik yol <i className="sw summary" /> Özet
-          <i className="sw ms" /> Kilometre taşı <i className="sw over">!</i> Aşırı yüklü kaynak
+          <i className="sw normal" /> {t("legend.normal")} <i className="sw critical" /> {t("legend.critical")} <i className="sw summary" />{" "}
+          {t("legend.summary")} <i className="sw ms" /> {t("legend.milestone")} <i className="sw over">!</i> {t("legend.over")}
         </span>
-        {schedule.cycle.length > 0 && <span className="warn">Döngüsel bağ var: işaretli satırları kontrol edin</span>}
+        {schedule.cycle.length > 0 && <span className="warn">{t("warn.cycleStatus")}</span>}
         <span className="spacer" />
-        <span>{fileLink.fileName ? `Kayıt: ${fileLink.fileName} + tarayıcı` : "Kayıt: tarayıcıda otomatik"}</span>
+        <span className="save-state" title={fileLink.fileName ?? undefined}>
+          {fileLink.fileName ? t("status.saveFile", { name: fileLink.fileName }) : t("status.saveBrowser")}
+        </span>
       </footer>
       {message && (
         <div className="toast" role="status">
@@ -780,6 +941,11 @@ function safeFileName(name: string): string {
     .replace(/[çÇğĞıİöÖşŞüÜ]/g, (c) => TR_ASCII[c])
     .replace(/[^A-Za-z0-9_-]+/g, "_")
     .replace(/^_+|_+$/g, "");
+}
+
+/** Yüzde: TR "%45", EN "45%" */
+function pct(n: number): string {
+  return t("common.percent", { v: formatNumber(n) });
 }
 
 function ToolButton(props: {

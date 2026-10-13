@@ -1,6 +1,6 @@
-import { t, type MessageKey } from "../i18n";
+import { formatMoney, formatMoneyShort, formatNumber, formatPercent, t, type MessageKey } from "../i18n";
 import { formatShort } from "../model/calendar";
-import { formatMoney, plannedAt, projectWeight, type Curves, type ResourceUsage } from "../model/resources";
+import { plannedAt, projectWeight, type Curves, type ResourceUsage } from "../model/resources";
 import type { ProgressWeight, Project, Schedule } from "../model/types";
 import { BarList, CurveChart, LoadHeatmap } from "./charts";
 import { Icon } from "./icons";
@@ -36,7 +36,7 @@ export function ChartsView({ project, schedule, usage, today, curves, warnings, 
     return (
       <div className="page">
         <section className="card">
-          <p className="empty">Grafikler için süresi olan en az bir görev gerekir.</p>
+          <p className="empty">{t("charts.needTask")}</p>
         </section>
       </div>
     );
@@ -68,19 +68,23 @@ export function ChartsView({ project, schedule, usage, today, curves, warnings, 
         ))}
       </div>
       <div className="kpis">
-        <Kpi label="Toplam maliyet" value={formatMoney(curves.totalCost)} sub={curves.totalCost ? `Bugüne planlanan ${formatMoney(plannedCostToday)}` : "Kaynaklara ücret girin"} />
-        <Kpi label="Planlanan ilerleme" value={`%${Math.round(plannedToday)}`} sub={t("charts.asOf", { date: formatShort(today), weight: weightLabel })} />
-        <Kpi label="Gerçekleşen" value={`%${Math.round(curves.earnedPercent)}`} sub={`Kazanılan değer ${formatMoney(curves.earnedCost)}`} />
         <Kpi
-          label="Fark"
-          value={`${diff >= 0 ? "+" : "−"}%${Math.abs(Math.round(diff))}`}
-          sub={good ? "Plana göre önde veya planda" : "Plana göre geride"}
+          label={t("charts.totalCost")}
+          value={formatMoney(curves.totalCost)}
+          sub={curves.totalCost ? t("charts.plannedCostToday", { cost: formatMoney(plannedCostToday) }) : t("charts.enterRates")}
+        />
+        <Kpi label={t("charts.planned")} value={formatPercent(plannedToday)} sub={t("charts.asOf", { date: formatShort(today), weight: weightLabel })} />
+        <Kpi label={t("charts.actual")} value={formatPercent(curves.earnedPercent)} sub={t("charts.earned", { cost: formatMoney(curves.earnedCost) })} />
+        <Kpi
+          label={t("charts.variance")}
+          value={`${diff >= 0 ? "+" : "−"}${formatPercent(Math.abs(Math.round(diff)))}`}
+          sub={good ? t("charts.ahead") : t("charts.behind")}
           tone={good ? "good" : "bad"}
         />
         <Kpi
-          label="Aşırı yüklü kaynak"
+          label={t("charts.overRes")}
           value={String(overRes.length)}
-          sub={overRes.length ? overRes.map((u) => u.resource.name).join(", ") : "Kapasite aşımı yok"}
+          sub={overRes.length ? overRes.map((u) => u.resource.name).join(", ") : t("charts.noOver")}
           tone={overRes.length ? "bad" : "good"}
         />
       </div>
@@ -89,7 +93,7 @@ export function ChartsView({ project, schedule, usage, today, curves, warnings, 
         <section className="card">
           <header className="card-head">
             <div>
-              <h2>S eğrisi</h2>
+              <h2>{t("charts.sCurve")}</h2>
               <p className="card-sub">{t("charts.sCurveSub", { weight: weightLabel })}</p>
             </div>
           </header>
@@ -98,19 +102,19 @@ export function ChartsView({ project, schedule, usage, today, curves, warnings, 
             days={days}
             calendar={schedule.calendar}
             yMax={100}
-            yFormat={(v) => `%${Math.round(v)}`}
-            label="S eğrisi"
+            yFormat={(v) => formatPercent(v)}
+            label={t("charts.sCurve")}
             today={started ? todayDay : undefined}
             plannedToday={plannedToday}
-            actual={{ value: curves.earnedPercent, good, label: `Gerçekleşen %${Math.round(curves.earnedPercent)}` }}
+            actual={{ value: curves.earnedPercent, good, label: t("charts.actualLabel", { value: formatPercent(curves.earnedPercent) }) }}
           />
         </section>
 
         <section className="card">
           <header className="card-head">
             <div>
-              <h2>Maliyet eğrisi</h2>
-              <p className="card-sub">Kaynak ücretlerinden hesaplanan kümülatif planlanan maliyet; nokta kazanılan değer.</p>
+              <h2>{t("charts.costCurve")}</h2>
+              <p className="card-sub">{t("charts.costCurveSub")}</p>
             </div>
           </header>
           {curves.totalCost > 0 ? (
@@ -119,63 +123,64 @@ export function ChartsView({ project, schedule, usage, today, curves, warnings, 
               days={days}
               calendar={schedule.calendar}
               yMax={niceMoney(curves.totalCost)}
-              yFormat={shortMoney}
-              label="Maliyet eğrisi"
+              yFormat={(v) => formatMoneyShort(v)}
+              label={t("charts.costCurve")}
               today={started ? todayDay : undefined}
               plannedToday={plannedCostToday}
-              actual={{ value: curves.earnedCost, good: curves.earnedCost >= plannedCostToday - 0.5, label: shortMoney(curves.earnedCost) }}
+              actual={{ value: curves.earnedCost, good: curves.earnedCost >= plannedCostToday - 0.5, label: formatMoneyShort(curves.earnedCost) }}
             />
           ) : (
-            <p className="empty">Maliyet için Kaynaklar sayfasında günlük ücret girin ve görevlere kaynak atayın.</p>
+            <p className="empty">{t("charts.costEmpty")}</p>
           )}
         </section>
 
         <section className="card wide">
           <header className="card-head">
             <div>
-              <h2>Kaynak yük haritası</h2>
-              <p className="card-sub">Her hücre bir hafta; koyuluk haftanın en yüksek yükünün kapasiteye oranı, kırmızı aşırı yük. Ada tıklayınca histogram açılır.</p>
+              <h2>{t("charts.heatmap")}</h2>
+              <p className="card-sub">{t("charts.heatmapSub")}</p>
             </div>
             <span className="heat-legend">
-              <i className="heat-cell l1" /> Az <i className="heat-cell l2" /> Orta <i className="heat-cell l3" /> Dolu <i className="heat-cell over" /> Aşım
+              <i className="heat-cell l1" /> {t("charts.heatLow")} <i className="heat-cell l2" /> {t("charts.heatMid")} <i className="heat-cell l3" />{" "}
+              {t("charts.heatHigh")} <i className="heat-cell over" /> {t("charts.heatOver")}
             </span>
           </header>
           {usage.length ? (
             <LoadHeatmap usage={usage} calendar={schedule.calendar} onPick={onPickResource} />
           ) : (
-            <p className="empty">Henüz kaynak yok.</p>
+            <p className="empty">{t("charts.noResources")}</p>
           )}
         </section>
 
         <section className="card">
           <header className="card-head">
             <div>
-              <h2>Kaynak başına maliyet</h2>
+              <h2>{t("charts.costPerRes")}</h2>
             </div>
           </header>
           {usage.some((u) => u.cost > 0) ? (
             <BarList
               items={[...usage].sort((a, b) => b.cost - a.cost).map((u) => ({ label: u.resource.name, value: u.cost, over: u.overDays.length > 0 }))}
-              format={formatMoney}
+              format={(v) => formatMoney(v)}
             />
           ) : (
-            <p className="empty">Ücret girilmiş kaynak yok.</p>
+            <p className="empty">{t("charts.noRates")}</p>
           )}
         </section>
 
         <section className="card">
           <header className="card-head">
             <div>
-              <h2>Kaynak başına iş</h2>
+              <h2>{t("charts.workPerRes")}</h2>
             </div>
           </header>
           {usage.some((u) => u.work > 0) ? (
             <BarList
               items={[...usage].sort((a, b) => b.work - a.work).map((u) => ({ label: u.resource.name, value: u.work, over: u.overDays.length > 0 }))}
-              format={(v) => `${Math.round(v * 10) / 10} adam-gün`}
+              format={(v) => t("unit.personDaysLong", { n: formatNumber(v, 1) })}
             />
           ) : (
-            <p className="empty">Görevlere kaynak atanmamış.</p>
+            <p className="empty">{t("charts.noAssignments")}</p>
           )}
         </section>
       </div>
@@ -193,12 +198,6 @@ function Kpi({ label, value, sub, tone }: { label: string; value: string; sub: s
       </span>
     </div>
   );
-}
-
-function shortMoney(v: number): string {
-  if (v >= 1_000_000) return `${(v / 1_000_000).toLocaleString("tr-TR", { maximumFractionDigits: 2 })} mn ₺`;
-  if (v >= 1000) return `${Math.round(v / 1000).toLocaleString("tr-TR")} bin ₺`;
-  return `${Math.round(v)} ₺`;
 }
 
 function niceMoney(v: number): number {

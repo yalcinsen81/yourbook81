@@ -1,4 +1,5 @@
 import { useEffect, useState, type KeyboardEvent } from "react";
+import { t } from "../i18n";
 
 interface Props {
   value: string;
@@ -63,7 +64,7 @@ export function EditableCell({ value, onCommit, type = "text", readOnly, row, co
       placeholder={placeholder}
       readOnly={readOnly}
       tabIndex={readOnly ? -1 : 0}
-      title={invalid ? "Geçersiz değer" : title}
+      title={invalid ? t("common.invalid") : title}
       aria-label={ariaLabel}
       aria-invalid={invalid}
       data-row={row}

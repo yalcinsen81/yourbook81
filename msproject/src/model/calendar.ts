@@ -1,3 +1,5 @@
+import { dayName, getDateStyle, getLang, monthName } from "../i18n";
+
 // Standart takvim: Pazartesi–Cuma iş günü, hafta sonu tatil. Tüm tarihler UTC olarak YYYY-MM-DD.
 
 const DAY_MS = 86_400_000;
@@ -59,26 +61,26 @@ export function dateToWorkday(base: string, iso: string): number {
   return weeks * 5 + rem - baseDow;
 }
 
-const TR_DAYS = ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"];
-const TR_MONTHS = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
-
-/** Tablo için kısa Türkçe gösterim: "Pzt 12.10.26" */
+/** Tablo için kısa gösterim, dile ve tarih biçimi ayarına göre: "Pzt 12.10.26", "Mon 10/12/26", "Mon 2026-10-12" */
 export function formatShort(iso: string | null | undefined): string {
   if (!iso || !isValidDate(iso)) return "—";
   const d = parseDate(iso);
   const dd = String(d.getUTCDate()).padStart(2, "0");
   const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
   const yy = String(d.getUTCFullYear()).slice(2);
-  return `${TR_DAYS[d.getUTCDay()]} ${dd}.${mm}.${yy}`;
+  const date =
+    getDateStyle() === "iso" ? iso : getLang() === "tr" ? `${dd}.${mm}.${yy}` : `${d.getUTCMonth() + 1}/${d.getUTCDate()}/${yy}`;
+  return `${dayName(d.getUTCDay())} ${date}`;
 }
 
+/** "Kas 2026" / "Nov 2026" */
 export function monthLabel(iso: string): string {
   const d = parseDate(iso);
-  return `${TR_MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+  return `${monthName(d.getUTCMonth(), true)} ${d.getUTCFullYear()}`;
 }
 
 export function dayOfWeekLetter(iso: string): string {
-  return ["P", "P", "S", "Ç", "P", "C", "C"][parseDate(iso).getUTCDay()];
+  return dayName(parseDate(iso).getUTCDay()).charAt(0);
 }
 
 /** Varsayılan çalışma haftası: pazartesi–cuma (0 = pazar … 6 = cumartesi) */

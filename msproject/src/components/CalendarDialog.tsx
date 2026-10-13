@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { t } from "../i18n";
 import { formatShort, isValidDate } from "../model/calendar";
-import { DEFAULT_HOLIDAY_OPTIONS, mergeHolidays, type Holiday, type HolidayOptions } from "../model/holidays";
+import { DEFAULT_HOLIDAY_OPTIONS, holidayLabel, mergeHolidays, type Holiday, type HolidayOptions } from "../model/holidays";
 import { defaultHolidays } from "../model/sample";
 import { HolidayOptionsPicker, WorkdayPicker } from "./CalendarSettings";
+import { DateInput } from "./DateInput";
 
 interface Props {
   holidays: Holiday[];
@@ -31,7 +32,7 @@ export function CalendarDialog({ holidays, workdays, projectStart, onSave, onClo
 
   const add = () => {
     if (!isValidDate(date) || list.some((h) => h.date === date)) return;
-    setList(mergeHolidays(list, [{ date, name: name.trim() || "Tatil", ...(halfDay ? { halfDay: true } : {}) }]));
+    setList(mergeHolidays(list, [{ date, name: name.trim() || t("default.holiday"), ...(halfDay ? { halfDay: true } : {}) }]));
     setDate("");
     setName("");
     setHalfDay(false);
@@ -43,7 +44,7 @@ export function CalendarDialog({ holidays, workdays, projectStart, onSave, onClo
   return (
     <div className="modal-backdrop" onMouseDown={onClose}>
       <div className="modal" role="dialog" aria-modal="true" aria-labelledby="cal-title" onMouseDown={(e) => e.stopPropagation()}>
-        <h2 id="cal-title">Proje takvimi</h2>
+        <h2 id="cal-title">{t("calendar.title")}</h2>
         <p className="modal-note">{t("calendar.note")}</p>
         <div className="settings">
           <WorkdayPicker value={days} onChange={setDays} />
@@ -52,24 +53,24 @@ export function CalendarDialog({ holidays, workdays, projectStart, onSave, onClo
           {list.map((h) => (
             <li key={h.date}>
               <span className="date">{formatShort(h.date)}</span>
-              <span className="name">
-                {h.name}
+              <span className="name" title={holidayLabel(h)}>
+                {holidayLabel(h)}
                 {h.halfDay && <span className="pill half">{t("calendar.halfDay")}</span>}
               </span>
-              <button aria-label={`${h.name} tatilini kaldır`} onClick={() => setList(list.filter((x) => x.date !== h.date))}>
+              <button aria-label={t("calendar.remove", { name: holidayLabel(h) })} onClick={() => setList(list.filter((x) => x.date !== h.date))}>
                 ✕
               </button>
             </li>
           ))}
-          {list.length === 0 && <li className="name">Tatil günü yok.</li>}
+          {list.length === 0 && <li className="name">{t("calendar.empty")}</li>}
         </ul>
         <div className="holiday-add">
-          <input type="date" value={date} aria-label="Tatil tarihi" onChange={(e) => setDate(e.target.value)} />
+          <DateInput value={date} ariaLabel={t("calendar.date")} onChange={setDate} />
           <input
             type="text"
             value={name}
-            placeholder="Açıklama (ör. Şantiye bakımı)"
-            aria-label="Tatil açıklaması"
+            placeholder={t("calendar.descPlaceholder")}
+            aria-label={t("calendar.desc")}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && add()}
           />
@@ -78,7 +79,7 @@ export function CalendarDialog({ holidays, workdays, projectStart, onSave, onClo
             <span>{t("calendar.halfDay")}</span>
           </label>
           <button onClick={add} disabled={!isValidDate(date)}>
-            Ekle
+            {t("common.add")}
           </button>
         </div>
         <details className="preset">
@@ -89,7 +90,7 @@ export function CalendarDialog({ holidays, workdays, projectStart, onSave, onClo
           </div>
         </details>
         <div className="modal-actions">
-          <button onClick={onClose}>Vazgeç</button>
+          <button onClick={onClose}>{t("common.cancel")}</button>
           <button
             className="primary"
             onClick={() => {
@@ -97,7 +98,7 @@ export function CalendarDialog({ holidays, workdays, projectStart, onSave, onClo
               onClose();
             }}
           >
-            Kaydet
+            {t("common.save")}
           </button>
         </div>
       </div>

@@ -1,0 +1,80 @@
+import { useEffect } from "react";
+import { formatDateLocal, getDateStyle, getLang, t, type DateStyle, type Lang } from "../i18n";
+import { useLocale } from "../i18n/react";
+import { listBackups, saveLocale } from "../settings";
+import { CurrencyPicker } from "./CalendarSettings";
+
+interface Props {
+  currency: string;
+  onCurrency: (code: string) => void;
+  /** Dosya indirme (App'teki yardımcı) */
+  download: (content: string, fileName: string) => void;
+  onClose: () => void;
+}
+
+const LANGS: [Lang, string][] = [
+  ["tr", "Türkçe"],
+  ["en", "English"],
+];
+
+/** Ayarlar: dil ve tarih biçimi (bu bilgisayar), para birimi (bu proje), yükseltme öncesi yedekler */
+export function SettingsDialog({ currency, onCurrency, download, onClose }: Props) {
+  useLocale();
+  const lang = getLang();
+  const dateStyle = getDateStyle();
+  const backups = listBackups();
+  // Örnek tarih: seçili dile göre biçim önizlemesi
+  const example = (style: DateStyle) => (style === "iso" ? "2026-11-13" : lang === "tr" ? "13.11.2026" : "11/13/2026");
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div className="modal-backdrop" onMouseDown={onClose}>
+      <div className="modal" role="dialog" aria-modal="true" aria-labelledby="settings-title" onMouseDown={(e) => e.stopPropagation()}>
+        <h2 id="settings-title">{t("settings.title")}</h2>
+        <div className="settings">
+          <fieldset className="setting">
+            <legend>{t("settings.language")}</legend>
+            <div className="segmented" role="radiogroup">
+              {LANGS.map(([code, name]) => (
+                <button key={code} role="radio" aria-checked={lang === code} className={lang === code ? "on" : ""} lang={code} onClick={() => saveLocale(code, dateStyle)}>
+                  {name}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+          <fieldset className="setting">
+            <legend>{t("settings.dateFormat")}</legend>
+            {(["locale", "iso"] as DateStyle[]).map((style) => (
+              <label key={style} className="check">
+                <input type="radio" name="date-style" checked={dateStyle === style} onChange={() => saveLocale(lang, style)} />
+                <span>{t(style === "iso" ? "settings.dateIso" : "settings.dateLocale", { example: example(style) })}</span>
+              </label>
+            ))}
+            <small className="modal-note">{t("settings.appNote")}</small>
+          </fieldset>
+          <CurrencyPicker value={currency} onChange={onCurrency} />
+          <fieldset className="setting">
+            <legend>{t("settings.backup")}</legend>
+            {backups.length === 0 && <small>{t("settings.backupNone")}</small>}
+            {backups.map((b) => (
+              <div key={b.at} className="backup-row">
+                <span title={b.name}>{t("settings.backupOf", { name: b.name, date: `${formatDateLocal(b.at.slice(0, 10))} ${b.at.slice(11, 16)}` })}</span>
+                <button onClick={() => download(b.text, `${b.name}.bak`)}>{t("settings.backupDownload")}</button>
+              </div>
+            ))}
+          </fieldset>
+        </div>
+        <div className="modal-actions">
+          <button className="primary" onClick={onClose}>
+            {t("common.close")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

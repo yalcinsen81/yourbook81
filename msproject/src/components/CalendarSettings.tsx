@@ -1,12 +1,12 @@
-import { t, type MessageKey } from "../i18n";
+import { currencySymbol, t, weekStartDay, type MessageKey } from "../i18n";
 import type { HolidayOptions } from "../model/holidays";
 import { yearsWithoutReligiousData } from "../model/holidays";
 
 // Proje takvimi seçimleri: çalışma günleri ve hazır tatil grupları. Yeni proje penceresi ve Proje takvimi
 // penceresi aynı parçaları kullanır.
 
-/** Pazartesiden başlayan sıra (0 = pazar) */
-const WEEK = [1, 2, 3, 4, 5, 6, 0];
+/** Seçili dilin hafta başından başlayan gün sırası (0 = pazar) */
+const week = () => Array.from({ length: 7 }, (_, i) => (weekStartDay() + i) % 7);
 
 export function WorkdayPicker({ value, onChange }: { value: number[]; onChange: (days: number[]) => void }) {
   const toggle = (d: number) => {
@@ -17,7 +17,7 @@ export function WorkdayPicker({ value, onChange }: { value: number[]; onChange: 
     <fieldset className="setting">
       <legend>{t("calendar.workdays")}</legend>
       <div className="day-toggles" role="group">
-        {WEEK.map((d) => (
+        {week().map((d) => (
           <label key={d} className={`day-toggle ${value.includes(d) ? "on" : ""}`} title={t(`day.long.${d}` as MessageKey)}>
             <input type="checkbox" checked={value.includes(d)} onChange={() => toggle(d)} />
             {t(`day.short.${d}` as MessageKey)}
@@ -47,7 +47,7 @@ export function HolidayOptionsPicker(props: {
   );
   return (
     <fieldset className="setting">
-      <legend>{t("calendar.holidays", { from: props.fromYear, to: props.toYear })}</legend>
+      <legend>{t("calendar.holidays", { from: String(props.fromYear), to: String(props.toYear) })}</legend>
       {box("official", "calendar.official")}
       {box(
         "religious",
@@ -56,5 +56,37 @@ export function HolidayOptionsPicker(props: {
       )}
       {box("halfDays", "calendar.halfDays", t("calendar.halfDaysHint"))}
     </fieldset>
+  );
+}
+
+export const CURRENCIES = ["TRY", "USD", "EUR", "GBP"];
+
+/** Para birimi: hazır seçenekler ya da özel kod (ör. AED). Tutarlar dönüştürülmez. */
+export function CurrencyPicker({ value, onChange }: { value: string; onChange: (code: string) => void }) {
+  const custom = !CURRENCIES.includes(value);
+  return (
+    <label className="field">
+      <span>{t("settings.currency")}</span>
+      <span className="currency-row">
+        <select value={custom ? "" : value} onChange={(e) => onChange(e.target.value || "")}>
+          {CURRENCIES.map((c) => (
+            <option key={c} value={c}>
+              {currencySymbol(c)} {c}
+            </option>
+          ))}
+          <option value="">{t("settings.currencyCustom")}</option>
+        </select>
+        {custom && (
+          <input
+            value={value}
+            maxLength={8}
+            placeholder={t("settings.currencyCustomPlaceholder")}
+            aria-label={t("settings.currencyCustom")}
+            onChange={(e) => onChange(e.target.value.toUpperCase())}
+          />
+        )}
+      </span>
+      <small>{t("settings.currencyNote")}</small>
+    </label>
   );
 }
