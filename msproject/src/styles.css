@@ -3100,7 +3100,7 @@ kbd {
   }
 }
 /* Dar pencere: üst şeritte proje adı kısalır, sekmeler yerinde kalır (alt satıra inilmez) */
-@media (max-width: 1000px) {
+@media (max-width: 1100px) {
   .project-start {
     display: none;
   }
@@ -4418,4 +4418,567 @@ input[type="radio"] {
 }
 .setting .modal-note {
   padding: 0;
+}
+
+/* ---- Eksikler ve MS Project esnekliği (3. istek) ---- */
+.chip.reconnect svg {
+  color: var(--brand-strong);
+}
+/* Komut paleti (Ctrl+K) ve göreve git (Ctrl+G) */
+.palette-backdrop {
+  align-items: flex-start;
+  padding-top: 12vh;
+}
+.palette {
+  width: min(560px, calc(100vw - 32px));
+  max-height: min(480px, calc(100vh - 24vh));
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--menu-shadow);
+  overflow: hidden;
+}
+.palette-input {
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  padding: 12px 14px;
+  font: inherit;
+  font-size: 14px;
+  background: transparent;
+  color: var(--ink);
+  outline: none;
+}
+.palette-list {
+  overflow-y: auto;
+  padding: 4px;
+  flex: 1;
+}
+.palette-group {
+  padding: 8px 10px 4px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-3);
+}
+.palette-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  padding: 4px 10px;
+  border-radius: var(--r-ctl);
+  cursor: pointer;
+  color: var(--ink);
+}
+.palette-item > span:first-child:not(.palette-row) {
+  flex: 1;
+}
+.palette-item.active {
+  background: var(--brand-tint);
+  box-shadow: inset 2px 0 0 var(--brand);
+}
+.palette-item.disabled {
+  color: var(--ink-3);
+  cursor: default;
+}
+.palette-row {
+  min-width: 32px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.palette-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.palette-path {
+  color: var(--ink-3);
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.palette-empty {
+  padding: 16px;
+  color: var(--ink-3);
+}
+.palette-foot {
+  border-top: 1px solid var(--line);
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+/* Sağ tık menüsü */
+.context-menu {
+  position: fixed;
+  z-index: 60;
+}
+.context-menu .menu {
+  position: static;
+  min-width: 230px;
+}
+.context-menu .menu button > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.menu-icon {
+  width: 16px;
+  display: inline-flex;
+  color: var(--ink-2);
+  flex: none;
+}
+.outline-menu {
+  min-width: 220px;
+}
+.outline-menu { left: 0; right: auto; }
+/* Satır sürükle-bırak: bırakma yeri girintili çizgiyle gösterilir */
+.grid-row {
+  position: relative;
+}
+.grid-row.drop-target {
+  box-shadow: none;
+}
+.drop-line {
+  position: absolute;
+  top: -1px;
+  right: 0;
+  height: 2px;
+  background: var(--brand);
+  z-index: 2;
+  pointer-events: none;
+}
+.drop-line::before {
+  content: "";
+  position: absolute;
+  left: -4px;
+  top: -3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 2px solid var(--brand);
+  background: var(--surface);
+  box-sizing: border-box;
+}
+.gc-row[draggable="true"] {
+  cursor: grab;
+}
+/* Gantt'ta doğrudan düzenleme: ilerleme tutamacı, bağ tutamacı, bağ okuna tıklama */
+.percent-handle {
+  fill: var(--ink);
+  opacity: 0;
+  cursor: ew-resize;
+  transition: opacity var(--ease);
+}
+.link-handle {
+  fill: var(--surface);
+  stroke: var(--brand);
+  stroke-width: 1.5;
+  opacity: 0;
+  cursor: crosshair;
+  transition: opacity var(--ease);
+}
+.task-bar:hover .percent-handle,
+.task-bar:hover .link-handle,
+.milestone:hover .link-handle,
+.gantt-pane.linking .link-handle {
+  opacity: 1;
+}
+.link-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 10;
+  cursor: pointer;
+  pointer-events: stroke;
+}
+.link-g:hover .link {
+  stroke: var(--brand);
+  stroke-width: 1.5;
+}
+.link-draft {
+  stroke: var(--brand);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+  fill: none;
+  pointer-events: none;
+}
+.gantt-pane.linking,
+.gantt-pane.linking * {
+  cursor: crosshair !important;
+}
+.link-editor {
+  position: fixed;
+  z-index: 60;
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--menu-shadow);
+}
+.link-editor-title {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.link-editor .field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.link-editor-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.link-editor-actions .spacer {
+  flex: 1;
+}
+.link-editor button {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: var(--r-ctl);
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+}
+.link-editor button.primary {
+  background: var(--btn);
+  border-color: var(--btn);
+  color: var(--on-btn);
+}
+.link-editor button.danger {
+  border-color: transparent;
+  color: var(--critical-ink);
+  padding: 0 6px;
+}
+.link-editor button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+/* Dolgu tutamacı: odaktaki hücrenin sağ alt köşesi */
+.grid-row .gc {
+  position: relative;
+}
+.fill-handle {
+  display: none;
+  position: absolute;
+  right: 1px;
+  bottom: 1px;
+  width: 7px;
+  height: 7px;
+  background: var(--brand);
+  border: 1px solid var(--surface);
+  cursor: crosshair;
+  z-index: 3;
+}
+.gc:focus-within > .fill-handle,
+.gc-name:focus-within > .fill-handle {
+  display: block;
+}
+.grid-row.fill-range {
+  box-shadow: inset 2px 0 0 var(--brand);
+  background: var(--brand-tint);
+}
+/* Toplu düzenleme penceresi */
+.bulk-row {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+}
+.bulk-row input:not([type="checkbox"]),
+.bulk-row select {
+  width: 100%;
+}
+.bulk-off {
+  opacity: 0.55;
+}
+.bulk-constraint {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* ---- B6: gruplama, sıralanabilir başlık, süzgeç rozeti ---- */
+.view-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 4px 0 10px;
+  border-radius: 13px;
+  background: var(--brand-tint);
+  color: var(--brand-strong);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  max-width: 220px;
+}
+.view-chip > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.view-chip button {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+.view-chip button:hover {
+  background: var(--btn-hover);
+}
+.gh-sort {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  text-align: inherit;
+}
+.gh-sort:hover {
+  color: var(--brand-strong);
+}
+.gh-sort svg {
+  opacity: 0.45;
+  flex: none;
+}
+.gh-sort[aria-sort="ascending"] svg,
+.gh-sort[aria-sort="descending"] svg {
+  opacity: 1;
+  color: var(--brand);
+}
+.grid-row.group-row {
+  display: flex;
+  background: var(--sunken);
+  border-bottom: 1px solid var(--line);
+  font-weight: 600;
+  align-items: center;
+  padding-left: 10px;
+  gap: 8px;
+  color: var(--ink);
+}
+.group-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.group-count {
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 12px;
+}
+.group-band {
+  fill: var(--sunken);
+}
+
+/* ---- B9: not önizleme ---- */
+.note-peek-anchor {
+  display: inline-flex;
+  cursor: pointer;
+}
+.note-peek {
+  position: fixed;
+  z-index: 60;
+  width: max-content;
+  max-width: 320px;
+  max-height: 260px;
+  overflow: auto;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--menu-shadow);
+  color: var(--ink);
+  font-size: 12.5px;
+  font-weight: 400;
+  line-height: 1.45;
+  display: grid;
+  gap: 6px;
+  text-align: left;
+  cursor: default;
+}
+.note-peek.up {
+  transform: translateY(-100%);
+}
+.note-peek-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.note-peek a {
+  color: var(--link);
+  overflow-wrap: anywhere;
+}
+.note-peek-hint {
+  color: var(--muted);
+}
+.bar-tip-note {
+  margin: 6px 0;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--sunken);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  max-height: 120px;
+  overflow: hidden;
+}
+
+/* ---- B10: zaman çizelgesi şeridi ---- */
+.timeline-strip {
+  flex: none;
+  padding: 6px 12px 4px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--line);
+}
+.timeline-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+.timeline-title {
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.timeline-body {
+  position: relative;
+  border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+  overflow: hidden;
+}
+.timeline-today {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: 1.5px dashed var(--today);
+}
+.timeline-item,
+.timeline-ms {
+  position: absolute;
+  height: 20px;
+  border: 0;
+  padding: 0 6px;
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  min-width: 4px;
+}
+.timeline-item {
+  border-radius: 5px;
+  background: var(--bar);
+  color: var(--on-btn);
+  overflow: hidden;
+}
+.timeline-item.summary {
+  background: var(--summary);
+}
+.timeline-item span,
+.timeline-ms span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.timeline-ms {
+  background: transparent;
+  color: var(--ink);
+  gap: 4px;
+  padding: 0;
+  transform: translateX(-6px);
+  max-width: 200px;
+}
+.timeline-ms i {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  transform: rotate(45deg);
+  background: var(--ink);
+  margin-left: 1px;
+}
+.timeline-item.selected,
+.timeline-ms.selected {
+  outline: 2px solid var(--select-line);
+  outline-offset: 1px;
+}
+.timeline-item:focus-visible,
+.timeline-ms:focus-visible {
+  outline: 2px solid var(--brand);
+}
+
+/* ---- B8: etkisiz görev (soluk, üstü çizili) ve bölünmüş çubuk ---- */
+.grid-row.inactive .gc-name input,
+.grid-row.inactive .gc {
+  color: var(--faint);
+}
+.grid-row.inactive .gc-name input {
+  text-decoration: line-through;
+}
+.task-bar.inactive .bar,
+.task-bar.inactive .progress,
+.summary-bar.inactive,
+.milestone.inactive {
+  opacity: 0.35;
+}
+.task-bar.inactive .bar {
+  fill: none;
+  stroke: var(--muted);
+  stroke-dasharray: 4 3;
+}
+.split-gap {
+  fill: var(--surface);
+  stroke: none;
+}
+.split-gap-line {
+  stroke: var(--muted);
+  stroke-width: 1.2;
+  stroke-dasharray: 2 2;
+}
+
+/* ---- B15: günlük / haftalık yük ısı haritası ---- */
+.heatmap-scroll {
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.heat-head .heat-col-label {
+  font-size: 10px;
+  color: var(--muted);
+  text-align: center;
+  white-space: nowrap;
+  overflow: visible;
+}
+.heatmap.week .heat-col-label {
+  text-align: left;
+}
+.heat-row.picked .heat-name {
+  color: var(--brand-strong);
+  font-weight: 600;
+}
+.card > .heat-legend {
+  margin-top: 10px;
 }

@@ -30,6 +30,8 @@ export function GanttExportDialog({ project, schedule, today, baseline, visible,
   const [orientation, setOrientation] = useState<Orientation>("landscape");
   const [withBaseline, setWithBaseline] = useState(!!baseline);
   const [onlyVisible, setOnlyVisible] = useState(false);
+  const hasTimeline = project.tasks.some((x) => x.timeline && !x.inactive);
+  const [withTimeline, setWithTimeline] = useState(hasTimeline);
   const [printing, setPrinting] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -50,9 +52,10 @@ export function GanttExportDialog({ project, schedule, today, baseline, visible,
     title: project.name,
     baseline: withBaseline ? baseline : undefined,
     indexes: onlyVisible ? visible : undefined,
+    timeline: withTimeline && hasTimeline,
   };
   const loc = useLocale();
-  const pages = useMemo(() => (rangeOk ? ganttPages(project, schedule, opts) : []), [project, schedule, rangeOk, from, to, scale, size, orientation, withBaseline, onlyVisible, today, loc]); // eslint-disable-line react-hooks/exhaustive-deps
+  const pages = useMemo(() => (rangeOk ? ganttPages(project, schedule, opts) : []), [project, schedule, rangeOk, from, to, scale, size, orientation, withBaseline, onlyVisible, withTimeline, today, loc]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const savePng = async () => {
     setBusy(true);
@@ -127,6 +130,12 @@ export function GanttExportDialog({ project, schedule, today, baseline, visible,
               <label className="check">
                 <input type="checkbox" checked={withBaseline} onChange={(e) => setWithBaseline(e.target.checked)} />
                 <span>{t("gexport.baseline", { name: baseline.name })}</span>
+              </label>
+            )}
+            {hasTimeline && (
+              <label className="check">
+                <input type="checkbox" checked={withTimeline} onChange={(e) => setWithTimeline(e.target.checked)} />
+                <span>{t("gexport.timeline")}</span>
               </label>
             )}
             {visible.length < project.tasks.length && (

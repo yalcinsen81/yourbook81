@@ -28,7 +28,14 @@ veri tarayıcıda (localStorage) otomatik saklanır, JSON olarak indirilip geri 
   bitiş ve maliyet, plan tarihinde bitme olasılığı, kritiklik indeksi, bitişi en çok etkileyen görevler, risklerin etkisi) ve DCMA tarzı
   plan kalite denetimi. Risk sicili, benzetim özeti ve plan kalitesi Raporlar'dan CSV/Excel/PDF olarak alınır.
 - Geri al / yinele, JSON aç/kaydet, örnek inşaat projesi
-- Kısayollar: Insert (görev ekle), Delete (sil), Alt+Shift+→/← (girinti), Ctrl+F2 (bağla), Ctrl+Z / Ctrl+Y
+- MS Project tarzı esneklik (dosya sürümü 7): komut paleti (Ctrl+K) ve göreve git (Ctrl+G); seçim sırasıyla bağla (Ctrl+F2) ve
+  bağları kaldır (Ctrl+Shift+F2); özet altına al / özeti çöz; daralt-genişlet ve 1./2./3. düzeye kadar göster; sağ tık menüsü;
+  satırı tutamaçtan sürükleyip bırakma (yatay hareket girintiyi değiştirir); Gantt'ta çubuğu taşıma (SNET kısıtı), uzatma, yüzde
+  sürükleme, uçtan uca bağ çizme, bağ okuna tıklayıp tür/gecikme düzenleme; doldurma tutamacı ve Ctrl+D; toplu düzenleme; Excel'den
+  çok satırlı yapıştırma; hazır süzgeçler, başlıktan sıralama, kaynağa/özete göre gruplama; not önizlemesi; Gantt üstünde zaman
+  çizelgesi şeridi (PNG/yazdırmaya da girer); taban çizgisini göster/gizle; görevi böl (göreve özel çalışılamayan dönem) ve
+  etkisizleştir (hesaba girmez); yinelenen görev (haftalık/aylık); Kaynaklar'da günlük/haftalık yük ısı haritası
+- Kısayollar: Insert (görev ekle), Delete (sil), Alt+Shift+→/← (girinti), Ctrl+F2 (bağla), Ctrl+Z / Ctrl+Y, Alt+T (bugün); tam liste F1
 
 Takvim: varsayılan Pazartesi–Cuma iş günü, projeye tanımlı tam gün tatiller hariç. Dosya biçimi sürümlüdür (`version`);
 eski `proje.json` dosyaları açılırken otomatik yükseltilir (Pzt–Cum, maliyet ağırlığı, tatil listesi aynen).

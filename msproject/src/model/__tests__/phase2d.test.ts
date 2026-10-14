@@ -15,8 +15,8 @@ const risk = (over: Partial<Risk> = {}): Risk => ({ id: "R1", title: "Zemin suyu
 describe("D referans proje (regresyon, Faz 2D)", () => {
   it("sürüm 6; bitiş 2027-03-01, maliyet 635.000; eski dosya risksiz açılır", () => {
     const p = sanitizeProject({ ...referenceProject(), version: 5 })!;
-    expect(PROJECT_VERSION).toBe(6);
-    expect(p.version).toBe(6);
+    expect(PROJECT_VERSION).toBeGreaterThanOrEqual(6);
+    expect(p.version).toBe(PROJECT_VERSION);
     expect(p.risks).toBeUndefined();
     expect(schedule(p).finishDate).toBe("2027-03-01");
   });

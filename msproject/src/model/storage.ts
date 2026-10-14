@@ -77,6 +77,8 @@ export function sanitizeProject(raw: unknown): Project | null {
       tags: toTags(t.tags),
       color: TASK_COLORS.includes(t.color as TaskColor) ? (t.color as TaskColor) : undefined,
       estimate: toEstimate(t.estimate),
+      inactive: t.inactive === true ? true : undefined,
+      timeline: t.timeline === true ? true : undefined,
     };
     for (const [k, v] of Object.entries(optional)) if (v !== undefined && !(Array.isArray(v) && !v.length)) (task as unknown as Record<string, unknown>)[k] = v;
     tasks.push(task);

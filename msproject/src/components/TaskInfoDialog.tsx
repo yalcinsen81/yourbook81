@@ -20,13 +20,15 @@ interface Props {
   issues: string[];
   onSave: (task: Task) => void;
   onClose: () => void;
+  /** Açılınca odaklanılacak alan (sağ tık > Notlar) */
+  focus?: "notes";
 }
 
 /**
  * Görev bilgisi (MS Project'teki "Görev Bilgileri"): kısıt ve son tarih, gerçekleşen tarihler ve kalan süre,
  * sabit maliyet ve maliyet dağılımı, çalışılamayan dönemler. Kaydet tek bir geri al adımıdır.
  */
-export function TaskInfoDialog({ project, schedule, taskId, baseline, issues, onSave, onClose }: Props) {
+export function TaskInfoDialog({ project, schedule, taskId, baseline, issues, onSave, onClose, focus }: Props) {
   const index = project.tasks.findIndex((x) => x.id === taskId);
   const task = project.tasks[index];
   const row = schedule.rows[index];
@@ -351,7 +353,22 @@ export function TaskInfoDialog({ project, schedule, taskId, baseline, issues, on
             <legend>{t("info.notesLinks")}</legend>
             <label className="field">
               <span>{t("info.notes")}</span>
-              <textarea value={notes} rows={4} maxLength={20_000} onChange={(e) => setNotes(e.target.value)} />
+              <textarea
+                value={notes}
+                rows={4}
+                maxLength={20_000}
+                onChange={(e) => setNotes(e.target.value)}
+                ref={(el) => {
+                  // Sağ tık > Notlar: pencere notlar alanında açılır
+                  if (el && focus === "notes" && !el.dataset.focused) {
+                    el.dataset.focused = "1";
+                    requestAnimationFrame(() => {
+                      el.scrollIntoView({ block: "center" });
+                      el.focus();
+                    });
+                  }
+                }}
+              />
             </label>
             <div className="field">
               <span>{t("info.links")}</span>

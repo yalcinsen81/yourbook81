@@ -216,37 +216,75 @@ export function BarList({ items, format }: { items: { label: string; value: numb
 }
 
 /** Kaynak yük haritası: her kaynak bir satır, her iş haftası bir hücre; renk koyuluğu yük/kapasite */
-export function LoadHeatmap({ usage, calendar, onPick }: { usage: ResourceUsage[]; calendar: WorkCalendar; onPick?: (id: string) => void }) {
+export function LoadHeatmap({
+  usage,
+  calendar,
+  onPick,
+  mode = "week",
+  selected,
+}: {
+  usage: ResourceUsage[];
+  calendar: WorkCalendar;
+  onPick?: (id: string) => void;
+  /** "day": her iş günü bir hücre; "week": takvim haftası başına en yüksek yük */
+  mode?: "day" | "week";
+  selected?: string;
+}) {
   const days = usage[0]?.load.length ?? 0;
-  // Takvim haftalarına grupla (pazartesi başı); tatiller haftanın ilk gününü kaydırabilir
-  const weeks: { from: number; to: number; label: string }[] = [];
+  // Sütunlar: günlükte her iş günü, haftalıkta takvim haftaları (hafta başı ayara uyar)
+  const cols: { from: number; to: number; label: string; head: string }[] = [];
   let lastWeek = "";
   for (let d = 0; d < days; d++) {
     const iso = calendar.toDate(d);
+    if (mode === "day") {
+      const dt = parseDate(iso);
+      cols.push({ from: d, to: d + 1, label: formatShort(iso), head: String(dt.getUTCDate()) });
+      continue;
+    }
     const week = addDays(iso, -((parseDate(iso).getUTCDay() - weekStartDay() + 7) % 7));
     if (week !== lastWeek) {
-      weeks.push({ from: d, to: d + 1, label: formatShort(week) });
+      cols.push({ from: d, to: d + 1, label: formatShort(week), head: formatShort(week) });
       lastWeek = week;
-    } else weeks[weeks.length - 1].to = d + 1;
+    } else cols[cols.length - 1].to = d + 1;
   }
+  // Başlık etiketleri sıkışmasın: günlükte her gün, haftalıkta sığdığı kadar
+  const every = mode === "day" ? 1 : Math.max(1, Math.ceil(cols.length / 12));
+  const minCol = mode === "day" ? 18 : 10;
   return (
-    <div className="heatmap" style={{ gridTemplateColumns: `minmax(110px, 160px) repeat(${weeks.length}, minmax(10px, 1fr))` }}>
-      {usage.map((u) => (
-        <div key={u.resource.id} className="heat-row" role="row">
-          <button className="heat-name" onClick={() => onPick?.(u.resource.id)} title={`${u.resource.name} · ${t("chart.showHist")}`}>
-            {u.resource.name || t("common.unnamed")}
-          </button>
-          {weeks.map((w) => {
-            const slice = u.load.slice(w.from, w.to);
-            const peak = Math.max(0, ...slice);
-            const ratio = peak / u.resource.maxUnits;
-            const cls = peak === 0 ? "l0" : ratio > 1 ? "over" : ratio > 0.75 ? "l3" : ratio > 0.4 ? "l2" : "l1";
-            return (
-              <span key={w.from} className={`heat-cell ${cls}`} title={t("chart.heatCell", { name: u.resource.name, week: w.label, peak: String(peak), cap: String(u.resource.maxUnits) })} />
-            );
-          })}
+    <div className="heatmap-scroll">
+      <div
+        className={`heatmap ${mode}`}
+        style={{ gridTemplateColumns: `minmax(110px, 160px) repeat(${cols.length}, minmax(${minCol}px, 1fr))`, minWidth: mode === "day" ? 160 + cols.length * (minCol + 2) : undefined }}
+      >
+        <div className="heat-row heat-head" role="row" aria-hidden="true">
+          <span />
+          {cols.map((c, i) => (
+            <span key={c.from} className="heat-col-label">
+              {i % every === 0 ? c.head : ""}
+            </span>
+          ))}
         </div>
-      ))}
+        {usage.map((u) => (
+          <div key={u.resource.id} className={`heat-row ${selected === u.resource.id ? "picked" : ""}`} role="row">
+            <button className="heat-name" onClick={() => onPick?.(u.resource.id)} title={`${u.resource.name} · ${t("chart.showHist")}`}>
+              {u.resource.name || t("common.unnamed")}
+            </button>
+            {cols.map((w) => {
+              const slice = u.load.slice(w.from, w.to);
+              const peak = Math.max(0, ...slice);
+              const ratio = peak / u.resource.maxUnits;
+              const cls = peak === 0 ? "l0" : ratio > 1 ? "over" : ratio > 0.75 ? "l3" : ratio > 0.4 ? "l2" : "l1";
+              return (
+                <span
+                  key={w.from}
+                  className={`heat-cell ${cls}`}
+                  title={t(mode === "day" ? "chart.heatDay" : "chart.heatCell", { name: u.resource.name, week: w.label, peak: String(peak), cap: String(u.resource.maxUnits) })}
+                />
+              );
+            })}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

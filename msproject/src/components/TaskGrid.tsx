@@ -1,4 +1,4 @@
-import { useRef, useState, type DragEvent, type MouseEvent, type RefObject, type UIEvent } from "react";
+import { useEffect, useRef, useState, type DragEvent, type MouseEvent, type ReactNode, type RefObject, type UIEvent } from "react";
 import { datePattern, dayName, formatDateLocal, formatMoney, formatNumber, formatPercent, t, type MessageKey } from "../i18n";
 import { formatShort, isValidDate, parseDate } from "../model/calendar";
 import { formatEstimate } from "../model/risks";
@@ -11,6 +11,10 @@ import { HEADER_H, ROW_H } from "./layout";
 import { useViewport } from "./useViewport";
 
 export interface GridRow {
+  /** Satır anahtarı: görev kimliği; gruplu görünümde grup + görev (aynı görev birden çok grupta olabilir) */
+  key: string;
+  /** Gruplu görünümde grup başlığı satırı (görev değildir) */
+  group?: { label: string; count: number };
   task: Task;
   sched: ScheduledTask;
   wbs: string;
@@ -32,6 +36,10 @@ export interface GridRow {
   warnings: TaskWarning[];
   /** Bağlı kapanmamış riskler ("R1 Zemin suyu") ve en yüksek maruziyet düzeyi */
   risks?: { text: string[]; level: string };
+  /** Etkisiz görev (ya da etkisiz özetin altında): soluk gösterilir, hesaba girmez */
+  inactive?: boolean;
+  /** Bölünmüş görevin aralıkları (göreve uygulanan çalışılamayan dönemler) */
+  gaps?: { from: string; to: string; name: string }[];
 }
 
 interface Props {
@@ -53,8 +61,11 @@ interface Props {
   onAddAtEnd: () => void;
   /** Görev bilgisi penceresi (çift tık) */
   onInfo: (id: string) => void;
-  /** Sürükle-bırak: görevi (alt ağacıyla) `beforeId` satırının önüne, null ise sona taşır */
-  onMoveRow: (id: string, beforeId: string | null) => void;
+  /**
+   * Sürükle-bırak: görevleri (alt ağaçlarıyla) `beforeId` satırının önüne, null ise sona taşır; `level` bırakılan
+   * girinti düzeyidir (sağa/sola sürükleyerek değişir)
+   */
+  onMoveRows: (ids: string[], beforeId: string | null, level: number) => void;
   /** Sapma sütunu (referans plan gösteriliyorsa) */
   showVariance: boolean;
   /** Gizlenen sütunlar (sütun seçici) */
@@ -65,7 +76,19 @@ interface Props {
   onFocusRow: (id: string) => void;
   /** Shift+↑/↓: seçimi bir satır genişlet */
   onExtend: (id: string, dir: 1 | -1) => void;
+  /** Sağ tık menüsü */
+  onContextMenu: (id: string, e: MouseEvent) => void;
+  /** Not simgesine tıklanınca görev bilgisinin Notlar bölümünü açar */
+  onOpenNotes?: (id: string) => void;
+  /** Dolgu tutamacı: kaynak satırın `col` değeri hedef satırlara kopyalanır */
+  onFill: (col: string, sourceId: string, targetIds: string[]) => void;
+  /** Sütun başlığına tıklayınca sıralama (artan → azalan → kapalı); geçerli sıralama sütunu ve yönü */
+  onSortColumn: (key: string) => void;
+  sortColumn?: { key: string; desc: boolean };
 }
+
+/** Başlığına tıklanarak sıralanabilen sütunlar */
+export const SORTABLE = new Set(["name", "duration", "start", "finish", "slack", "cost", "percent"]);
 
 export const COLUMNS: { key: string; label: MessageKey | ""; width: number }[] = [
   { key: "row", label: "", width: 40 },
@@ -90,6 +113,8 @@ export const FIXED_COLUMNS = new Set(["row", "ind", "name"]);
 export const DEFAULT_HIDDEN = ["wbs", "cost", "estimate"];
 /** Ad sütununun en dar hali */
 const NAME_MIN = 150;
+/** Bir girinti düzeyinin genişliği (px) */
+const INDENT = 16;
 
 /** Görünen sütunların toplam genişliği */
 export function gridWidthFor(hidden: Set<string>, showVariance: boolean): number {
@@ -105,23 +130,81 @@ export function TaskGrid(props: Props) {
   // Ad sütunu esner: dar alanda önce o küçülür (en az NAME_MIN), sonra tablo yatay kayar
   const template = columns.map((c) => (c.key === "name" ? `minmax(${NAME_MIN}px, 1fr)` : `${c.width}px`)).join(" ");
   const minWidth = columns.reduce((sum, c) => sum + (c.key === "name" ? NAME_MIN : c.width), 0);
-  // Sürükle-bırak: sürüklenen satır ve üzerine gelinen satır (bırakılınca önüne girer)
-  const [dragId, setDragId] = useState<string | null>(null);
-  const [dropId, setDropId] = useState<string | null | undefined>(undefined);
-  const dropProps = (beforeId: string | null) => ({
+  // Sürükle-bırak: sürüklenen satırlar (seçiliyse seçimin tamamı) ve bırakma yeri (satırın önü + girinti düzeyi).
+  // Sağa/sola sürüklemek düzeyi değiştirir; bırakma yerinde düzeye göre girintili çizgi gösterilir.
+  const [drag, setDrag] = useState<{ ids: string[]; startX: number; outline: number } | null>(null);
+  const [drop, setDrop] = useState<{ beforeId: string | null; level: number } | null>(null);
+  const nameLeft = columns.slice(0, columns.findIndex((c) => c.key === "name")).reduce((sum, c) => sum + c.width, 0);
+  const dropProps = (beforeId: string | null, index: number) => ({
     onDragOver: (e: DragEvent) => {
-      if (!dragId) return;
+      if (!drag) return;
       e.preventDefault();
       e.dataTransfer.dropEffect = "move";
-      if (dropId !== beforeId) setDropId(beforeId);
+      // Varsayılan düzey: hedef satırınki (sonda son satırınki); en çok üstteki satırın bir altı
+      const prev = index > 0 ? rows[index - 1].task.outline : -1;
+      const base = beforeId === null ? Math.max(0, prev) : rows[index].task.outline;
+      const delta = Math.round((e.clientX - drag.startX) / INDENT);
+      const level = Math.max(0, Math.min(base + delta, prev + 1));
+      if (drop?.beforeId !== beforeId || drop.level !== level) setDrop({ beforeId, level });
     },
     onDrop: (e: DragEvent) => {
       e.preventDefault();
-      if (dragId && dragId !== beforeId) props.onMoveRow(dragId, beforeId);
-      setDragId(null);
-      setDropId(undefined);
+      if (drag && drop) props.onMoveRows(drag.ids, drop.beforeId, drop.level);
+      setDrag(null);
+      setDrop(null);
     },
   });
+  const dropLine = (beforeId: string | null) =>
+    drop && drop.beforeId === beforeId ? <i className="drop-line" style={{ left: nameLeft + 4 + drop.level * INDENT }} aria-hidden /> : null;
+  // Dolgu tutamacı (Excel gibi): odaktaki hücrenin sağ alt köşesinden aşağı sürükleyerek değeri kopyala
+  const [fill, setFill] = useState<{ col: string; from: number; to: number } | null>(null);
+  const fillRef = useRef(fill);
+  fillRef.current = fill;
+  const onFillRef = useRef(props.onFill);
+  onFillRef.current = props.onFill;
+  const rowsRef = useRef(rows);
+  rowsRef.current = rows;
+  const fillActive = !!fill;
+  useEffect(() => {
+    if (!fillActive) return;
+    const onMove = (e: globalThis.MouseEvent) => {
+      const el = scrollRef.current;
+      const f = fillRef.current;
+      if (!el || !f) return;
+      const box = el.getBoundingClientRect();
+      const index = Math.floor((e.clientY - box.top + el.scrollTop - HEADER_H) / ROW_H);
+      const to = Math.max(f.from, Math.min(rowsRef.current.length - 1, index));
+      if (to !== f.to) setFill({ ...f, to });
+    };
+    const onUp = () => {
+      const f = fillRef.current;
+      if (f && f.to > f.from) {
+        const list = rowsRef.current;
+        onFillRef.current(f.col, list[f.from].task.id, list.slice(f.from + 1, f.to + 1).map((r) => r.task.id));
+      }
+      setFill(null);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [fillActive, scrollRef]);
+  const fillHandle = (col: string, i: number) => (
+    <span
+      className="fill-handle"
+      title={t("grid.fillHint")}
+      onMouseDown={(e) => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        e.stopPropagation();
+        // Yazılmakta olan değer önce kaydedilir
+        (document.activeElement as HTMLElement | null)?.blur();
+        setFill({ col, from: i, to: i });
+      }}
+    />
+  );
   const vp = useViewport(scrollRef);
   // Yalnızca görünen satırlar çizilir (1000+ görevde akıcı kaydırma); üst ve alt boşluk yüksekliği korur
   const { first, last } = visibleRange(vp.top, vp.height - HEADER_H, ROW_H, rows.length);
@@ -133,10 +216,25 @@ export function TaskGrid(props: Props) {
         <div className="grid-header" style={{ gridTemplateColumns: template, height: HEADER_H }}>
           {columns.map((c) => {
             const label = c.label ? t(c.label) : "";
+            if (!SORTABLE.has(c.key)) {
+              return (
+                <div key={c.key} className={`gh gh-${c.key}`} title={label}>
+                  {label}
+                </div>
+              );
+            }
+            const on = props.sortColumn?.key === c.key;
             return (
-              <div key={c.key} className={`gh gh-${c.key}`} title={label}>
-                {label}
-              </div>
+              <button
+                key={c.key}
+                className={`gh gh-${c.key} gh-sort ${on ? "on" : ""}`}
+                title={`${label} · ${t("grid.sortHint")}`}
+                aria-sort={on ? (props.sortColumn!.desc ? "descending" : "ascending") : "none"}
+                onClick={() => props.onSortColumn(c.key)}
+              >
+                <span>{label}</span>
+                {on && <Icon name={props.sortColumn!.desc ? "down" : "up"} size={12} />}
+              </button>
             );
           })}
         </div>
@@ -144,16 +242,27 @@ export function TaskGrid(props: Props) {
         {rows.slice(first, last).map((r, k) => {
           const i = first + k;
           const { task, sched } = r;
+          if (r.group) {
+            // Gruplu görünümde grup başlığı: adı ve görev sayısı, tüm genişlikte
+            return (
+              <div key={r.key} className="grid-row group-row" style={{ height: ROW_H }} role="row">
+                <span className="group-label">{r.group.label}</span>
+                <span className="group-count">{t("unit.tasks", { n: r.group.count })}</span>
+              </div>
+            );
+          }
           const selected = selection.has(task.id);
           const cls = [
             "grid-row",
             selected && "selected",
             sched.isSummary && "summary",
             sched.critical && "critical",
+            r.inactive && "inactive",
             cycle.has(task.id) && "cyclic",
             r.issues.length > 0 && "has-issue",
-            dropId === task.id && dragId !== task.id && "drop-before",
-            dragId === task.id && "dragging",
+            drop?.beforeId === task.id && "drop-target",
+            fill && i > fill.from && i <= fill.to && "fill-range",
+            drag?.ids.includes(task.id) && "dragging",
             r.warnings.some((w) => w.kind === "late") && "late",
             task.color && `tc-${task.color}`,
           ]
@@ -162,7 +271,7 @@ export function TaskGrid(props: Props) {
           const row = String(sched.row);
           return (
             <div
-              key={task.id}
+              key={r.key}
               className={cls}
               style={{ gridTemplateColumns: template, height: ROW_H }}
               onMouseDown={(e) => {
@@ -186,8 +295,14 @@ export function TaskGrid(props: Props) {
                 // Hücre düzenlemesi değilse görev bilgisini aç
                 if ((e.target as HTMLElement).tagName !== "INPUT") props.onInfo(task.id);
               }}
-              {...dropProps(task.id)}
+              onContextMenu={(e) => {
+                // Düzenlenen hücrede tarayıcının kendi menüsü (metin kopyala/yapıştır) açılır
+                if ((e.target as HTMLElement).tagName === "INPUT" && document.activeElement === e.target && (e.target as HTMLInputElement).selectionStart !== (e.target as HTMLInputElement).selectionEnd) return;
+                props.onContextMenu(task.id, e);
+              }}
+              {...dropProps(task.id, i)}
             >
+              {dropLine(task.id)}
               <div
                 className="gc gc-row"
                 title={props.dragDisabled ? t("grid.row", { row }) : `${t("grid.row", { row })}\n${t("grid.dragHint")}`}
@@ -195,22 +310,24 @@ export function TaskGrid(props: Props) {
                 onDragStart={(e) => {
                   e.dataTransfer.effectAllowed = "move";
                   e.dataTransfer.setData("text/plain", task.name);
-                  setDragId(task.id);
+                  // Seçili satır sürüklenirse seçimin tamamı (satır sırasıyla) taşınır
+                  const ids = selected ? rows.filter((x) => selection.has(x.task.id)).map((x) => x.task.id) : [task.id];
+                  setDrag({ ids, startX: e.clientX, outline: task.outline });
                 }}
                 onDragEnd={() => {
-                  setDragId(null);
-                  setDropId(undefined);
+                  setDrag(null);
+                  setDrop(null);
                 }}
               >
                 {sched.row}
               </div>
-              <Indicators row={r} />
+              <Indicators row={r} onOpenNotes={props.onOpenNotes} />
               {show("wbs") && (
                 <div className="gc gc-wbs" title={r.wbs}>
                   {r.wbs}
                 </div>
               )}
-              <div className="gc gc-name" style={{ paddingInlineStart: 4 + task.outline * 16 }}>
+              <div className="gc gc-name" style={{ paddingInlineStart: 4 + task.outline * INDENT }}>
                 {sched.isSummary ? (
                   <button
                     className="twisty"
@@ -232,6 +349,7 @@ export function TaskGrid(props: Props) {
                   title={task.name}
                   onCommit={(v) => props.onName(task.id, v)}
                 />
+                {fillHandle("name", i)}
               </div>
               {show("duration") && (
                 <div className="gc">
@@ -245,6 +363,7 @@ export function TaskGrid(props: Props) {
                     title={sched.isSummary ? t("grid.summaryDuration") : t("grid.durationHint")}
                     onCommit={(v) => props.onDuration(task.id, v)}
                   />
+                  {!sched.isSummary && fillHandle("duration", i)}
                 </div>
               )}
               {show("start") && (
@@ -262,6 +381,7 @@ export function TaskGrid(props: Props) {
                     }
                     onCommit={(v) => props.onStart(task.id, v)}
                   />
+                  {!sched.isSummary && fillHandle("start", i)}
                 </div>
               )}
               {show("finish") && (
@@ -281,6 +401,7 @@ export function TaskGrid(props: Props) {
                     title={t("grid.predHint")}
                     onCommit={(v) => props.onPredecessors(task.id, v)}
                   />
+                  {fillHandle("preds", i)}
                 </div>
               )}
               {show("resources") && (
@@ -305,6 +426,7 @@ export function TaskGrid(props: Props) {
                     title={sched.isSummary ? t("grid.summaryNoResource") : r.resText ? `${r.resText}\n${t("grid.resourceHint")}` : t("grid.resourceHint")}
                     onCommit={(v) => props.onResources(task.id, v)}
                   />
+                  {!sched.isSummary && fillHandle("resources", i)}
                 </div>
               )}
               {show("percent") && (
@@ -319,6 +441,7 @@ export function TaskGrid(props: Props) {
                     ariaLabel={t("grid.aria.percent", { row })}
                     onCommit={(v) => props.onPercent(task.id, v)}
                   />
+                  {!sched.isSummary && fillHandle("percent", i)}
                 </div>
               )}
               {show("slack") && (
@@ -344,6 +467,7 @@ export function TaskGrid(props: Props) {
                     title={t("grid.estimateHint")}
                     onCommit={(v) => props.onEstimate(task.id, v)}
                   />
+                  {!sched.isSummary && task.duration > 0 && fillHandle("estimate", i)}
                 </div>
               )}
               {show("variance") && (
@@ -358,7 +482,8 @@ export function TaskGrid(props: Props) {
           );
         })}
         <div style={{ height: (rows.length - last) * ROW_H }} aria-hidden />
-        <div className={`grid-row add-row ${dropId === null ? "drop-before" : ""}`} style={{ gridTemplateColumns: template, height: ROW_H }} {...dropProps(null)}>
+        <div className={`grid-row add-row ${drop?.beforeId === null ? "drop-target" : ""}`} style={{ gridTemplateColumns: template, height: ROW_H }} {...dropProps(null, rows.length)}>
+          {dropLine(null)}
           <div className="gc" />
           <div className="gc" />
           <button className="add-task" onClick={props.onAddAtEnd}>
@@ -439,7 +564,47 @@ function DateCell(props: {
 }
 
 /** Gösterge sütunu (MS Project'teki gibi): uyarı, gecikme, kısıt, tamamlandı, son tarih; not ve bağlantı küçük işaretle */
-function Indicators({ row }: { row: GridRow }) {
+/** Not simgesinin üzerine gelince çok satırlı notu ve bağlantıları gösteren küçük kart; tıklayınca notu açar */
+function NotePeek({ task, onOpen, children }: { task: Task; onOpen?: (id: string) => void; children: ReactNode }) {
+  const [pos, setPos] = useState<{ x: number; y: number; up: boolean } | null>(null);
+  const timer = useRef<number | undefined>(undefined);
+  const show = (e: MouseEvent) => {
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    window.clearTimeout(timer.current);
+    const up = r.bottom + 220 > window.innerHeight;
+    setPos({ x: Math.max(8, Math.min(r.left, window.innerWidth - 340)), y: up ? r.top - 6 : r.bottom + 6, up });
+  };
+  const hide = () => {
+    timer.current = window.setTimeout(() => setPos(null), 120);
+  };
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+  return (
+    <span
+      className="note-peek-anchor"
+      onMouseEnter={show}
+      onMouseLeave={hide}
+      onClick={(e) => {
+        e.stopPropagation();
+        onOpen?.(task.id);
+      }}
+    >
+      {children}
+      {pos && (
+        <div className={`note-peek ${pos.up ? "up" : ""}`} role="tooltip" style={{ left: pos.x, top: pos.y }} onMouseEnter={() => window.clearTimeout(timer.current)} onMouseLeave={hide}>
+          {task.notes && <div className="note-peek-text">{task.notes.length > 600 ? `${task.notes.slice(0, 600)}…` : task.notes}</div>}
+          {task.links?.map((l) => (
+            <a key={l.url} href={l.url} target="_blank" rel="noreferrer noopener" onClick={(e) => e.stopPropagation()}>
+              🔗 {l.title || l.url}
+            </a>
+          ))}
+          {onOpen && <small className="note-peek-hint">{t("grid.notePeekHint")}</small>}
+        </div>
+      )}
+    </span>
+  );
+}
+
+function Indicators({ row, onOpenNotes }: { row: GridRow; onOpenNotes?: (id: string) => void }) {
   const { task, sched } = row;
   const notes: string[] = [...row.issues, ...row.warnings.map((w) => w.text)];
   const c = task.constraint;
@@ -484,9 +649,11 @@ function Indicators({ row }: { row: GridRow }) {
         </span>
       )}
       {(task.notes || task.links?.length) && (
-        <span className={`ind-mini ${task.links?.length ? "link" : "note"}`} aria-label={task.links?.length ? t("help.i.link") : t("help.i.note")}>
-          {task.links?.length ? "🔗" : "✎"}
-        </span>
+        <NotePeek task={task} onOpen={onOpenNotes}>
+          <span className={`ind-mini ${task.links?.length ? "link" : "note"}`} aria-label={task.links?.length ? t("help.i.link") : t("help.i.note")}>
+            {task.links?.length ? "🔗" : "✎"}
+          </span>
+        </NotePeek>
       )}
     </div>
   );

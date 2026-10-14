@@ -51,6 +51,15 @@ const PATHS = {
   brand: "M5 7h8M8 12h9M11 17h8",
   template: "M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z",
   crosshair: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 3v4M12 17v4M3 12h4M17 12h4",
+  outline: "M4 5h7M8 12h12M8 19h12M5 5v14h3M5 12h3",
+  group: "M4 4h16v5H4zM9 14h11M9 19h11M6 9v10h3M6 14h3",
+  note: "M5 4h14v16H5zM8 9h8M8 13h8M8 17h5",
+  timeline: "M3 12h18M7 8v8M12 5v14M17 9v6",
+  inactive: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM5.6 5.6l12.8 12.8",
+  split: "M3 12h6M15 12h6M12 5v14M7 9l2 3-2 3M17 9l-2 3 2 3",
+  edit: "M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4",
+  fillDown: "M5 4h14v6H5zM12 12v8M8 16l4 4 4-4",
+  repeat: "M17 2l4 4-4 4M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4M21 13v2a3 3 0 0 1-3 3H3",
 } as const;
 
 export type IconName = keyof typeof PATHS;

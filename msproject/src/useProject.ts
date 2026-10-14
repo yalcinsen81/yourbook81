@@ -2,7 +2,7 @@ import { pruneRiskLinks } from "./model/risks";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { formatDate, nextWorkday } from "./model/calendar";
 import { sampleProject } from "./model/sample";
-import { schedule } from "./model/schedule";
+import { scheduleActive } from "./model/inactive";
 import { loadProject, saveProject, storedProjectCorrupt } from "./model/storage";
 import { initHistory, push, redo as redoStep, undo as undoStep, type History } from "./model/history";
 import type { Project } from "./model/types";
@@ -34,7 +34,7 @@ export function useProject() {
     setHistory(redoStep);
   }, []);
 
-  const sched = useMemo(() => schedule(project), [project]);
+  const sched = useMemo(() => scheduleActive(project), [project]);
 
   return {
     project,

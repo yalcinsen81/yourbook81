@@ -4,7 +4,7 @@ import { formatShort, isValidDate, normalizeWorkdays } from "../model/calendar";
 import { newResourceId, removeResource, type ResourceUsage } from "../model/resources";
 import type { Project, RateType, Resource, ResourceType, Schedule } from "../model/types";
 import { WorkdayPicker } from "./CalendarSettings";
-import { LoadHistogram } from "./charts";
+import { LoadHeatmap, LoadHistogram } from "./charts";
 import { DateInput } from "./DateInput";
 import { EditableCell } from "./EditableCell";
 import { Icon } from "./icons";
@@ -23,6 +23,10 @@ interface Props {
 /** Kaynak sayfası: kaynak listesi (ad, kapasite, ücret) ve seçili kaynağın yük histogramı */
 export function ResourceView({ project, schedule, usage, selected, onSelect, update, flash }: Props) {
   const current = usage.find((u) => u.resource.id === selected) ?? usage[0];
+  const [heatMode, setHeatMode] = useState<"day" | "week">("week");
+  // Malzeme kaynaklarının kapasitesi yoktur; ısı haritasında yalnızca iş ve maliyet dışı kaynaklar
+  const heatUsage = usage.filter((u) => u.resource.type !== "material");
+  const overCount = heatUsage.filter((u) => u.overDays.length > 0).length;
 
   const patch = (id: string, p: Partial<Resource>) =>
     update((pr) => ({ ...pr, resources: pr.resources.map((r) => (r.id === id ? { ...r, ...p } : r)) }));
@@ -273,6 +277,29 @@ export function ResourceView({ project, schedule, usage, selected, onSelect, upd
           )}
         </div>
       </section>
+
+      {heatUsage.length > 0 && schedule.finish > 0 && (
+        <section className="card">
+          <header className="card-head">
+            <div>
+              <h2>{t("res.heatTitle")}</h2>
+              <p className="card-sub">{overCount ? t("res.heatOver", { n: overCount }) : t("res.heatOk")}</p>
+            </div>
+            <div className="segmented" role="group" aria-label={t("res.heatTitle")}>
+              {(["day", "week"] as const).map((m) => (
+                <button key={m} className={heatMode === m ? "on" : ""} aria-pressed={heatMode === m} onClick={() => setHeatMode(m)}>
+                  {t(m === "day" ? "res.heatDaily" : "res.heatWeekly")}
+                </button>
+              ))}
+            </div>
+          </header>
+          <LoadHeatmap usage={heatUsage} calendar={schedule.calendar} onPick={onSelect} mode={heatMode} selected={current?.resource.id} />
+          <span className="heat-legend">
+            <i className="heat-cell l1" /> {t("charts.heatLow")} <i className="heat-cell l2" /> {t("charts.heatMid")} <i className="heat-cell l3" /> {t("charts.heatHigh")}{" "}
+            <i className="heat-cell over" /> {t("charts.heatOver")}
+          </span>
+        </section>
+      )}
 
       {current && (
         <section className="card">

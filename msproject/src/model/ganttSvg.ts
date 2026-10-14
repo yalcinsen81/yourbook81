@@ -1,4 +1,5 @@
 import { formatDateLocal, t } from "../i18n";
+import { timelineFraction, timelineItems, type TimelineData } from "./timeline";
 import { addDays, diffDays, parseDate } from "./calendar";
 import { nonWorkingDates } from "./holidays";
 import { wbsCodes } from "./outline";
@@ -23,6 +24,8 @@ export interface GanttExportOptions {
   baseline?: Baseline;
   today?: string;
   title?: string;
+  /** İşaretli görevlerin zaman çizelgesi şeridini başlığın altına ekle */
+  timeline?: boolean;
 }
 
 /** 96 dpi'da sayfa boyutu (piksel) */
@@ -75,7 +78,12 @@ interface Layout {
   days: number;
   start: string;
   rows: number[];
+  /** Zaman çizelgesi şeridi (yoksa undefined) ve yüksekliği */
+  tl?: TimelineData;
+  tlH: number;
 }
+
+const TL_LANE = 18;
 
 function layout(p: Project, s: Schedule, o: GanttExportOptions, chartW: number): Layout {
   const from = o.from <= o.to ? o.from : o.to;
@@ -87,7 +95,9 @@ function layout(p: Project, s: Schedule, o: GanttExportOptions, chartW: number):
     // Aralığın dışında kalan görevler çıkmaz
     return r && r.finishDate >= from && r.startDate <= to;
   });
-  return { ppd, days, start: from, rows };
+  const tlData = o.timeline ? timelineItems(p, s) : undefined;
+  const tl = tlData && tlData.items.length ? tlData : undefined;
+  return { ppd, days, start: from, rows, tl, tlH: tl ? tl.lanes * TL_LANE + 26 : 0 };
 }
 
 /** Bir sayfa parçası: [dayFrom, dayTo) gün aralığı ve satır aralığı */
@@ -108,7 +118,7 @@ function renderPart(
   const wbs = wbsCodes(p.tasks);
   const ppd = L.ppd;
   const left = (withTable ? TABLE_W : 0) + MARGIN;
-  const top = MARGIN + TITLE_H + HEAD_H;
+  const top = MARGIN + TITLE_H + L.tlH + HEAD_H;
   const x = (iso: string) => left + (diffDays(L.start, iso) - dayFrom) * ppd;
   const chartRight = left + (dayTo - dayFrom) * ppd;
   const out: string[] = [];
@@ -121,7 +131,31 @@ function renderPart(
     `<text x="${width - MARGIN}" y="${MARGIN + 14}" font-size="10" fill="${C.muted}" text-anchor="end">${esc(`${formatDateLocal(addDays(L.start, dayFrom))} – ${formatDateLocal(addDays(L.start, dayTo - 1))}${pageLabel ? ` · ${pageLabel}` : ""}`)}</text>`,
   );
   const bodyH = (rowTo - rowFrom) * ROW;
-  const chartTop = MARGIN + TITLE_H;
+  const chartTop = MARGIN + TITLE_H + L.tlH;
+  // Zaman çizelgesi şeridi: sayfanın tüm genişliğine, projenin tamamı ölçeğinde
+  if (L.tl) {
+    const tl = L.tl;
+    const bx = MARGIN;
+    const bw = width - 2 * MARGIN;
+    const by = MARGIN + TITLE_H;
+    const fx = (iso: string, end = false) => bx + timelineFraction(tl, iso, end) * bw;
+    out.push(`<rect x="${bx}" y="${by}" width="${bw}" height="${L.tlH - 8}" rx="4" fill="${C.head}"/>`);
+    out.push(`<text x="${bx + 6}" y="${by + 12}" font-size="9" font-weight="600" fill="${C.muted}">${esc(t("timeline.title"))}</text>`);
+    out.push(`<text x="${bx + bw - 6}" y="${by + 12}" font-size="9" fill="${C.muted}" text-anchor="end">${esc(`${formatDateLocal(tl.from)} – ${formatDateLocal(tl.to)}`)}</text>`);
+    for (const it of tl.items) {
+      const ly = by + 18 + it.lane * TL_LANE;
+      if (it.milestone) {
+        const mx = fx(it.start);
+        out.push(`<path d="M${mx},${ly + 1} l6,6 l-6,6 l-6,-6 z" fill="${C.ink}"/>`);
+        out.push(`<text x="${mx + 9}" y="${ly + 11}" font-size="9" fill="${C.ink}">${esc(clip(it.name, 160, 9))}</text>`);
+      } else {
+        const x1 = fx(it.start);
+        const w = Math.max(3, fx(it.finish, true) - x1);
+        out.push(`<rect x="${x1}" y="${ly}" width="${w}" height="14" rx="3" fill="${it.summary ? C.summary : C.bar}"/>`);
+        if (w > 24) out.push(`<text x="${x1 + 4}" y="${ly + 10}" font-size="9" fill="#ffffff">${esc(clip(it.name, w - 8, 9))}</text>`);
+      }
+    }
+  }
   // Zaman başlığı
   const scale: Scale = scaleFor(ppd);
   const [topUnit, bottomUnit] = headerUnits(scale);
@@ -259,7 +293,7 @@ export function ganttPages(p: Project, s: Schedule, o: GanttExportOptions): stri
   const L = layout(p, s, o, chartW);
   // "Sığdır" ölçeği tek sayfa genişliğindedir (kayan nokta yuvarlaması bölmesin)
   const daysPerPage = o.scale === "fit" ? L.days : Math.max(1, Math.floor(chartW / L.ppd + 1e-9));
-  const rowsPerPage = Math.max(1, Math.floor((height - 2 * MARGIN - TITLE_H - HEAD_H - 14) / ROW));
+  const rowsPerPage = Math.max(1, Math.floor((height - 2 * MARGIN - TITLE_H - L.tlH - HEAD_H - 14) / ROW));
   const hPages = Math.max(1, Math.ceil(L.days / daysPerPage));
   const vPages = Math.max(1, Math.ceil(L.rows.length / rowsPerPage));
   const pages: string[] = [];
@@ -292,6 +326,6 @@ export function ganttPages(p: Project, s: Schedule, o: GanttExportOptions): stri
 export function ganttImage(p: Project, s: Schedule, o: GanttExportOptions): { svg: string; width: number; height: number } {
   const L = layout(p, s, o, pageSize(o.size, o.orientation).width - 2 * MARGIN - TABLE_W);
   const width = Math.ceil(2 * MARGIN + TABLE_W + L.days * L.ppd);
-  const height = Math.ceil(2 * MARGIN + TITLE_H + HEAD_H + L.rows.length * ROW + 14);
+  const height = Math.ceil(2 * MARGIN + TITLE_H + L.tlH + HEAD_H + L.rows.length * ROW + 14);
   return { svg: renderPart(p, s, o, L, 0, L.days, 0, L.rows.length, width, height, "", true), width, height };
 }

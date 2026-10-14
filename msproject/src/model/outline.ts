@@ -147,3 +147,100 @@ export function moveBlockTo(tasks: Task[], from: number, to: number): Task[] {
   const moved = block.map((t) => ({ ...t, outline: Math.max(0, t.outline + delta) }));
   return dropAncestorLinks(normalizeOutline([...rest.slice(0, target), ...moved, ...rest.slice(target)]));
 }
+
+/** Seçimdeki en üst satırlar: başka bir seçili satırın alt ağacında olmayanlar (sıralı) */
+export function rootIndexes(tasks: Task[], indexes: number[]): number[] {
+  const sorted = [...new Set(indexes)].filter((i) => i >= 0 && i < tasks.length).sort((a, b) => a - b);
+  const roots: number[] = [];
+  for (const i of sorted) {
+    const last = roots[roots.length - 1];
+    if (last !== undefined && i < subtreeEnd(tasks, last)) continue;
+    roots.push(i);
+  }
+  return roots;
+}
+
+/**
+ * Seçili satırları (alt ağaçlarıyla) yeni bir özet görevin altına alır: özet ilk seçili satırın yerine ve düzeyine
+ * girer, seçilenler sırasıyla onun alt görevleri olur. Kendi özetine bağlı kalan bağlar kopar.
+ */
+export function groupUnderSummary(tasks: Task[], indexes: number[], summary: Task): Task[] {
+  const roots = rootIndexes(tasks, indexes);
+  if (!roots.length) return tasks;
+  const level = tasks[roots[0]].outline;
+  const moving = new Set<number>();
+  const blocks: Task[] = [];
+  for (const r of roots) {
+    const end = subtreeEnd(tasks, r);
+    const delta = level + 1 - tasks[r].outline;
+    for (let j = r; j < end; j++) {
+      moving.add(j);
+      blocks.push({ ...tasks[j], outline: Math.max(0, tasks[j].outline + delta) });
+    }
+  }
+  const at = roots[0];
+  const before = tasks.slice(0, at).filter((_, j) => !moving.has(j));
+  const after = tasks.slice(at).filter((_, j) => !moving.has(j + at));
+  return dropAncestorLinks(normalizeOutline([...before, { ...summary, outline: level }, ...blocks, ...after]));
+}
+
+/**
+ * Özeti çözer: özet satırı silinir, alt görevleri bir düzey dışarı çıkar. Özete giden ya da özetten çıkan bağlar
+ * kalkar (kaç bağ kalktığı döner).
+ */
+export function ungroupSummary(tasks: Task[], index: number): { tasks: Task[]; droppedLinks: number } {
+  if (index < 0 || index >= tasks.length || !isSummaryAt(tasks, index)) return { tasks, droppedLinks: 0 };
+  const id = tasks[index].id;
+  const end = subtreeEnd(tasks, index);
+  let dropped = tasks[index].predecessors.length;
+  const next = tasks
+    .filter((_, j) => j !== index)
+    .map((t, j) => {
+      const orig = j < index ? j : j + 1;
+      const outline = orig > index && orig < end ? Math.max(0, t.outline - 1) : t.outline;
+      const preds = t.predecessors.filter((p) => p.taskId !== id);
+      dropped += t.predecessors.length - preds.length;
+      return outline === t.outline && preds.length === t.predecessors.length ? t : { ...t, outline, predecessors: preds };
+    });
+  return { tasks: normalizeOutline(next), droppedLinks: dropped };
+}
+
+/** "Seviye n'e kadar göster": n. düzeyden derin satırları gizlemek için kapatılacak özetler (n ≥ 1) */
+export function summariesToCollapse(tasks: Task[], level: number): string[] {
+  return tasks.filter((t, i) => isSummaryAt(tasks, i) && t.outline >= level - 1).map((t) => t.id);
+}
+
+/** Proje anahattının en derin düzeyi (1'den başlar) */
+export function outlineDepth(tasks: Task[]): number {
+  return tasks.reduce((m, t) => Math.max(m, t.outline + 1), 0);
+}
+
+/**
+ * Sürükle-bırak (çoklu): seçili satırlar alt ağaçlarıyla birlikte `to` satırının önüne (`to` = tasks.length: sona)
+ * taşınır. `level` verilmezse hedef satırın girintisi alınır; verilirse 0 ile üstteki satırın bir altı arasında
+ * sınırlanır (sağa sürükleyince alt görev olur). Taşınan bloklar kendi içlerindeki göreli girintiyi korur.
+ * Bir bloğun kendi içine bırakılamaz (dizi aynen döner).
+ */
+export function moveRowsTo(tasks: Task[], indexes: number[], to: number, level?: number): Task[] {
+  const roots = rootIndexes(tasks, indexes);
+  if (!roots.length || to < 0 || to > tasks.length) return tasks;
+  const moving = new Set<number>();
+  for (const r of roots) for (let j = r; j < subtreeEnd(tasks, r); j++) moving.add(j);
+  // Hedef taşınan bir bloğun içindeyse (ilk satırı hariç: kendi yerine bırakmak girinti değişikliği olabilir)
+  if (moving.has(to) && !roots.includes(to)) return tasks;
+  const rest = tasks.filter((_, j) => !moving.has(j));
+  // Hedef: `to`dan sonraki ilk taşınmayan satır
+  let target = 0;
+  for (let j = 0; j < to; j++) if (!moving.has(j)) target++;
+  const prev = target > 0 ? rest[target - 1].outline : -1;
+  const def = target < rest.length ? rest[target].outline : Math.max(0, prev);
+  const lvl = Math.max(0, Math.min(level ?? def, prev + 1));
+  const blocks: Task[] = [];
+  for (const r of roots) {
+    const delta = lvl - tasks[r].outline;
+    for (let j = r; j < subtreeEnd(tasks, r); j++) blocks.push({ ...tasks[j], outline: Math.max(0, tasks[j].outline + delta) });
+  }
+  const next = [...rest.slice(0, target), ...blocks, ...rest.slice(target)];
+  const same = next.every((t, i) => t.id === tasks[i].id && t.outline === tasks[i].outline);
+  return same ? tasks : dropAncestorLinks(normalizeOutline(next));
+}

@@ -115,7 +115,7 @@ const quality = JSON.parse(await call("check_plan_quality"));
 const saved2d = JSON.parse(readFileSync(file, "utf8"));
 console.log({ risks: risks.map((r) => `${r.id}:${r.exposure}:${r.chancePercent}`), p80: sim.result?.finish.p80, onTime: sim.result?.onTimeProbability, quality: quality.length });
 if (!r1.includes("R1") || !badRisk.isError || !badEst.isError || risks.length !== 1 || risks[0].chancePercent !== 100 || !simText.includes("Benzetim") ||
-  !sim.result?.current || sim.result.risks[0].occurred !== 1 || quality.length !== 11 || saved2d.version !== 6 || saved2d.tasks[leafB - 1].estimate?.pessimistic !== 8) {
+  !sim.result?.current || sim.result.risks[0].occurred !== 1 || quality.length !== 11 || saved2d.version !== 7 || saved2d.tasks[leafB - 1].estimate?.pessimistic !== 8) {
   throw new Error("Faz 2D sonucu beklenen gibi değil");
 }
 await call("update_task", { row: leafB, duration: 9 });

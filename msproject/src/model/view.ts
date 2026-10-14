@@ -11,6 +11,7 @@ export type TaskFilter =
   | "milestones"
   | "incomplete"
   | "notes"
+  | "thisWeek"
   | `res:${string}`
   | `tag:${string}`
   | `color:${string}`;
@@ -18,18 +19,35 @@ export type TaskFilter =
 export type SortKey = "none" | "name" | "start" | "finish" | "duration" | "slack" | "cost" | "percent";
 export const SORT_KEYS: SortKey[] = ["none", "name", "start", "finish", "duration", "slack", "cost", "percent"];
 
+/** Gruplama: yok, kaynağa göre (görev her kaynağının altında), en üst özete göre */
+export type GroupBy = "none" | "resource" | "summary";
+export const GROUP_KEYS: GroupBy[] = ["none", "resource", "summary"];
+
 export interface ViewOptions {
   query: string;
   filter: TaskFilter;
   sort: SortKey;
   desc: boolean;
   today: string;
+  /** Yoksa gruplama yok */
+  group?: GroupBy;
+  /** "Bu hafta" süzgecinde haftanın ilk günü (0 = pazar); yoksa pazartesi */
+  weekStart?: number;
 }
 
-export const DEFAULT_VIEW: Omit<ViewOptions, "today"> = { query: "", filter: "all", sort: "none", desc: false };
+export const DEFAULT_VIEW: Omit<ViewOptions, "today"> = { query: "", filter: "all", sort: "none", desc: false, group: "none" };
 
-export function isViewActive(o: Pick<ViewOptions, "query" | "filter" | "sort">): boolean {
-  return !!o.query.trim() || o.filter !== "all" || o.sort !== "none";
+export function isViewActive(o: Pick<ViewOptions, "query" | "filter" | "sort" | "group">): boolean {
+  return !!o.query.trim() || o.filter !== "all" || o.sort !== "none" || (o.group ?? "none") !== "none";
+}
+
+/** Bugünü içeren haftanın ilk ve son günü (YYYY-AA-GG) */
+export function weekRange(today: string, weekStart = 1): { from: string; to: string } {
+  const d = new Date(`${today}T00:00:00Z`);
+  const back = (d.getUTCDay() - weekStart + 7) % 7;
+  const from = new Date(d.getTime() - back * 86_400_000);
+  const to = new Date(from.getTime() + 6 * 86_400_000);
+  return { from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10) };
 }
 
 /** Türkçe büyük/küçük harf ve aksan farkını yok sayan karşılaştırma anahtarı */
@@ -42,7 +60,7 @@ export function fold(s: string): string {
 }
 
 /** Görev kendi başına süzgece ve aramaya uyuyor mu (özetlerin alt görevleri ayrıca değerlendirilir) */
-export function taskMatches(p: Project, s: Schedule, i: number, o: Pick<ViewOptions, "query" | "filter" | "today">, wbs?: string): boolean {
+export function taskMatches(p: Project, s: Schedule, i: number, o: Pick<ViewOptions, "query" | "filter" | "today" | "weekStart">, wbs?: string): boolean {
   const task = p.tasks[i];
   const r = s.rows[i];
   const f = o.filter;
@@ -51,6 +69,10 @@ export function taskMatches(p: Project, s: Schedule, i: number, o: Pick<ViewOpti
   if (f === "milestones" && !r.isMilestone) return false;
   if (f === "incomplete" && (r.isSummary || task.percent >= 100)) return false;
   if (f === "notes" && !task.notes && !task.links?.length) return false;
+  if (f === "thisWeek") {
+    const w = weekRange(o.today, o.weekStart);
+    if (r.isSummary || r.startDate > w.to || r.finishDate < w.from) return false;
+  }
   if (f.startsWith("res:") && !(task.assignments ?? []).some((a) => a.resourceId === f.slice(4))) return false;
   if (f.startsWith("tag:")) {
     const tag = fold(f.slice(4));
@@ -136,4 +158,57 @@ export function projectTags(p: Project): string[] {
   const seen = new Map<string, string>();
   for (const task of p.tasks) for (const tag of task.tags ?? []) if (!seen.has(fold(tag))) seen.set(fold(tag), tag);
   return [...seen.values()].sort((a, b) => a.localeCompare(b, "tr"));
+}
+
+/** Gruplanmış görünümün bir satırı: grup başlığı ya da görev (aynı görev birden çok kaynak grubunda olabilir) */
+export type GroupedRow = { kind: "group"; key: string; label: string; count: number } | { kind: "task"; index: number; key: string };
+
+/**
+ * Görünür sırayı gruplara ayırır (saf). Kaynağa göre: yaprak görevler atandıkları her kaynağın altında, kaynaksızlar
+ * "(Kaynaksız)" grubunda. Özete göre: yaprak görevler en üst düzey özetlerinin altında, özetsizler en sonda.
+ * Gruplar içinde gelen sıra korunur; boş gruplar çıkmaz. Özet satırlar gruplu görünümde gösterilmez.
+ */
+export function groupRows(p: Project, s: Schedule, order: number[], by: GroupBy, labels: { noResource: string; noSummary: string }): GroupedRow[] {
+  if (by === "none") return order.map((index) => ({ kind: "task", index, key: p.tasks[index].id }));
+  const leaves = order.filter((i) => !s.rows[i].isSummary);
+  const groups = new Map<string, { label: string; items: number[] }>();
+  const add = (key: string, label: string, i: number) => {
+    const g = groups.get(key) ?? { label, items: [] };
+    g.items.push(i);
+    groups.set(key, g);
+  };
+  if (by === "resource") {
+    for (const r of p.resources) groups.set(r.id, { label: r.name, items: [] });
+    for (const i of leaves) {
+      const as = p.tasks[i].assignments ?? [];
+      if (!as.length) add("~none", labels.noResource, i);
+      for (const a of as) add(a.resourceId, p.resources.find((r) => r.id === a.resourceId)?.name ?? a.resourceId, i);
+    }
+  } else {
+    // En üst özet: görevin üstündeki 0 düzeyli satır
+    const top: number[] = [];
+    let current = -1;
+    p.tasks.forEach((task, i) => {
+      if (task.outline === 0) current = i;
+      top[i] = current;
+    });
+    for (const i of leaves) {
+      const root = top[i];
+      if (root >= 0 && root !== i) add(p.tasks[root].id, p.tasks[root].name, i);
+      else add("~none", labels.noSummary, i);
+    }
+    // Özetsizler sonda
+    const none = groups.get("~none");
+    if (none) {
+      groups.delete("~none");
+      groups.set("~none", none);
+    }
+  }
+  const out: GroupedRow[] = [];
+  for (const [key, g] of groups) {
+    if (!g.items.length) continue;
+    out.push({ kind: "group", key: `grp:${key}`, label: g.label, count: g.items.length });
+    for (const index of g.items) out.push({ kind: "task", index, key: `grp:${key}:${p.tasks[index].id}` });
+  }
+  return out;
 }

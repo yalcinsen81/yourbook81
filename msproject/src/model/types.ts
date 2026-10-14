@@ -67,6 +67,10 @@ export interface Task {
   color?: TaskColor;
   /** Benzetim için üç nokta süre tahmini (iş günü): iyimser, en olası, kötümser. Yoksa proje geneli belirsizlik. */
   estimate?: DurationEstimate;
+  /** Etkisiz görev: planda (soluk) kalır ama hesaba girmez; süresi, maliyeti, kaynağı ve bağları sayılmaz */
+  inactive?: boolean;
+  /** Gantt'ın üstündeki zaman çizelgesi şeridinde gösterilir */
+  timeline?: boolean;
 }
 
 export interface DurationEstimate {
@@ -140,8 +144,9 @@ export type ProgressWeight = "cost" | "work" | "duration";
  *    çalışılamayan dönemler, yarım gün seçeneği. `startNoEarlierThan` → `constraint: SNET`.
  * 5: görev notu, bağlantılar, etiketler, renk ve gerçekleşen maliyet (hepsi isteğe bağlı).
  * 6: risk sicili, benzetim ayarları ve son sonucu, görevlerde üç nokta süre tahmini (hepsi isteğe bağlı).
+ * 7: görevlerde etkisiz (inactive) ve zaman çizelgesinde (timeline) işaretleri (isteğe bağlı; eski dosyalar aynen açılır).
  */
-export const PROJECT_VERSION = 6;
+export const PROJECT_VERSION = 7;
 
 /** Referans plan (baseline): kaydedildiği andaki tarihler, süre ve maliyet */
 export interface Baseline {

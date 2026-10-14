@@ -1,12 +1,12 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type UIEvent } from "react";
 import { addDays, diffDays, formatShort, isValidDate, nextWorkday, parseDate } from "./model/calendar";
-import { ancestorsOf, blockIndexes, cloneRows, dropAncestorLinks, indent, insertRows, isSummaryAt, move, moveBlockTo, normalizeOutline, outdent, subtreeEnd, wbsCodes } from "./model/outline";
+import { ancestorsOf, blockIndexes, cloneRows, dropAncestorLinks, groupUnderSummary, indent, insertRows, isSummaryAt, move, moveRowsTo, normalizeOutline, outdent, outlineDepth, subtreeEnd, summariesToCollapse, ungroupSummary, wbsCodes } from "./model/outline";
 import { formatPredecessors, parsePredecessors } from "./model/predecessors";
 import { emptyProject, sampleProject } from "./model/sample";
-import { wouldCreateCycle } from "./model/schedule";
+import { schedule as runSchedule, wouldCreateCycle } from "./model/schedule";
 import { parseMspXml, toMspXml } from "./model/mspXml";
 import { needsUpgradeBackup, newId, normalizeCurrency, sanitizeProject } from "./model/storage";
-import type { Project, Task } from "./model/types";
+import type { Blackout, LinkType, Project, Task } from "./model/types";
 import { CalendarDialog } from "./components/CalendarDialog";
 import { Gantt } from "./components/Gantt";
 import { TaskGrid, type GridRow } from "./components/TaskGrid";
@@ -26,7 +26,7 @@ import { normalizeWorkdays } from "./model/calendar";
 import { ProjectSetupDialog } from "./components/ProjectSetupDialog";
 import { SettingsDialog } from "./components/SettingsDialog";
 import { DateInput } from "./components/DateInput";
-import { formatMoney, formatNumber, invalidDateMessage, msgText, parseDateLocal, setCurrency, t, weekStartDay, type MessageKey, type Msg } from "./i18n";
+import { formatDateLocal, formatMoney, formatNumber, invalidDateMessage, msgText, parseDateLocal, setCurrency, t, weekStartDay, type MessageKey, type Msg } from "./i18n";
 import { parsePercentCell } from "./model/cellInput";
 import { useLocale } from "./i18n/react";
 import { holidayLabel } from "./model/holidays";
@@ -43,10 +43,22 @@ import { useOverflow } from "./components/useOverflow";
 import { Menu, MenuItem } from "./components/Menu";
 import { DEFAULT_HIDDEN, gridWidthFor } from "./components/TaskGrid";
 import { applyTemplate, projectToTemplate } from "./model/templates";
-import { DEFAULT_VIEW, isViewActive, visibleOrder, type ViewOptions } from "./model/view";
+import { DEFAULT_VIEW, groupRows, isViewActive, visibleOrder, type ViewOptions } from "./model/view";
 import { allWarnings } from "./model/validation";
 import { exposure, parseEstimate, riskLevel, risksByTask } from "./model/risks";
 import { serializeProject } from "./useFileLink";
+import { TimelineStrip } from "./components/TimelineStrip";
+import { timelineItems } from "./model/timeline";
+import { calcProject, inactiveIds } from "./model/inactive";
+import { buildRecurringTasks } from "./model/recurrence";
+import { SplitDialog } from "./components/SplitDialog";
+import { RecurringDialog } from "./components/RecurringDialog";
+import { CommandPalette, type PaletteCommand, type PaletteTask } from "./components/CommandPalette";
+import { LAST_RELIGIOUS_YEAR } from "./model/holidayData";
+import { ContextMenu, type MenuEntry } from "./components/ContextMenu";
+import { LinkEditor } from "./components/LinkEditor";
+import { BulkEditDialog, type BulkPatch } from "./components/BulkEditDialog";
+import { guessMapping, importTasks, type ImportField } from "./model/tabular";
 
 // Raporlar, Gantt dışa aktarma ve içe aktarma ayrı parçada yüklenir (ilk açılış hafif kalsın; çevrimdışı önbellekte de vardır)
 const ReportsView = lazy(() => import("./components/ReportsView").then((m) => ({ default: m.ReportsView })));
@@ -95,6 +107,18 @@ export default function App() {
   const [saveTplOpen, setSaveTplOpen] = useState(false);
   const [fileMenu, setFileMenu] = useState(false);
   const [moreMenu, setMoreMenu] = useState(false);
+  // Komut paleti (Ctrl+K) ya da yalnızca göreve git (Ctrl+G)
+  const [palette, setPalette] = useState<"all" | "tasks" | null>(null);
+  // Sağ tık menüsü (satırda ve çubukta) ve anahat menüsü
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
+  const [outlineMenu, setOutlineMenu] = useState(false);
+  // Görev bilgisi penceresi notlar alanına odaklanarak açılsın mı
+  const [infoFocus, setInfoFocus] = useState<"notes" | undefined>(undefined);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [splitId, setSplitId] = useState<string | null>(null);
+  const [recurOpen, setRecurOpen] = useState(false);
+  // Son kopyalanan satırların sistem panosuna yazılan metni (yapıştırırken uygulama içi kopyayı tanımak için)
+  const copiedText = useRef("");
   // Satır yoğunluğu değişince tablo ve Gantt yeni ROW_H ile yeniden çizilir
   const [density, setDensityState] = useState<Density>(() => (ROW_H === 36 ? "comfortable" : "compact"));
   const toolbarRef = useRef<HTMLElement>(null);
@@ -160,11 +184,13 @@ export default function App() {
     return () => window.clearTimeout(timer);
   }, [project]);
 
-  const usage = useMemo(() => resourceUsage(project, schedule), [project, schedule]);
+  // Etkisiz görevler maliyet, kaynak, ilerleme ve benzetim hesabına girmez
+  const calc = useMemo(() => calcProject(project), [project]);
+  const usage = useMemo(() => resourceUsage(calc, schedule), [calc, schedule]);
   const overTasks = useMemo(() => overallocatedTasks(usage), [usage]);
   // İlerleme, S eğrisi ve uyarılar tek ağırlıkla (proje ayarı, varsayılan maliyet)
-  const curves = useMemo(() => progressCurves(project, schedule, today), [project, schedule, today]);
-  const warnings = useMemo(() => progressWarnings(curves, projectWeight(project)), [curves, project, loc]); // eslint-disable-line react-hooks/exhaustive-deps
+  const curves = useMemo(() => progressCurves(calc, schedule, today), [calc, schedule, today]);
+  const warnings = useMemo(() => progressWarnings(curves, projectWeight(calc)), [curves, calc, loc]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sekme başlığı dile ve proje adına uyar
   useEffect(() => {
@@ -175,6 +201,17 @@ export default function App() {
 
   // Referans plan sapması (gösterilen referans plana göre)
   const baseline = shownBaseline >= 0 ? getBaseline(project, shownBaseline) : undefined;
+  const timelineData = useMemo(() => timelineItems(project, schedule), [project, schedule]);
+  // İzleme Gantt'ı: taban çizgisini tek tıkla aç/kapa (son gösterileni hatırlar)
+  const lastBaseline = useRef(-1);
+  if (baseline) lastBaseline.current = baseline.index;
+  const hasBaselines = (project.baselines?.length ?? 0) > 0;
+  const toggleBaseline = () => {
+    if (baseline) return setShownBaseline(-1);
+    const idx = project.baselines?.some((b) => b.index === lastBaseline.current) ? lastBaseline.current : project.baselines?.[0]?.index;
+    if (idx === undefined) return setBaselineOpen(true);
+    setShownBaseline(idx);
+  };
   const variance = useMemo(
     () => (baseline ? baselineVariance(project, schedule, baseline.index) : new Map<string, { finish: number }>()),
     [baseline, project, schedule],
@@ -189,13 +226,23 @@ export default function App() {
     const wbs = wbsCodes(project.tasks);
     const anc = ancestorsOf(project.tasks);
     // Özet görevin maliyeti alt görevlerinin toplamı
-    const leafCost = project.tasks.map((task, i) => (schedule.rows[i].isSummary ? 0 : taskCost(task, project)));
+    const leafCost = calc.tasks.map((task, i) => (schedule.rows[i].isSummary ? 0 : taskCost(task, calc)));
     const cost = project.tasks.map((_, i) =>
       schedule.rows[i].isSummary ? leafCost.slice(i + 1, subtreeEnd(project.tasks, i)).reduce((a, b) => a + b, 0) : leafCost[i],
     );
     const issues = new Map<string, string[]>();
     for (const is of schedule.issues) issues.set(is.taskId, [...(issues.get(is.taskId) ?? []), issueText(project, schedule, is)]);
     const byTask = risksByTask(project);
+    const off = inactiveIds(project);
+    // Bölünmüş görev: göreve uygulanan çalışılamayan dönemler çubukta boşluk olarak çizilir
+    const periods = new Map((project.blackouts ?? []).map((b) => [b.id, b]));
+    const gapsOf = (i: number) => {
+      const task = project.tasks[i];
+      const r = schedule.rows[i];
+      if (!task.blackouts?.length || r.isSummary || r.isMilestone) return undefined;
+      const list = task.blackouts.map((id) => periods.get(id)).filter((b) => b && b.to >= r.startDate && b.from <= r.finishDate) as Blackout[];
+      return list.length ? list : undefined;
+    };
     const levels = ["low", "medium", "high", "critical"];
     const riskInfo = (id: string) => {
       const list = byTask.get(id);
@@ -203,9 +250,51 @@ export default function App() {
       const level = levels[Math.max(...list.map((r) => levels.indexOf(riskLevel(exposure(r)))))];
       return { text: list.map((r) => `${r.id} ${r.title}`), level };
     };
-    const order = viewActive ? visibleOrder(project, schedule, { ...viewOpts, today }, cost, wbs) : project.tasks.map((_, i) => i);
+    const order = viewActive ? visibleOrder(project, schedule, { ...viewOpts, today, weekStart: weekStartDay() }, cost, wbs) : project.tasks.map((_, i) => i);
+    const group = viewOpts.group ?? "none";
+    if (group !== "none") {
+      // Gruplu görünüm: grup başlıkları + yaprak görevler (daralt/genişlet uygulanmaz)
+      return groupRows(project, schedule, order, group, { noResource: t("group.noResource"), noSummary: t("group.noSummary") }).map((g): GridRow => {
+        if (g.kind === "group") {
+          return {
+            key: g.key,
+            group: { label: g.label, count: g.count },
+            task: { id: g.key, name: g.label, duration: 0, outline: 0, percent: 0, predecessors: [] },
+            sched: { ...schedule.rows[0], id: g.key, row: 0, isSummary: true, isMilestone: false, critical: false },
+            wbs: "",
+            predText: "",
+            resText: "",
+            overallocated: false,
+            cost: 0,
+            collapsed: false,
+            issues: [],
+            warnings: [],
+          };
+        }
+        const i = g.index;
+        return {
+          key: g.key,
+          task: project.tasks[i],
+          sched: schedule.rows[i],
+          wbs: wbs[i],
+          predText: formatPredecessors(project.tasks[i].predecessors, project.tasks),
+          resText: formatAssignments(project.tasks[i].assignments, project.resources),
+          overallocated: overTasks.has(project.tasks[i].id),
+          noCost: noCostRows.has(i + 1),
+          cost: cost[i],
+          collapsed: false,
+          issues: issues.get(project.tasks[i].id) ?? [],
+          variance: variance.get(project.tasks[i].id)?.finish,
+          warnings: taskWarns.get(project.tasks[i].id) ?? [],
+          risks: riskInfo(project.tasks[i].id),
+          inactive: off.has(project.tasks[i].id),
+          gaps: gapsOf(i),
+        };
+      });
+    }
     return order
       .map((i) => ({
+        key: project.tasks[i].id,
         task: project.tasks[i],
         sched: schedule.rows[i],
         wbs: wbs[i],
@@ -219,6 +308,8 @@ export default function App() {
         variance: variance.get(project.tasks[i].id)?.finish,
         warnings: taskWarns.get(project.tasks[i].id) ?? [],
         risks: riskInfo(project.tasks[i].id),
+        inactive: off.has(project.tasks[i].id),
+        gaps: gapsOf(i),
       }))
       .filter((r) => !(anc.get(r.task.id) ?? []).some((a) => collapsed.has(a)));
     // loc: öncül metnindeki gecikme birimi (g / d) dile bağlı
@@ -244,24 +335,69 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadToken]);
 
-  // Gantt'ta sürükleme: taşıma "şundan önce başlamasın" kısıtı koyar (MS Project gibi), sağ uç süreyi değiştirir
+  // Gantt'ta sürükleme: taşıma "şundan önce başlamasın" kısıtı koyar (MS Project gibi, uyarıyla), sağ uç süreyi,
+  // çubuk içindeki tutamaç tamamlanma yüzdesini değiştirir. Her biri tek geri al adımıdır.
   const onDragTask = useCallback(
-    (id: string, mode: "move" | "resize", days: number) => {
+    (id: string, mode: "move" | "resize" | "percent", value: number) => {
       const r = schedule.byId.get(id);
-      if (!r) return;
+      const task = project.tasks.find((x) => x.id === id);
+      if (!r || !task) return;
       const cal = schedule.calendar;
-      if (mode === "move") {
+      if (mode === "percent") {
+        const next = withPercent(task, value, schedule);
+        update((p) => ({ ...p, tasks: p.tasks.map((x) => (x.id === id ? next : x)) }));
+        flash(() => t("msg.percentSet", { name: task.name, pct: pct(value) }));
+      } else if (mode === "move") {
+        const days = value;
         const start = cal.nextWorkday(addDays(r.startDate, days));
-        update((p) => ({ ...p, tasks: p.tasks.map((t) => (t.id === id ? { ...t, constraint: { type: "SNET", date: start } } : t)) }));
+        if (start < project.start) {
+          flashError(() => t("valid.startBeforeProject", { date: formatShort(start), start: formatShort(project.start) }));
+          return;
+        }
+        const old = task.constraint;
+        const next: Project = { ...project, tasks: project.tasks.map((x) => (x.id === id ? { ...x, constraint: { type: "SNET", date: start } } : x)) };
+        update(() => next);
+        // Öncüller görevi daha geç başlatıyorsa ya da başka bir kısıt değiştiyse kullanıcı uyarılır
+        const actual = runSchedule(next).byId.get(id)?.startDate ?? start;
+        const parts = [t("msg.dragSnet", { date: formatShort(start) })];
+        if (actual > start) parts.push(t("msg.dragPredLater", { date: formatShort(actual) }));
+        if (old && old.type !== "SNET" && old.type !== "ASAP") parts.push(t("msg.dragReplaced", { type: t(`constraint.${old.type}`) }));
+        parts.push(t("msg.undoHint"));
+        const text = parts.join(" ");
+        if (actual > start) flashError(() => text);
+        else flash(() => text);
       } else {
+        const days = value;
         // Yeni bitişe kadar görevin kendi takviminde (yarım gün, kaynak takvimi) kaç iş günü var
         const finish = cal.prevWorkday(addDays(r.finishDate, days));
         const duration = Math.max(1, Math.round(schedule.capacity(id, r.es, cal.toOffset(addDays(finish, 1)))));
         update((p) => ({ ...p, tasks: p.tasks.map((t) => (t.id === id ? { ...t, duration } : t)) }));
       }
     },
-    [schedule, update],
+    [flash, flashError, project, schedule, update],
   );
+
+  // Gantt'ta bir çubuğun ucundan diğerine sürükleyerek bağ (Bitiş-Başlangıç); bağ okuna tıklayınca düzenleme
+  const onLinkDraw = useCallback(
+    (predId: string, succId: string) => {
+      const succ = project.tasks.find((x) => x.id === succId);
+      if (!succ) return;
+      if (succ.predecessors.some((x) => x.taskId === predId)) {
+        flash(() => t("msg.linkExists"));
+        return;
+      }
+      const err = cycleError(project, succId, predId);
+      if (err) {
+        flashError(() => err);
+        return;
+      }
+      update((p) => ({ ...p, tasks: p.tasks.map((x) => (x.id === succId ? { ...x, predecessors: [...x.predecessors, { taskId: predId, type: "FS", lag: 0 }] } : x)) }));
+      const from = project.tasks.findIndex((x) => x.id === predId) + 1;
+      flash(() => t("msg.linkDrawn", { from, to: project.tasks.findIndex((x) => x.id === succId) + 1 }));
+    },
+    [flash, flashError, project, update],
+  );
+  const [linkEdit, setLinkEdit] = useState<{ pred: string; succ: string; x: number; y: number } | null>(null);
 
   // Zaman çizelgesi: proje başlangıcından önceki hafta başı (bir hafta pay), bitişten 4 hafta sonrası;
   // uzaklaştırınca görünür alanı dolduracak kadar uzar
@@ -283,8 +419,11 @@ export default function App() {
 
   const onSelect = useCallback(
     (id: string, e: MouseEvent) => {
+      // Sağ tık seçili satırdaysa seçim korunur (menü seçimin tamamına uygulanır)
+      if (e.button === 2 && selection.has(id)) return;
+      if (rows.find((r) => r.task.id === id)?.group) return;
       if (e.shiftKey && anchor) {
-        const ids = rows.map((r) => r.task.id);
+        const ids = rows.filter((r) => !r.group).map((r) => r.task.id);
         const [a, b] = [ids.indexOf(anchor), ids.indexOf(id)].sort((x, y) => x - y);
         if (a >= 0) {
           setSelection(new Set(ids.slice(a, b + 1)));
@@ -317,7 +456,7 @@ export default function App() {
   // Shift+↑/↓: bağlantı noktasından yeni satıra kadar seçili
   const onExtend = useCallback(
     (id: string, dir: 1 | -1) => {
-      const ids = rows.map((r) => r.task.id);
+      const ids = rows.filter((r) => !r.group).map((r) => r.task.id);
       const at = ids.indexOf(id) + dir;
       if (at < 0 || at >= ids.length) return;
       const from = ids.indexOf(anchor ?? id);
@@ -431,6 +570,7 @@ export default function App() {
         return [project.tasks[i].name, r.duration, r.startDate, r.finishDate].join("\t");
       })
       .join("\n");
+    copiedText.current = text;
     void navigator.clipboard?.writeText(text).catch(() => undefined);
     flash(() => t("msg.copied", { n }));
   }, [flash, project.tasks, schedule.rows, selectedIndexes]);
@@ -456,32 +596,171 @@ export default function App() {
     pasteRows(cloneRows(project.tasks, selectedIndexes, () => ""));
   }, [pasteRows, project.tasks, selectedIndexes]);
 
-  const onMoveRow = useCallback(
-    (id: string, beforeId: string | null) =>
+  /**
+   * Aşağı doldur (Ctrl+D, dolgu tutamacı): kaynak satırın bir sütunundaki değer hedef satırlara kopyalanır. Özetlere
+   * süre / kaynak / yüzde yazılmaz; döngü oluşturacak öncüller atlanır. Tek geri al adımı.
+   */
+  const fillDown = useCallback(
+    (col: string, sourceId: string, targetIds: string[]) => {
+      const src = project.tasks.find((x) => x.id === sourceId);
+      const targets = targetIds.filter((id) => id !== sourceId);
+      if (!src || !targets.length) return;
+      let skipped = 0;
+      let changed = 0;
       update((p) => {
-        const from = p.tasks.findIndex((x) => x.id === id);
+        let next = p;
+        for (const id of targets) {
+          const i = next.tasks.findIndex((x) => x.id === id);
+          if (i < 0) continue;
+          const task = next.tasks[i];
+          const summary = isSummaryAt(next.tasks, i);
+          let patched: Task | null = null;
+          if (col === "name") patched = { ...task, name: src.name };
+          else if (col === "duration" && !summary) patched = { ...task, duration: src.duration };
+          else if (col === "start" && !summary) {
+            patched = { ...task };
+            if (src.constraint) patched.constraint = { ...src.constraint };
+            else delete patched.constraint;
+          } else if (col === "percent" && !summary) patched = withPercent(task, src.percent, schedule);
+          else if (col === "resources" && !summary) {
+            patched = { ...task };
+            if (src.assignments?.length) patched.assignments = src.assignments.map((a) => ({ ...a }));
+            else delete patched.assignments;
+          } else if (col === "estimate" && !summary) {
+            patched = { ...task };
+            if (src.estimate) patched.estimate = { ...src.estimate };
+            else delete patched.estimate;
+          } else if (col === "preds") {
+            const preds = src.predecessors.filter((pr) => pr.taskId !== id && !wouldCreateCycle({ ...next, tasks: next.tasks.map((x) => (x.id === id ? { ...x, predecessors: [] } : x)) }, id, pr.taskId));
+            skipped += src.predecessors.length - preds.length;
+            patched = { ...task, predecessors: preds.map((x) => ({ ...x })) };
+          } else skipped++;
+          if (patched) {
+            changed++;
+            next = { ...next, tasks: next.tasks.map((x, j) => (j === i ? patched! : x)) };
+          }
+        }
+        return next;
+      });
+      flash(() => (skipped ? t("msg.filledSkipped", { n: changed, skipped }) : t("msg.filled", { n: changed })));
+    },
+    [flash, project.tasks, schedule, update],
+  );
+
+  /** Ctrl+D: odaktaki sütunda, seçimin ilk satırından (görünen sırayla) diğer seçili satırlara */
+  const fillDownSelection = useCallback(
+    (col: string) => {
+      const ids = rows.filter((r) => selection.has(r.task.id)).map((r) => r.task.id);
+      if (ids.length < 2) return false;
+      fillDown(col, ids[0], ids.slice(1));
+      return true;
+    },
+    [fillDown, rows, selection],
+  );
+
+  const applyBulk = useCallback(
+    (patch: BulkPatch) => {
+      const ids = new Set(selection);
+      let errors: string[] = [];
+      update((p) => {
+        let next = p;
+        for (const id of ids) {
+          const i = next.tasks.findIndex((x) => x.id === id);
+          if (i < 0) continue;
+          const summary = isSummaryAt(next.tasks, i);
+          let task = next.tasks[i];
+          if (patch.duration !== undefined && !summary) task = { ...task, duration: patch.duration };
+          if (patch.percent !== undefined && !summary) task = withPercent(task, patch.percent, schedule);
+          if (patch.constraint && !summary) {
+            task = { ...task };
+            if (patch.constraint.type === "ASAP") delete task.constraint;
+            else task.constraint = { ...patch.constraint };
+          }
+          next = { ...next, tasks: next.tasks.map((x, j) => (j === i ? task : x)) };
+          if (patch.resources !== undefined && !summary) {
+            const r = assignFromText(next, id, patch.resources);
+            if (r.errors.length) errors = r.errors;
+            else next = r.project;
+          }
+        }
+        return errors.length ? p : next;
+      });
+      if (errors.length) flashError(() => t("err.resource", { parts: errors.join(", ") }));
+      else {
+        setBulkOpen(false);
+        flash(() => t("msg.bulkDone", { n: ids.size }));
+      }
+    },
+    [flash, flashError, schedule, selection, update],
+  );
+
+  /**
+   * Excel'den çok satırlı yapıştırma: sekmeyle ayrılmış satırlar yeni görev olur (ad, süre, öncül; başlık satırı
+   * varsa sütunlar adından tanınır). Öncül numaraları yapıştırılan satırlara göredir. Seçili satırın altına girer.
+   */
+  const pasteTable = useCallback(
+    (text: string) => {
+      const table = text.replace(/\r/g, "").split("\n").filter((l) => l.trim()).map((l) => l.split("\t"));
+      if (!table.length) return;
+      const guessed = guessMapping(table[0]);
+      const hasHeader = guessed.includes("name");
+      const width = Math.max(...table.map((r) => r.length));
+      const fallback: ImportField[] = ["name", "duration", "predecessors", "resources", "start", "finish", "percent"];
+      const mapping: ImportField[] = hasHeader ? guessed : Array.from({ length: width }, (_, i) => fallback[i] ?? "ignore");
+      const result = importTasks(project, table, mapping, { hasHeader, mode: "append" });
+      if (!result.imported) {
+        flashError(() => result.problems[0]?.message ?? t("msg.pasteNothing"));
+        return;
+      }
+      const newIds = result.project.tasks.slice(project.tasks.length).map((x) => x.id);
+      update(() => {
+        let next = result.project;
+        const last = selectedIndexes[selectedIndexes.length - 1];
+        if (last !== undefined) {
+          const at = subtreeEnd(next.tasks, last);
+          const from = newIds.map((id) => next.tasks.findIndex((x) => x.id === id));
+          next = { ...next, tasks: moveRowsTo(next.tasks, from, at, next.tasks[last].outline) };
+        }
+        return next;
+      });
+      setSelection(new Set(newIds));
+      const warn = result.problems.length ? ` ${t("msg.pasteProblems", { n: result.problems.length, first: result.problems[0].message })}` : "";
+      (result.problems.length ? flashError : flash)(() => t("msg.pastedRows", { n: result.imported }) + warn);
+    },
+    [flash, flashError, project, selectedIndexes, update],
+  );
+  const pasteTableRef = useRef(pasteTable);
+  pasteTableRef.current = pasteTable;
+
+  const onMoveRows = useCallback(
+    (ids: string[], beforeId: string | null, level: number) =>
+      update((p) => {
+        const indexes = ids.map((id) => p.tasks.findIndex((x) => x.id === id)).filter((i) => i >= 0);
         const to = beforeId === null ? p.tasks.length : p.tasks.findIndex((x) => x.id === beforeId);
-        const tasks = moveBlockTo(p.tasks, from, to);
+        const tasks = moveRowsTo(p.tasks, indexes, to, level);
         if (tasks === p.tasks) {
-          flashError(() => t("msg.cannotMoveInto"));
+          if (!ids.includes(beforeId ?? "")) flashError(() => t("msg.cannotMoveInto"));
           return p;
         }
         return { ...p, tasks };
       }),
-    [flash, update],
+    [flashError, update],
   );
 
   const linkSelected = useCallback(() => {
-    if (selectedIndexes.length < 2) {
+    // Seçim sırasıyla (Ctrl ile tıklanan sıra; Shift ile aralıkta satır sırası) Bitiş-Başlangıç zinciri
+    const order = [...selection].filter((id) => project.tasks.some((x) => x.id === id));
+    if (order.length < 2) {
       flashError(() => t("msg.linkNeedTwo"));
       return;
     }
     let skipped = 0;
+    let added = 0;
     update((p) => {
       let next = p;
-      for (let k = 1; k < selectedIndexes.length; k++) {
-        const pred = p.tasks[selectedIndexes[k - 1]].id;
-        const succ = p.tasks[selectedIndexes[k]].id;
+      for (let k = 1; k < order.length; k++) {
+        const pred = order[k - 1];
+        const succ = order[k];
         const succTask = next.tasks.find((t) => t.id === succ)!;
         if (succTask.predecessors.some((x) => x.taskId === pred)) continue;
         if (wouldCreateCycle(next, succ, pred)) {
@@ -494,14 +773,17 @@ export default function App() {
             t.id === succ ? { ...t, predecessors: [...t.predecessors, { taskId: pred, type: "FS", lag: 0 }] } : t,
           ),
         };
+        added++;
       }
       return next;
     });
     if (skipped) flash(() => t("msg.linksSkipped", { n: skipped }));
-  }, [flash, selectedIndexes, update]);
+    else flash(() => t("msg.linked", { n: added }));
+  }, [flash, flashError, project.tasks, selection, update]);
 
   const unlinkSelected = useCallback(() => {
     if (!selection.size) return;
+    flash(() => (selection.size === 1 ? t("msg.unlinkedOne") : t("msg.unlinked")));
     update((p) => ({
       ...p,
       tasks: p.tasks.map((t) => {
@@ -513,7 +795,125 @@ export default function App() {
         return t;
       }),
     }));
-  }, [selection, update]);
+  }, [flash, selection, update]);
+
+  // --- Anahat: özet görev altına al / özeti çöz / daralt / genişlet ---
+  const groupSelected = useCallback(() => {
+    if (!selectedIndexes.length) return;
+    const id = newId();
+    const summary: Task = { id, name: t("default.summary"), duration: 1, outline: 0, percent: 0, predecessors: [] };
+    let row = 0;
+    update((p) => {
+      const tasks = groupUnderSummary(p.tasks, selectedIndexes, summary);
+      row = tasks.findIndex((x) => x.id === id);
+      return { ...p, tasks };
+    });
+    setSelection(new Set([id]));
+    setAnchor(id);
+    setCollapsed((s) => {
+      if (!s.size) return s;
+      const n = new Set(s);
+      n.delete(id);
+      return n;
+    });
+    // Yeni özetin adı hemen düzenlenebilsin
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const index = [...document.querySelectorAll<HTMLElement>(".grid-row:not(.add-row) .gc-row")].findIndex((e) => e.textContent === String(row + 1));
+      if (index >= 0) document.querySelectorAll<HTMLInputElement>('.grid-row:not(.add-row) input[data-col="name"]')[index]?.focus();
+    }));
+  }, [selectedIndexes, update]);
+
+  const selectedSummaries = selectedIndexes.filter((i) => isSummaryAt(project.tasks, i));
+  const ungroupSelected = useCallback(() => {
+    const ids = project.tasks.filter((x, i) => selection.has(x.id) && isSummaryAt(project.tasks, i)).map((x) => x.id);
+    if (!ids.length) {
+      flashError(() => t("msg.ungroupNeedSummary"));
+      return;
+    }
+    let dropped = 0;
+    update((p) => {
+      let tasks = p.tasks;
+      for (const id of ids) {
+        const r = ungroupSummary(tasks, tasks.findIndex((x) => x.id === id));
+        tasks = r.tasks;
+        dropped += r.droppedLinks;
+      }
+      return { ...p, tasks };
+    });
+    setSelection(new Set());
+    if (dropped) flash(() => t("msg.ungroupLinks", { n: dropped }));
+  }, [flash, flashError, project.tasks, selection, update]);
+
+  const openNotes = useCallback(() => {
+    if (primary < 0) return;
+    setInfoFocus("notes");
+    setInfoId(project.tasks[primary].id);
+  }, [primary, project.tasks]);
+
+  const collapseAll = useCallback(() => setCollapsed(new Set(summariesToCollapse(project.tasks, 1))), [project.tasks]);
+  const expandAll = useCallback(() => setCollapsed(new Set()), []);
+  const showLevel = useCallback((n: number) => setCollapsed(new Set(summariesToCollapse(project.tasks, n))), [project.tasks]);
+  const depth = outlineDepth(project.tasks);
+
+  // Etkisiz / zaman çizelgesi işaretleri: seçilenlerin hepsinde varsa kaldırılır, yoksa hepsine konur
+  const toggleFlag = useCallback(
+    (flag: "inactive" | "timeline") => {
+      if (!selection.size) return;
+      const all = project.tasks.filter((x) => selection.has(x.id)).every((x) => x[flag]);
+      update((p) => ({
+        ...p,
+        tasks: p.tasks.map((x) => {
+          if (!selection.has(x.id)) return x;
+          const next = { ...x };
+          if (all) delete next[flag];
+          else next[flag] = true;
+          return next;
+        }),
+      }));
+      flash(() => t(`msg.${flag}${all ? "Off" : "On"}` as MessageKey, { n: selection.size }));
+    },
+    [flash, project.tasks, selection, update],
+  );
+
+  // Görevi böl: yalnızca bu göreve uygulanan çalışılamayan dönem (tek geri al adımı)
+  const splitTarget = primary >= 0 && !schedule.rows[primary].isSummary && !schedule.rows[primary].isMilestone ? project.tasks[primary] : undefined;
+  const openSplit = useCallback(() => {
+    if (!splitTarget || selection.size !== 1) return flashError(t("split.needTask"));
+    setSplitId(splitTarget.id);
+  }, [flashError, selection.size, splitTarget]);
+  const applySplit = (id: string, from: string, to: string) => {
+    const bid = newId();
+    update((p) => ({
+      ...p,
+      blackouts: [...(p.blackouts ?? []), { id: bid, name: t("split.periodName", { name: p.tasks.find((x) => x.id === id)?.name ?? "" }), from, to }],
+      tasks: p.tasks.map((x) => (x.id === id ? { ...x, blackouts: [...(x.blackouts ?? []), bid] } : x)),
+    }));
+    setSplitId(null);
+    flash(() => t("msg.split", { from: formatDateLocal(from), to: formatDateLocal(to) }));
+  };
+  // Yinelenen görev: seçili görevin (alt ağacıyla) arkasına, aynı düzeyde özet + tekrarlar
+  const applyRecurring = (name: string, duration: number, dates: string[]) => {
+    const at = primary >= 0 ? subtreeEnd(project.tasks, primary) : project.tasks.length;
+    const outline = primary >= 0 ? project.tasks[primary].outline : 0;
+    const added = buildRecurringTasks(name, duration, dates, outline, newId);
+    update((p) => ({ ...p, tasks: [...p.tasks.slice(0, at), ...added, ...p.tasks.slice(at)] }));
+    setRecurOpen(false);
+    setSelection(new Set([added[0].id]));
+    setAnchor(added[0].id);
+    flash(() => t("msg.recurAdded", { n: dates.length }));
+  };
+
+  const openContextMenu = useCallback(
+    (id: string, e: MouseEvent) => {
+      e.preventDefault();
+      if (!selection.has(id)) {
+        setSelection(new Set([id]));
+        setAnchor(id);
+      }
+      setCtxMenu({ x: e.clientX, y: e.clientY });
+    },
+    [selection],
+  );
 
   // --- Hücre düzenleme ---
   const onDuration = (id: string, text: string) => {
@@ -761,16 +1161,59 @@ export default function App() {
     setPpd(next);
   }, [ganttWidth, project.start, projectDays, timeline.start]);
 
-  const goToSelected = useCallback(() => {
-    if (primary < 0) return;
-    const id = project.tasks[primary].id;
-    const r = schedule.byId.get(id);
-    const index = rows.findIndex((row) => row.task.id === id);
+  const goToday = useCallback(() => {
+    setView("gantt");
+    scrollToDate(today, (ganttRef.current?.clientWidth ?? 600) / 2);
+  }, [scrollToDate, today]);
+
+  // Göreve git: kapalı özetler açılır, görevi gizleyen süzgeç temizlenir; satır ve çubuk ekranın ortasına gelir
+  const pendingReveal = useRef<string | null>(null);
+  const [revealTick, setRevealTick] = useState(0);
+  const revealTask = useCallback(
+    (id: string) => {
+      setView("gantt");
+      const anc = ancestorsOf(project.tasks).get(id) ?? [];
+      setCollapsed((s) => {
+        if (!anc.some((a) => s.has(a))) return s;
+        const n = new Set(s);
+        for (const a of anc) n.delete(a);
+        return n;
+      });
+      setSelection(new Set([id]));
+      setAnchor(id);
+      pendingReveal.current = id;
+      setRevealTick((n) => n + 1);
+    },
+    [project.tasks],
+  );
+  useLayoutEffect(() => {
+    const id = pendingReveal.current;
+    if (!id) return;
+    const index = rows.findIndex((r) => r.task.id === id);
+    if (index < 0) {
+      // Süzgeç görevi gizliyor: görünüm temizlenir, satırlar yeniden hesaplanınca tekrar denenir
+      if (viewActive) setViewOpts(DEFAULT_VIEW);
+      else pendingReveal.current = null;
+      return;
+    }
+    pendingReveal.current = null;
+    const r = rows[index].sched;
+    const y = Math.max(0, index * ROW_H - (gridRef.current?.clientHeight ?? 400) / 2 + ROW_H);
+    if (gridRef.current) gridRef.current.scrollTop = y;
     const el = ganttRef.current;
-    if (!r || !el) return;
-    scrollToDate(r.startDate);
-    if (index >= 0) el.scrollTop = Math.max(0, index * ROW_H - el.clientHeight / 3);
-  }, [primary, project.tasks, rows, schedule.byId, scrollToDate]);
+    if (el) {
+      el.scrollTop = y;
+      const mid = (diffDays(timeline.start, r.startDate) + (diffDays(r.startDate, r.finishDate) + 1) / 2) * ppdRef.current;
+      el.scrollLeft = Math.max(0, mid - el.clientWidth / 2);
+    }
+    // Ad hücresine odaklanılır (klavyeyle devam edilebilsin)
+    requestAnimationFrame(() => document.querySelector<HTMLInputElement>(`input[data-row="${index}"][data-col="name"]`)?.focus({ preventScroll: true }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, revealTick]);
+
+  const goToSelected = useCallback(() => {
+    if (primary >= 0) revealTask(project.tasks[primary].id);
+  }, [primary, project.tasks, revealTask]);
 
   // Görünüm (ölçek, sol kenardaki tarih, dikey kaydırma) projeye göre bu bilgisayarda saklanır
   const key = viewKey(project.name, project.start);
@@ -824,7 +1267,13 @@ export default function App() {
       if (e.key === "F1" || (e.key === "?" && !editing)) {
         e.preventDefault();
         setHelp("keys");
-      } else if (mod && (e.key.toLowerCase() === "f" || e.key.toLowerCase() === "k") && view === "gantt") {
+      } else if (mod && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPalette("all");
+      } else if (mod && e.key.toLowerCase() === "g") {
+        e.preventDefault();
+        setPalette("tasks");
+      } else if (mod && e.key.toLowerCase() === "f" && view === "gantt") {
         e.preventDefault();
         searchRef.current?.focus();
         searchRef.current?.select();
@@ -848,13 +1297,12 @@ export default function App() {
       } else if (mod && e.key.toLowerCase() === "c" && !editing && !window.getSelection()?.toString()) {
         e.preventDefault();
         copySelected();
-      } else if (mod && e.key.toLowerCase() === "v" && !editing) {
+      } else if (mod && e.key.toLowerCase() === "d") {
+        // Hücredeyken ve birden çok satır seçiliyken aşağı doldur, değilse çoğalt
         e.preventDefault();
-        pasteRows(clipboard.current);
-      } else if (mod && e.key.toLowerCase() === "d" && !editing) {
-        e.preventDefault();
-        duplicateSelected();
-      } else if (e.shiftKey && e.key === "F2" && !editing) {
+        const col = (e.target as HTMLElement).dataset?.col;
+        if (!(col && fillDownSelection(col)) && !editing) duplicateSelected();
+      } else if (e.shiftKey && !mod && e.key === "F2" && !editing) {
         e.preventDefault();
         if (primary >= 0) setInfoId(project.tasks[primary].id);
       } else if (e.key === "Insert") {
@@ -863,6 +1311,9 @@ export default function App() {
       } else if (e.key === "Delete" && (!editing || mod)) {
         e.preventDefault();
         deleteSelected();
+      } else if (mod && e.shiftKey && e.key === "F2") {
+        e.preventDefault();
+        unlinkSelected();
       } else if (mod && e.key === "F2") {
         e.preventDefault();
         linkSelected();
@@ -876,6 +1327,9 @@ export default function App() {
       } else if (mod && (e.key === "0" || e.code === "Numpad0")) {
         e.preventDefault();
         fitProject();
+      } else if (e.altKey && !mod && e.key.toLowerCase() === "t") {
+        e.preventDefault();
+        goToday();
       } else if (e.key === "Home" && !editing) {
         e.preventDefault();
         scrollToDate(project.start);
@@ -886,7 +1340,27 @@ export default function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [copySelected, deleteSelected, duplicateSelected, fitProject, insertTask, linkSelected, pasteRows, primary, project.start, project.tasks, redo, schedule.finishDate, scrollToDate, shiftOutline, undo, view, zoomTo]);
+  }, [copySelected, deleteSelected, duplicateSelected, fillDownSelection, fitProject, goToday, insertTask, linkSelected, pasteRows, primary, project.start, project.tasks, redo, schedule.finishDate, scrollToDate, shiftOutline, undo, unlinkSelected, view, zoomTo]);
+
+  // Yapıştır (Ctrl+V): Excel'den gelen sekmeli / çok satırlı metin yeni görevler olur; kendi kopyamız satırları
+  // bağlarıyla birlikte yapıştırır. Hücre düzenlenirken tek satırlık metin hücreye gider (tarayıcının kendi işi).
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      if (view !== "gantt" || document.querySelector(".modal-backdrop, .print-overlay")) return;
+      const target = e.target as HTMLElement;
+      const inCell = target.tagName === "INPUT" && !!target.dataset.col;
+      const editing = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT";
+      const text = e.clipboardData?.getData("text/plain") ?? "";
+      const tabular = /\t/.test(text) || /\n\s*\S/.test(text.trim());
+      const ours = clipboard.current.length > 0 && text.replace(/\r/g, "").trim() === copiedText.current.trim();
+      if (editing && !(inCell && tabular)) return;
+      e.preventDefault();
+      if (ours || (!text.trim() && clipboard.current.length)) pasteRows(clipboard.current);
+      else if (text.trim()) pasteTableRef.current(text);
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  }, [pasteRows, view]);
 
   // --- Bölücü sürükleme ---
   // Tablo genişliği görünen sütunlardan fazla olamaz (sütun gizlenince Gantt genişler)
@@ -930,28 +1404,146 @@ export default function App() {
     { lv: 4, label: t("tb.copyShort"), hint: "Ctrl+C", disabled: !hasSel, run: copySelected },
     { lv: 4, label: t("tb.pasteShort"), hint: "Ctrl+V", disabled: !clipboard.current.length, run: () => pasteRows(clipboard.current) },
     { lv: 0, label: t("tb.duplicateShort"), hint: "Ctrl+D", disabled: !hasSel, run: duplicateSelected },
+    { lv: 0, label: t("bulk.menu"), disabled: !hasSel, run: () => setBulkOpen(true) },
     { lv: 2, label: t("tb.outdentShort"), hint: "Alt+Shift+←", disabled: !hasSel, run: () => shiftOutline(-1) },
     { lv: 2, label: t("tb.indentShort"), hint: "Alt+Shift+→", disabled: !hasSel, run: () => shiftOutline(1) },
+    { lv: 2, label: t("tb.group"), disabled: !hasSel, run: groupSelected },
+    { lv: 2, label: t("tb.ungroup"), disabled: !selectedSummaries.length, run: ungroupSelected },
     { lv: 2, label: t("tb.up"), disabled: primary < 0, run: () => moveSelected(-1) },
     { lv: 2, label: t("tb.down"), disabled: primary < 0, run: () => moveSelected(1) },
+    { lv: 5, label: t("outline.collapseAll"), run: collapseAll },
+    { lv: 5, label: t("outline.expandAll"), run: expandAll },
     { lv: 5, label: t("tb.undoShort"), hint: "Ctrl+Z", disabled: !canUndo, run: undo },
     { lv: 5, label: t("tb.redoShort"), hint: "Ctrl+Y", disabled: !canRedo, run: redo },
     { lv: 0, sep: true },
     { lv: 1, label: t("tb.link"), hint: "Ctrl+F2", disabled: selection.size < 2, run: linkSelected },
-    { lv: 0, label: t("tb.unlinkShort"), disabled: !hasSel, run: unlinkSelected },
+    { lv: 0, label: t("tb.unlinkShort"), hint: "Ctrl+Shift+F2", disabled: !hasSel, run: unlinkSelected },
     { lv: 0, label: t("tb.infoShort"), hint: "Shift+F2", disabled: primary < 0, run: () => primary >= 0 && setInfoId(project.tasks[primary].id) },
     { lv: 1, label: t("tb.baseline"), run: () => setBaselineOpen(true) },
+    { lv: 0, label: baseline ? t("cmd.baselineHide") : t("cmd.baselineShow"), disabled: !hasBaselines, run: toggleBaseline },
     { lv: 1, label: t("tb.level"), run: () => setLevelOpen(true) },
+    { lv: 0, label: t("cmd.recurring"), run: () => setRecurOpen(true) },
+    { lv: 0, label: t("ctx.split"), disabled: !splitTarget || selection.size !== 1, run: openSplit },
     { lv: 0, sep: true },
     ...(view === "gantt"
       ? [
           { lv: 3, label: t("zoom.fitShort"), hint: "Ctrl+0", run: fitProject },
-          { lv: 3, label: t("tb.today"), run: () => scrollToDate(today, (ganttRef.current?.clientWidth ?? 600) / 2) },
+          { lv: 3, label: t("tb.today"), hint: "Alt+T", run: goToday },
           { lv: 0, label: t("zoom.selected"), disabled: primary < 0, run: goToSelected },
         ]
       : []),
     { lv: 6, label: t("tb.calendar"), run: () => setCalendarOpen(true) },
   ];
+
+  // Komut paleti: araç çubuğu ve menülerdeki komutların tamamı, kısayollarıyla
+  const gTask = t("palette.gTask");
+  const gEdit = t("palette.gEdit");
+  const gView = t("palette.gView");
+  const gProject = t("palette.gProject");
+  const gFile = t("palette.gFile");
+  const commands: PaletteCommand[] = [
+    { id: "task", group: gTask, label: t("tb.task"), hint: "Insert", run: () => insertTask() },
+    { id: "milestone", group: gTask, label: t("tb.milestone"), run: () => insertTask(true) },
+    { id: "info", group: gTask, label: t("tb.infoShort"), hint: "Shift+F2", disabled: primary < 0, run: () => primary >= 0 && setInfoId(project.tasks[primary].id) },
+    { id: "link", group: gTask, label: t("tb.link"), hint: "Ctrl+F2", disabled: selection.size < 2, run: linkSelected },
+    { id: "unlink", group: gTask, label: t("tb.unlinkShort"), hint: "Ctrl+Shift+F2", disabled: !hasSel, run: unlinkSelected },
+    { id: "group", group: gTask, label: t("tb.group"), disabled: !hasSel, run: groupSelected },
+    { id: "ungroup", group: gTask, label: t("tb.ungroup"), disabled: !selectedSummaries.length, run: ungroupSelected },
+    { id: "notes", group: gTask, label: t("ctx.notes"), disabled: primary < 0, run: () => openNotes() },
+    { id: "timeline", group: gTask, label: t("ctx.timelineAdd"), disabled: !hasSel, run: () => toggleFlag("timeline") },
+    { id: "split", group: gTask, label: t("ctx.split"), disabled: !splitTarget, run: openSplit },
+    { id: "recurring", group: gTask, label: t("cmd.recurring"), run: () => setRecurOpen(true) },
+    { id: "inactive", group: gTask, label: t("ctx.inactivate"), disabled: !hasSel, run: () => toggleFlag("inactive") },
+    { id: "collapseAll", group: gView, label: t("outline.collapseAll"), run: collapseAll },
+    { id: "expandAll", group: gView, label: t("outline.expandAll"), run: expandAll },
+    ...[1, 2, 3].map((n) => ({ id: `level${n}`, group: gView, label: t("outline.level", { n }), run: () => showLevel(n) })),
+    { id: "indent", group: gTask, label: t("tb.indentShort"), hint: "Alt+Shift+→", disabled: !hasSel, run: () => shiftOutline(1) },
+    { id: "outdent", group: gTask, label: t("tb.outdentShort"), hint: "Alt+Shift+←", disabled: !hasSel, run: () => shiftOutline(-1) },
+    { id: "up", group: gTask, label: t("tb.up"), disabled: primary < 0, run: () => moveSelected(-1) },
+    { id: "down", group: gTask, label: t("tb.down"), disabled: primary < 0, run: () => moveSelected(1) },
+    { id: "delete", group: gTask, label: t("cmd.delete"), hint: "Delete", disabled: !hasSel, run: deleteSelected },
+    { id: "copy", group: gEdit, label: t("tb.copyShort"), hint: "Ctrl+C", disabled: !hasSel, run: copySelected },
+    { id: "paste", group: gEdit, label: t("tb.pasteShort"), hint: "Ctrl+V", disabled: !clipboard.current.length, run: () => pasteRows(clipboard.current) },
+    { id: "duplicate", group: gEdit, label: t("tb.duplicateShort"), hint: "Ctrl+D", disabled: !hasSel, run: duplicateSelected },
+    { id: "bulk", group: gEdit, label: t("bulk.menu"), disabled: !hasSel, run: () => setBulkOpen(true) },
+    { id: "undo", group: gEdit, label: t("tb.undoShort"), hint: "Ctrl+Z", disabled: !canUndo, run: undo },
+    { id: "redo", group: gEdit, label: t("tb.redoShort"), hint: "Ctrl+Y", disabled: !canRedo, run: redo },
+    { id: "search", group: gView, label: t("cmd.search"), hint: "Ctrl+F", run: () => {
+      setView("gantt");
+      requestAnimationFrame(() => searchRef.current?.focus());
+    } },
+    { id: "goto", group: gView, label: t("cmd.goTo"), hint: "Ctrl+G", run: () => setPalette("tasks") },
+    { id: "selected", group: gView, label: t("cmd.goSelected"), disabled: primary < 0, run: goToSelected },
+    { id: "today", group: gView, label: t("cmd.goToday"), hint: "Alt+T", run: goToday },
+    { id: "fit", group: gView, label: t("zoom.fit"), hint: "Ctrl+0", run: () => {
+      setView("gantt");
+      fitProject();
+    } },
+    { id: "v-gantt", group: gView, label: t("cmd.viewGantt"), run: () => setView("gantt") },
+    { id: "v-res", group: gView, label: t("cmd.viewResources"), run: () => setView("resources") },
+    { id: "v-charts", group: gView, label: t("cmd.viewCharts"), run: () => setView("charts") },
+    { id: "v-risks", group: gView, label: t("cmd.viewRisks"), run: () => setView("risks") },
+    { id: "v-reports", group: gView, label: t("cmd.viewReports"), run: () => setView("reports") },
+    { id: "theme", group: gView, label: t("cmd.theme"), run: () => setTheme(theme === "dark" ? "light" : "dark") },
+    { id: "calendar", group: gProject, label: t("tb.calendar"), run: () => setCalendarOpen(true) },
+    { id: "baseline", group: gProject, label: t("tb.baseline"), run: () => setBaselineOpen(true) },
+    { id: "baseline-toggle", group: gView, label: baseline ? t("cmd.baselineHide") : t("cmd.baselineShow"), disabled: !hasBaselines, run: toggleBaseline },
+    { id: "level", group: gProject, label: t("tb.level"), run: () => setLevelOpen(true) },
+    { id: "settings", group: gProject, label: t("cmd.settings"), run: () => setSettingsOpen(true) },
+    { id: "help", group: gProject, label: t("cmd.help"), hint: "F1", run: () => setHelp("keys") },
+    { id: "new", group: gFile, label: t("file.new"), run: () => newProject(false) },
+    { id: "open", group: gFile, label: t("file.open"), run: () => fileRef.current?.click() },
+    { id: "saveAs", group: gFile, label: fileLinkSupported ? t("file.saveAs") : t("file.saveAsDownload"), run: saveAs },
+    { id: "import", group: gFile, label: t("file.import"), run: () => setImportOpen(true) },
+    { id: "gexport", group: gFile, label: t("file.ganttExport"), hint: "Ctrl+P", run: () => {
+      setView("gantt");
+      setGexportOpen(true);
+    } },
+    { id: "msp", group: gFile, label: t("tb.mspTitle"), run: exportMsp },
+    { id: "json", group: gFile, label: t("tb.json"), run: exportJson },
+  ];
+  // Sağ tık menüsü (satır ve çubuk): seçili görev(ler) üzerinde
+  const selTasks = project.tasks.filter((x) => selection.has(x.id));
+  const allTimeline = selTasks.length > 0 && selTasks.every((x) => x.timeline);
+  const allInactive = selTasks.length > 0 && selTasks.every((x) => x.inactive);
+  const ctxItems: MenuEntry[] = [
+    { label: t("ctx.insert"), icon: "plus", hint: "Insert", run: () => insertTask() },
+    { label: t("tb.milestone"), icon: "milestone", run: () => insertTask(true) },
+    { sep: true },
+    { label: t("tb.copyShort"), icon: "copy", hint: "Ctrl+C", disabled: !hasSel, run: copySelected },
+    { label: t("tb.pasteShort"), icon: "paste", hint: "Ctrl+V", disabled: !clipboard.current.length, run: () => pasteRows(clipboard.current) },
+    { label: t("cmd.delete"), icon: "trash", hint: "Delete", disabled: !hasSel, run: deleteSelected },
+    { label: t("bulk.menu"), icon: "edit", disabled: !hasSel, run: () => setBulkOpen(true) },
+    { sep: true },
+    { label: t("tb.indentShort"), icon: "indent", hint: "Alt+Shift+→", disabled: !hasSel, run: () => shiftOutline(1) },
+    { label: t("tb.outdentShort"), icon: "outdent", hint: "Alt+Shift+←", disabled: !hasSel, run: () => shiftOutline(-1) },
+    { label: t("tb.group"), icon: "group", disabled: !hasSel, run: groupSelected },
+    ...(selectedSummaries.length ? [{ label: t("tb.ungroup"), icon: "outline" as const, run: ungroupSelected }] : []),
+    { sep: true },
+    { label: t("tb.link"), icon: "link", hint: "Ctrl+F2", disabled: selection.size < 2, run: linkSelected },
+    { label: t("tb.unlinkShort"), icon: "unlink", hint: "Ctrl+Shift+F2", disabled: !hasSel, run: unlinkSelected },
+    { sep: true },
+    { label: t("ctx.notes"), icon: "note", disabled: primary < 0, run: () => openNotes() },
+    { label: t("tb.infoShort"), icon: "info", hint: "Shift+F2", disabled: primary < 0, run: () => primary >= 0 && setInfoId(project.tasks[primary].id) },
+    { label: allTimeline ? t("ctx.timelineRemove") : t("ctx.timelineAdd"), icon: "timeline", disabled: !hasSel, run: () => toggleFlag("timeline") },
+    { label: allInactive ? t("ctx.activate") : t("ctx.inactivate"), icon: "inactive", disabled: !hasSel, run: () => toggleFlag("inactive") },
+    { label: t("ctx.split"), icon: "split", disabled: !splitTarget || selection.size !== 1, run: openSplit },
+  ];
+  const paletteTasks: PaletteTask[] = palette
+    ? (() => {
+        const anc = ancestorsOf(project.tasks);
+        const names = new Map(project.tasks.map((x) => [x.id, x.name]));
+        return project.tasks.map((x, i) => ({
+          id: x.id,
+          row: i + 1,
+          name: x.name,
+          path: (anc.get(x.id) ?? []).map((a) => names.get(a) ?? "").reverse().join(" › "),
+        }));
+      })()
+    : [];
+  // Proje tatil verisinin son yılını aşıyor mu (dini bayramlar elle eklenmeli)
+  const finishYear = Number(schedule.finishDate.slice(0, 4));
+  const holidayGap = finishYear > LAST_RELIGIOUS_YEAR;
 
   return (
     <div className="app">
@@ -1005,8 +1597,8 @@ export default function App() {
             </button>
           )}
           {fileLink.pendingName && !fileLink.fileName && (
-            <button className="chip reconnect" onClick={() => void fileLink.reconnect()} title={t("link.reconnectTitle")}>
-              <Icon name="plug" size={16} />
+            <button className="chip reconnect" onClick={() => void fileLink.reconnect()} title={t("link.lostTitle", { name: fileLink.pendingName })}>
+              <Icon name="risk" size={14} />
               {t("link.reconnect", { name: fileLink.pendingName })}
             </button>
           )}
@@ -1192,12 +1784,31 @@ export default function App() {
         <ToolButton icon="paste" onClick={() => pasteRows(clipboard.current)} disabled={!clipboard.current.length} title={t("tb.paste")} ov={4} />
         <ToolButton icon="outdent" onClick={() => shiftOutline(-1)} disabled={!hasSel} title={t("tb.outdent")} ov={2} />
         <ToolButton icon="indent" onClick={() => shiftOutline(1)} disabled={!hasSel} title={t("tb.indent")} ov={2} />
+        <div className="menu-anchor" data-ov={5}>
+          <ToolButton icon="outline" onClick={() => setOutlineMenu((v) => !v)} title={t("outline.menuTitle")} popup={outlineMenu} />
+          {outlineMenu && (
+            <Menu label={t("outline.menuTitle")} onClose={() => setOutlineMenu(false)} className="outline-menu">
+              <MenuItem disabled={!hasSel} onClick={() => { setOutlineMenu(false); groupSelected(); }}>{t("tb.group")}</MenuItem>
+              <MenuItem disabled={!selectedSummaries.length} onClick={() => { setOutlineMenu(false); ungroupSelected(); }}>{t("tb.ungroup")}</MenuItem>
+              <div className="menu-sep" role="separator" />
+              <MenuItem onClick={() => { setOutlineMenu(false); collapseAll(); }}>{t("outline.collapseAll")}</MenuItem>
+              <MenuItem onClick={() => { setOutlineMenu(false); expandAll(); }}>{t("outline.expandAll")}</MenuItem>
+              <div className="menu-sep" role="separator" />
+              {[1, 2, 3].map((n) => (
+                <MenuItem key={n} disabled={n > depth} onClick={() => { setOutlineMenu(false); showLevel(n); }}>
+                  {t("outline.level", { n })}
+                </MenuItem>
+              ))}
+            </Menu>
+          )}
+        </div>
         <ToolButton icon="up" onClick={() => moveSelected(-1)} disabled={primary < 0} title={t("tb.up")} ov={2} />
         <ToolButton icon="down" onClick={() => moveSelected(1)} disabled={primary < 0} title={t("tb.down")} ov={2} />
         <ToolButton icon="undo" onClick={undo} disabled={!canUndo} title={t("tb.undo")} ov={5} />
         <ToolButton icon="redo" onClick={redo} disabled={!canRedo} title={t("tb.redo")} ov={5} />
         <span className="tsep" data-ov={1} />
         <ToolButton icon="link" label={t("tb.link")} ghost onClick={linkSelected} disabled={selection.size < 2} title={t("tb.linkTitle")} ov={1} />
+        <ToolButton icon="unlink" onClick={unlinkSelected} disabled={!hasSel} title={t("tb.unlinkTitle")} ov={1} />
         <ToolButton icon="flag" label={t("tb.baseline")} ghost onClick={() => setBaselineOpen(true)} title={t("tb.baselineTitle")} ov={1} />
         <ToolButton
           icon="level"
@@ -1258,7 +1869,7 @@ export default function App() {
               </span>
               <ToolButton icon="zoomIn" onClick={() => zoomTo(ppd * ZOOM_STEP)} disabled={ppd >= MAX_PPD - 1e-6} title={t("zoom.in")} />
               <ToolButton icon="fit" label={t("zoom.fitShort")} ghost onClick={fitProject} title={t("zoom.fit")} ov={3} />
-              <ToolButton icon="target" label={t("tb.today")} ghost onClick={() => scrollToDate(today, (ganttRef.current?.clientWidth ?? 600) / 2)} title={t("tb.todayTitle")} ov={3} />
+              <ToolButton icon="target" label={t("tb.today")} ghost onClick={goToday} title={t("tb.todayTitle")} ov={3} />
             </div>
           </>
         )}
@@ -1267,7 +1878,7 @@ export default function App() {
 
       {view === "resources" && (
         <ResourceView
-          project={project}
+          project={calc}
           schedule={schedule}
           usage={usage}
           selected={pickedResource}
@@ -1278,7 +1889,7 @@ export default function App() {
       )}
       {view === "charts" && (
         <ChartsView
-          project={project}
+          project={calc}
           schedule={schedule}
           usage={usage}
           today={today}
@@ -1293,13 +1904,13 @@ export default function App() {
       )}
       {view === "risks" && (
         <Suspense fallback={<div className="lazy-loading">{t("common.loading")}</div>}>
-          <RisksView project={project} schedule={schedule} today={today} update={update} flash={flash} />
+          <RisksView project={calc} schedule={schedule} today={today} update={update} flash={flash} />
         </Suspense>
       )}
       {view === "reports" && (
         <Suspense fallback={<div className="lazy-loading">{t("common.loading")}</div>}>
         <ReportsView
-          project={project}
+          project={calc}
           schedule={schedule}
           usage={usage}
           curves={curves}
@@ -1309,6 +1920,9 @@ export default function App() {
           onOpenTask={setInfoId}
         />
         </Suspense>
+      )}
+      {view === "gantt" && timelineData.items.length > 0 && (
+        <TimelineStrip data={timelineData} today={today} selection={selection} onReveal={revealTask} />
       )}
       <main className="workspace" hidden={view !== "gantt"} ref={workspaceRef}>
         <div style={{ width: `min(${(splitRatio * 100).toFixed(2)}%, ${maxGridWidth}px)`, flex: "none", display: "flex", minWidth: 0 }}>
@@ -1336,12 +1950,25 @@ export default function App() {
             onResources={onResources}
             onAddAtEnd={() => insertTask(false, true)}
             onInfo={setInfoId}
-            onMoveRow={onMoveRow}
+            onMoveRows={onMoveRows}
             showVariance={!!baseline}
             hidden={hiddenCols}
             dragDisabled={viewActive}
             onFocusRow={onFocusRow}
             onExtend={onExtend}
+            onContextMenu={openContextMenu}
+            onFill={fillDown}
+            onOpenNotes={(id) => {
+              setInfoFocus("notes");
+              setInfoId(id);
+            }}
+            sortColumn={viewOpts.sort !== "none" ? { key: viewOpts.sort, desc: viewOpts.desc } : undefined}
+            onSortColumn={(key) =>
+              // Artan → azalan → kapalı
+              setViewOpts((o) =>
+                o.sort !== key ? { ...o, sort: key as ViewOptions["sort"], desc: false } : !o.desc ? { ...o, desc: true } : { ...o, sort: "none", desc: false },
+              )
+            }
           />
         </div>
         <div
@@ -1367,9 +1994,12 @@ export default function App() {
           holidays={holidayMap}
           workdays={workdays}
           onDragTask={onDragTask}
+          onLink={onLinkDraw}
+          onLinkClick={(pred, succ, x, y) => setLinkEdit({ pred, succ, x, y })}
           baseline={baseline?.tasks}
           baselineName={baseline?.name}
           onInfo={setInfoId}
+          onContextMenu={openContextMenu}
         />
         {project.tasks.length === 0 && (
           <div className="empty-state">
@@ -1440,7 +2070,11 @@ export default function App() {
               : undefined
           }
           onSave={(task) => update((p) => ({ ...p, tasks: p.tasks.map((x) => (x.id === task.id ? task : x)) }))}
-          onClose={() => setInfoId(null)}
+          focus={infoFocus}
+          onClose={() => {
+            setInfoId(null);
+            setInfoFocus(undefined);
+          }}
         />
       )}
       {baselineOpen && (
@@ -1503,7 +2137,7 @@ export default function App() {
           schedule={schedule}
           today={today}
           baseline={baseline}
-          visible={rows.map((r) => r.sched.row - 1)}
+          visible={[...new Set(rows.filter((r) => !r.group).map((r) => r.sched.row - 1))]}
           flash={flash}
           onClose={() => setGexportOpen(false)}
         />
@@ -1566,6 +2200,16 @@ export default function App() {
             {t("status.issues", { n: schedule.issues.length })}
           </span>
         )}
+        {holidayGap && (
+          <button
+            className="warn link-btn"
+            onClick={() => setCalendarOpen(true)}
+            title={t("status.noHolidayDataTitle", { finish: String(finishYear) })}
+          >
+            <Icon name="calendar" size={14} />
+            {t("status.noHolidayData", { year: String(LAST_RELIGIOUS_YEAR) })}
+          </button>
+        )}
         {lateCount > 0 && (
           <button
             className="warn link-btn"
@@ -1584,6 +2228,67 @@ export default function App() {
           {fileLink.fileName ? t("status.saveFile", { name: fileLink.fileName }) : t("status.saveBrowser")}
         </span>
       </footer>
+      {linkEdit &&
+        (() => {
+          const succ = project.tasks.find((x) => x.id === linkEdit.succ);
+          const link = succ?.predecessors.find((x) => x.taskId === linkEdit.pred);
+          if (!succ || !link) return null;
+          const predRow = project.tasks.findIndex((x) => x.id === linkEdit.pred);
+          const succRow = project.tasks.findIndex((x) => x.id === linkEdit.succ);
+          const setLink = (fn: (preds: Task["predecessors"]) => Task["predecessors"]) =>
+            update((p) => ({ ...p, tasks: p.tasks.map((x) => (x.id === linkEdit.succ ? { ...x, predecessors: fn(x.predecessors) } : x)) }));
+          return (
+            <LinkEditor
+              key={`${linkEdit.pred}-${linkEdit.succ}`}
+              x={linkEdit.x}
+              y={linkEdit.y}
+              title={`${predRow + 1} ${project.tasks[predRow].name} → ${succRow + 1} ${succ.name}`}
+              type={link.type}
+              lag={link.lag}
+              onClose={() => setLinkEdit(null)}
+              onDelete={() => {
+                setLink((ps) => ps.filter((x) => x.taskId !== linkEdit.pred));
+                setLinkEdit(null);
+                flash(() => t("msg.linkDeleted"));
+              }}
+              onSave={(type: LinkType, lag: number) => {
+                setLink((ps) => ps.map((x) => (x.taskId === linkEdit.pred ? { ...x, type, lag } : x)));
+                setLinkEdit(null);
+              }}
+            />
+          );
+        })()}
+      {splitId && project.tasks.some((x) => x.id === splitId) && (
+        <SplitDialog
+          taskName={project.tasks.find((x) => x.id === splitId)!.name}
+          start={schedule.byId.get(splitId)!.startDate}
+          finish={schedule.byId.get(splitId)!.finishDate}
+          onApply={(from, to) => applySplit(splitId, from, to)}
+          onClose={() => setSplitId(null)}
+        />
+      )}
+      {recurOpen && (
+        <RecurringDialog
+          workweek={workdays.length}
+          from={primary >= 0 ? schedule.rows[primary].startDate : project.start}
+          onApply={applyRecurring}
+          onClose={() => setRecurOpen(false)}
+        />
+      )}
+      {bulkOpen && (
+        <BulkEditDialog
+          count={selection.size}
+          summaries={selectedSummaries.length}
+          workweek={workdays.length}
+          projectStart={project.start}
+          onApply={applyBulk}
+          onClose={() => setBulkOpen(false)}
+        />
+      )}
+      {ctxMenu && <ContextMenu x={ctxMenu.x} y={ctxMenu.y} label={t("ctx.label")} items={ctxItems} onClose={() => setCtxMenu(null)} />}
+      {palette && (
+        <CommandPalette commands={commands} tasks={paletteTasks} mode={palette} onGoTo={revealTask} onClose={() => setPalette(null)} />
+      )}
       {message && (
         <div className={`toast ${messageKind === "error" ? "error" : ""}`} role={messageKind === "error" ? "alert" : "status"}>
           {msgText(message)}

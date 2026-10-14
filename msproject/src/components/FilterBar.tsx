@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { t, type MessageKey } from "../i18n";
-import { isViewActive, projectTags, SORT_KEYS, type SortKey, type TaskFilter, type ViewOptions } from "../model/view";
+import { GROUP_KEYS, isViewActive, projectTags, SORT_KEYS, type GroupBy, type SortKey, type TaskFilter, type ViewOptions } from "../model/view";
 import { TASK_COLORS, type Project } from "../model/types";
 import { COLUMNS, FIXED_COLUMNS } from "./TaskGrid";
 import { Icon } from "./icons";
@@ -43,6 +43,17 @@ export function FilterBar({ project, opts, onChange, shown, total, lateCount, hi
 
   const filterOn = opts.filter !== "all";
   const sortOn = opts.sort !== "none";
+  const group = opts.group ?? "none";
+  const groupOn = group !== "none";
+  // Etkin süzgecin görünen adı (rozet)
+  const filterLabel = (() => {
+    const f = opts.filter;
+    if (f.startsWith("res:")) return `${t("view.f.byResource")}: ${project.resources.find((r) => r.id === f.slice(4))?.name ?? ""}`;
+    if (f.startsWith("tag:")) return `${t("view.f.byTag")}: ${f.slice(4)}`;
+    if (f.startsWith("color:")) return `${t("view.f.byColor")}: ${t(`color.${f.slice(6)}` as MessageKey)}`;
+    if (f === "late") return t("view.f.late", { n: lateCount });
+    return t(`view.f.${f}` as MessageKey);
+  })();
   return (
     <>
       <label className="search" title={t("view.search")}>
@@ -61,7 +72,7 @@ export function FilterBar({ project, opts, onChange, shown, total, lateCount, hi
             }
           }}
         />
-        {!opts.query && <kbd aria-hidden>Ctrl K</kbd>}
+        {!opts.query && <kbd aria-hidden>Ctrl F</kbd>}
       </label>
       {/* Süzgeç ve sıralama: simge düğmesinin üstünde görünmez yerli seçim kutusu (klavye ve ekran okuyucuyla çalışır) */}
       <label className={`tbtn icon-only icon-select ${filterOn ? "on" : ""}`} title={t("view.filter")}>
@@ -74,6 +85,7 @@ export function FilterBar({ project, opts, onChange, shown, total, lateCount, hi
           <option value="milestones">{t("view.f.milestones")}</option>
           <option value="incomplete">{t("view.f.incomplete")}</option>
           <option value="notes">{t("view.f.notes")}</option>
+          <option value="thisWeek">{t("view.f.thisWeek")}</option>
           {project.resources.length > 0 && (
             <optgroup label={t("view.f.byResource")}>
               {project.resources.map((r) => (
@@ -124,10 +136,37 @@ export function FilterBar({ project, opts, onChange, shown, total, lateCount, hi
           <Icon name={opts.desc ? "down" : "up"} size={16} />
         </button>
       )}
+      <label className={`tbtn icon-only icon-select ${groupOn ? "on" : ""}`} title={t("view.group")}>
+        <Icon name="group" size={16} />
+        <select aria-label={t("view.group")} value={group} onChange={(e) => onChange({ ...opts, group: e.target.value as GroupBy })}>
+          {GROUP_KEYS.map((k) => (
+            <option key={k} value={k}>
+              {t(`view.g.${k}` as MessageKey)}
+            </option>
+          ))}
+        </select>
+      </label>
+      {/* Etkin süzgeç ve gruplama rozet olarak; × tek tıkla kaldırır */}
+      {filterOn && (
+        <span className="view-chip" title={t("view.filter")}>
+          <span>{filterLabel}</span>
+          <button aria-label={t("view.clearFilter")} title={t("view.clearFilter")} onClick={() => onChange({ ...opts, filter: "all" })}>
+            <Icon name="close" size={12} />
+          </button>
+        </span>
+      )}
+      {groupOn && (
+        <span className="view-chip" title={t("view.group")}>
+          <span>{t(`view.g.${group}` as MessageKey)}</span>
+          <button aria-label={t("view.clearGroup")} title={t("view.clearGroup")} onClick={() => onChange({ ...opts, group: "none" })}>
+            <Icon name="close" size={12} />
+          </button>
+        </span>
+      )}
       {active && (
         <span className="view-count" role="status">
           {t("view.count", { shown, total })}
-          <button className="link-btn" onClick={() => onChange({ query: "", filter: "all", sort: "none", desc: false })}>
+          <button className="link-btn" onClick={() => onChange({ query: "", filter: "all", sort: "none", desc: false, group: "none" })}>
             {t("view.clear")}
           </button>
         </span>
