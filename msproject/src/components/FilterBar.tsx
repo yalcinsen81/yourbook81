@@ -19,7 +19,7 @@ interface Props {
   searchRef: RefObject<HTMLInputElement | null>;
 }
 
-/** Görev tablosunun üstü: arama, süzgeç, sıralama ve sütun seçici */
+/** Araç çubuğunun sağı (Gantt görünümü): arama, süzgeç, sıralama ve sütun seçici */
 export function FilterBar({ project, opts, onChange, shown, total, lateCount, hidden, onHidden, searchRef }: Props) {
   const tags = projectTags(project);
   const colors = TASK_COLORS.filter((c) => project.tasks.some((x) => x.color === c));
@@ -41,15 +41,17 @@ export function FilterBar({ project, opts, onChange, shown, total, lateCount, hi
     };
   }, [colsOpen]);
 
+  const filterOn = opts.filter !== "all";
+  const sortOn = opts.sort !== "none";
   return (
-    <div className="filter-bar" role="search">
-      <label className="search">
-        <Icon name="search" size={15} />
+    <>
+      <label className="search" title={t("view.search")}>
+        <Icon name="search" size={16} />
         <input
           ref={searchRef}
           type="search"
           value={opts.query}
-          placeholder={t("view.search")}
+          placeholder={t("view.searchShort")}
           aria-label={t("view.search")}
           onChange={(e) => onChange({ ...opts, query: e.target.value })}
           onKeyDown={(e) => {
@@ -59,10 +61,13 @@ export function FilterBar({ project, opts, onChange, shown, total, lateCount, hi
             }
           }}
         />
+        {!opts.query && <kbd aria-hidden>Ctrl K</kbd>}
       </label>
-      <label className="inline-field">
-        <span>{t("view.filter")}</span>
-        <select value={opts.filter} onChange={(e) => onChange({ ...opts, filter: e.target.value as TaskFilter })}>
+      {/* Süzgeç ve sıralama: simge düğmesinin üstünde görünmez yerli seçim kutusu (klavye ve ekran okuyucuyla çalışır) */}
+      <label className={`tbtn icon-only icon-select ${filterOn ? "on" : ""}`} title={t("view.filter")}>
+        <Icon name="filter" size={16} />
+        {filterOn && <i className="dot-alert" aria-hidden />}
+        <select aria-label={t("view.filter")} value={opts.filter} onChange={(e) => onChange({ ...opts, filter: e.target.value as TaskFilter })}>
           <option value="all">{t("view.f.all")}</option>
           <option value="critical">{t("view.f.critical")}</option>
           <option value="late">{t("view.f.late", { n: lateCount })}</option>
@@ -98,9 +103,9 @@ export function FilterBar({ project, opts, onChange, shown, total, lateCount, hi
           )}
         </select>
       </label>
-      <label className="inline-field">
-        <span>{t("view.sort")}</span>
-        <select value={opts.sort} onChange={(e) => onChange({ ...opts, sort: e.target.value as SortKey })}>
+      <label className={`tbtn icon-only icon-select ${sortOn ? "on" : ""}`} title={t("view.sort")}>
+        <Icon name="sort" size={16} />
+        <select aria-label={t("view.sort")} value={opts.sort} onChange={(e) => onChange({ ...opts, sort: e.target.value as SortKey })}>
           {SORT_KEYS.map((k) => (
             <option key={k} value={k}>
               {t(`view.s.${k}` as MessageKey)}
@@ -108,11 +113,11 @@ export function FilterBar({ project, opts, onChange, shown, total, lateCount, hi
           ))}
         </select>
       </label>
-      {opts.sort !== "none" && (
+      {sortOn && (
         <button
           className="tbtn icon-only"
           onClick={() => onChange({ ...opts, desc: !opts.desc })}
-          title={opts.desc ? t("view.desc") : t("view.asc")}
+          title={`${t("view.sortDir")}: ${opts.desc ? t("view.desc") : t("view.asc")}`}
           aria-label={opts.desc ? t("view.desc") : t("view.asc")}
           aria-pressed={opts.desc}
         >
@@ -120,20 +125,23 @@ export function FilterBar({ project, opts, onChange, shown, total, lateCount, hi
         </button>
       )}
       {active && (
-        <>
-          <span className="view-count" role="status">
-            {t("view.count", { shown, total })}
-          </span>
+        <span className="view-count" role="status">
+          {t("view.count", { shown, total })}
           <button className="link-btn" onClick={() => onChange({ query: "", filter: "all", sort: "none", desc: false })}>
             {t("view.clear")}
           </button>
-        </>
+        </span>
       )}
-      <span className="spacer" />
       <div className="cols-menu" ref={colsRef}>
-        <button className="tbtn" aria-expanded={colsOpen} aria-haspopup="true" onClick={() => setColsOpen((v) => !v)} title={t("view.columnsTitle")}>
+        <button
+          className="tbtn icon-only"
+          aria-expanded={colsOpen}
+          aria-haspopup="true"
+          aria-label={t("view.columns")}
+          onClick={() => setColsOpen((v) => !v)}
+          title={t("view.columnsTitle")}
+        >
           <Icon name="columns" size={16} />
-          <span>{t("view.columns")}</span>
         </button>
         {colsOpen && (
           <div className="menu cols-pop" role="group" aria-label={t("view.columns")}>
@@ -156,6 +164,6 @@ export function FilterBar({ project, opts, onChange, shown, total, lateCount, hi
           </div>
         )}
       </div>
-    </div>
+    </>
   );
 }

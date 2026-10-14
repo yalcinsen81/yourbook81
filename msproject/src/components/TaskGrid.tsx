@@ -72,22 +72,24 @@ export const COLUMNS: { key: string; label: MessageKey | ""; width: number }[] =
   { key: "ind", label: "", width: 26 },
   { key: "wbs", label: "col.wbs", width: 52 },
   { key: "name", label: "col.name", width: 250 },
-  { key: "duration", label: "col.duration", width: 72 },
+  { key: "duration", label: "col.duration", width: 88 },
   { key: "start", label: "col.start", width: 150 },
   { key: "finish", label: "col.finish", width: 136 },
-  { key: "preds", label: "col.predecessors", width: 92 },
+  { key: "preds", label: "col.predecessors", width: 116 },
   { key: "resources", label: "col.resources", width: 150 },
-  { key: "percent", label: "col.percent", width: 64 },
+  { key: "percent", label: "col.percent", width: 78 },
   { key: "slack", label: "col.slack", width: 64 },
   { key: "cost", label: "col.cost", width: 104 },
-  { key: "estimate", label: "col.estimate", width: 112 },
-  { key: "variance", label: "col.variance", width: 64 },
+  { key: "estimate", label: "col.estimate", width: 156 },
+  { key: "variance", label: "col.variance", width: 84 },
 ];
 
 /** Gizlenemeyen sütunlar */
 export const FIXED_COLUMNS = new Set(["row", "ind", "name"]);
 /** İlk açılışta gizli sütunlar */
-export const DEFAULT_HIDDEN = ["cost", "estimate"];
+export const DEFAULT_HIDDEN = ["wbs", "cost", "estimate"];
+/** Ad sütununun en dar hali */
+const NAME_MIN = 150;
 
 /** Görünen sütunların toplam genişliği */
 export function gridWidthFor(hidden: Set<string>, showVariance: boolean): number {
@@ -100,8 +102,9 @@ export function TaskGrid(props: Props) {
   const { rows, selection, cycle, scrollRef, onScroll } = props;
   const columns = COLUMNS.filter((c) => !props.hidden.has(c.key) && (c.key !== "variance" || props.showVariance));
   const show = (key: string) => columns.some((c) => c.key === key);
-  const template = columns.map((c) => `${c.width}px`).join(" ");
-  const width = columns.reduce((sum, c) => sum + c.width, 0);
+  // Ad sütunu esner: dar alanda önce o küçülür (en az NAME_MIN), sonra tablo yatay kayar
+  const template = columns.map((c) => (c.key === "name" ? `minmax(${NAME_MIN}px, 1fr)` : `${c.width}px`)).join(" ");
+  const minWidth = columns.reduce((sum, c) => sum + (c.key === "name" ? NAME_MIN : c.width), 0);
   // Sürükle-bırak: sürüklenen satır ve üzerine gelinen satır (bırakılınca önüne girer)
   const [dragId, setDragId] = useState<string | null>(null);
   const [dropId, setDropId] = useState<string | null | undefined>(undefined);
@@ -126,7 +129,7 @@ export function TaskGrid(props: Props) {
 
   return (
     <div className="pane grid-pane" ref={scrollRef} onScroll={onScroll}>
-      <div style={{ width }}>
+      <div style={{ width: "100%", minWidth }}>
         <div className="grid-header" style={{ gridTemplateColumns: template, height: HEADER_H }}>
           {columns.map((c) => {
             const label = c.label ? t(c.label) : "";
@@ -263,7 +266,9 @@ export function TaskGrid(props: Props) {
               )}
               {show("finish") && (
                 <div className="gc gc-finish" title={formatShort(sched.finishDate)}>
-                  {formatShort(sched.finishDate)}
+                  <span>
+                    <span className="dow">{dayName(parseDate(sched.finishDate).getUTCDay())}</span> {formatDateLocal(sched.finishDate)}
+                  </span>
                 </div>
               )}
               {show("preds") && (

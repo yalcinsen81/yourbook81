@@ -1,4 +1,4 @@
-// Çizgi ikonlar (24×24, 1.75 kalınlık). Tek renk; rengi `currentColor`'dan alır.
+// Çizgi ikonlar (24×24, 1.7 kalınlık; Lucide benzeri). Tek renk; rengi `currentColor`'dan alır.
 
 const PATHS = {
   plus: "M12 5v14M5 12h14",
@@ -44,6 +44,12 @@ const PATHS = {
   image: "M4 5h16v14H4zM4 16l5-5 4 4 3-3 4 4M15 9h.01",
   clock: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2",
   risk: "M12 4L2.5 20h19zM12 10v4.5M12 17.5h.01",
+  more: "M5 12h.01M12 12h.01M19 12h.01",
+  filter: "M4 5h16l-6 7.5V19l-4 2v-8.5z",
+  sort: "M7 4v16M4 7l3-3 3 3M17 20V4M14 17l3 3 3-3",
+  close: "M6 6l12 12M18 6L6 18",
+  brand: "M5 7h8M8 12h9M11 17h8",
+  template: "M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z",
   crosshair: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 3v4M12 17v4M3 12h4M17 12h4",
 } as const;
 
@@ -57,7 +63,7 @@ export function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={1.75}
+      strokeWidth={1.7}
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"

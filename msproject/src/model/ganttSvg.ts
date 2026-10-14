@@ -44,21 +44,22 @@ const COLS = [
 export const TABLE_W = COLS.reduce((a, c) => a + c.w, 0);
 const PPD: Record<Exclude<ExportScale, "fit">, number> = { day: 22, week: 5, month: 1.4 };
 
+// Ekrandaki sıcak paletle aynı (açık tema): normal mat mavi, kritik koyu kiremit, bugün turuncu
 const C = {
-  ink: "#1c1917",
-  muted: "#78716c",
-  line: "#e7e5e4",
-  head: "#f5f5f4",
-  weekend: "#f4f3f1",
-  holiday: "#f6e4ee",
-  bar: "#0072b2",
-  barDone: "#00507d",
-  crit: "#d55e00",
-  critDone: "#9a4400",
-  summary: "#292524",
-  link: "#a8a29e",
-  today: "#a03a7a",
-  baseline: "#8a8580",
+  ink: "#141413",
+  muted: "#5e5d58",
+  line: "#e8e6dc",
+  head: "#f5f3ec",
+  weekend: "#f3f1ea",
+  holiday: "#fbeee8",
+  bar: "#4c6a88",
+  barDone: "#344a60",
+  crit: "#7c3a24",
+  critDone: "#562818",
+  summary: "#141413",
+  link: "#8f8d85",
+  today: "#d97757",
+  baseline: "#8f8d85",
 };
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -163,7 +164,7 @@ function renderPart(
   // Bugün çizgisi
   if (o.today && o.today >= addDays(L.start, dayFrom) && o.today < addDays(L.start, dayTo)) {
     const tx = x(o.today) + ppd / 2;
-    out.push(`<line x1="${tx}" x2="${tx}" y1="${chartTop}" y2="${top + bodyH}" stroke="${C.today}" stroke-width="1.2"/>`);
+    out.push(`<line x1="${tx}" x2="${tx}" y1="${chartTop}" y2="${top + bodyH}" stroke="${C.today}" stroke-width="1.5" stroke-dasharray="4 3"/>`);
   }
   // Bağ okları (yalnızca bu sayfadaki satırlar arasında)
   const yOf = new Map<string, number>();
@@ -207,7 +208,7 @@ function renderPart(
       out.push(label(x2 + 6));
     } else if (r.isMilestone) {
       const mx = r.atDayEnd ? x2 : x1;
-      out.push(`<path d="M${mx},${cy - 6} l6,6 l-6,6 l-6,-6 z" fill="${r.critical ? C.crit : C.ink}"/>`);
+      out.push(`<path d="M${mx},${cy - 6} l6,6 l-6,6 l-6,-6 z" fill="${C.ink}"/>`);
       out.push(label(mx + 10));
     } else {
       const w = Math.max(2, x2 - x1);

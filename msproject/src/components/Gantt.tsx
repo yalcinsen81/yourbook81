@@ -48,14 +48,25 @@ interface Hover {
   y: number;
 }
 
-const BAR_H = 16;
+const BAR_H = 14;
+/** Araç ipucu gecikmesi (ms) */
+const TIP_DELAY = 150;
 const LINK_TURN = 8;
 
 export function Gantt(props: Props) {
   const { rows, timelineStart, days, ppd, today, selection, scrollRef, onScroll, onSelect, holidays, workdays, onDragTask, onZoom, baseline } =
     props;
   const [drag, setDrag] = useState<Drag | null>(null);
-  const [hover, setHover] = useState<Hover | null>(null);
+  const [hover, setHoverNow] = useState<Hover | null>(null);
+  // İpucu kısa bir gecikmeyle açılır; açıkken imleci izler
+  const tipTimer = useRef<number | undefined>(undefined);
+  const setHover = (h: Hover | null) => {
+    window.clearTimeout(tipTimer.current);
+    if (!h) setHoverNow(null);
+    else if (hover && hover.index === h.index) setHoverNow(h);
+    else tipTimer.current = window.setTimeout(() => setHoverNow(h), TIP_DELAY);
+  };
+  useEffect(() => () => window.clearTimeout(tipTimer.current), []);
   const vp = useViewport(scrollRef);
   const width = Math.ceil(days * ppd);
   const height = rows.length * ROW_H + ROW_H; // son satır: "yeni görev" satırı hizası
@@ -94,6 +105,10 @@ export function Gantt(props: Props) {
     }
     return { off, hol };
   }, [scale, fromDay, toDay, workdays, timelineStart, holidays]);
+
+  // Hafta çizgileri (neredeyse görünmez): gün ölçeğinde pazartesiler, diğer ölçeklerde alt başlık bantlarının başı
+  const gridLines =
+    scale === "day" ? header.bottom.filter((b) => parseDate(b.key).getUTCDay() === 1).map((b) => b.start) : header.bottom.map((b) => b.start);
 
   const snap = drag ? Math.round(drag.dx / ppd) : 0;
 
@@ -276,10 +291,6 @@ export function Gantt(props: Props) {
             <marker id="arrow-crit" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
               <path d="M0,0 L8,4 L0,8 z" className="arrow-head critical" />
             </marker>
-            {/* Kritik çubuk renge ek olarak çizgili desenle de ayrılır (renk körlüğü) */}
-            <pattern id="crit-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-              <line x1="0" y1="0" x2="0" y2="6" className="hatch" />
-            </pattern>
             <pattern id="holiday-hatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
               <line x1="0" y1="0" x2="0" y2="5" className="hatch-holiday" />
             </pattern>
@@ -298,6 +309,12 @@ export function Gantt(props: Props) {
             >
               <title>{`${formatShort(h.date)} · ${h.name}${h.halfDay ? ` (${t("calendar.halfDay")})` : ""}`}</title>
             </rect>
+          ))}
+          {gridLines.map((d) => (
+            <line key={`g${d}`} x1={d * ppd + 0.5} x2={d * ppd + 0.5} y1={0} y2={height} className="grid-week" />
+          ))}
+          {rows.slice(first, last).map((r, k) => (
+            <line key={`r-${r.task.id}`} x1={0} x2={width} y1={(first + k + 1) * ROW_H - 0.5} y2={(first + k + 1) * ROW_H - 0.5} className="row-line" />
           ))}
           {rows.slice(first, last).map((r, k) =>
             selection.has(r.task.id) ? (
@@ -326,7 +343,14 @@ export function Gantt(props: Props) {
                 return <path key={`b-${r.task.id}`} d={`M${mx},${y - 3} l3,3 l-3,3 l-3,-3 z`} className="baseline-ms" />;
               }
               const bw = Math.max(x(b.finish) + ppd - bx1, 2);
-              return <rect key={`b-${r.task.id}`} x={bx1} y={y} width={bw} height={4} rx={1} className="baseline-bar" />;
+              // Sapma varsa referans bitişinde küçük işaret
+              const moved = b.finish !== r.sched.finishDate || b.start !== r.sched.startDate;
+              return (
+                <g key={`b-${r.task.id}`}>
+                  <rect x={bx1} y={y} width={bw} height={2} className="baseline-bar" />
+                  {moved && <path d={`M${bx1 + bw},${y - 2} v6`} className="baseline-tick" />}
+                </g>
+              );
             })}
           {rows.slice(first, last).map((r, k) => {
             // Son tarih: gün sonunda aşağı ok; aşılmışsa kırmızı
@@ -353,13 +377,14 @@ export function Gantt(props: Props) {
             if (r.sched.isSummary) {
               // MS Project'teki gibi köşeli parantez: iki ucunda aşağı inen uçlar
               const w = Math.max(g.x2 - g.x1, 2);
-              const yT = g.y - 5;
-              const yB = g.y + 1;
-              const tip = Math.min(6, w / 2);
+              // İnce (7 px) özet çubuğu, uçları sivri
+              const yT = g.y - 4;
+              const yB = g.y + 3;
+              const tip = Math.min(5, w / 2);
               return (
                 <g key={r.task.id} className={`summary-bar ${r.sched.critical ? "critical" : ""}`} onMouseDown={sel} {...hoverProps}>
                   <path
-                    d={`M${g.x1},${yT} H${g.x1 + w} V${yB + 5} L${g.x1 + w - tip},${yB} H${g.x1 + tip} L${g.x1},${yB + 5} Z`}
+                    d={`M${g.x1},${yT} H${g.x1 + w} V${yB + 4} L${g.x1 + w - tip},${yB} H${g.x1 + tip} L${g.x1},${yB + 4} Z`}
                   />
                   <text x={g.x1 + w + 6} y={g.y + 4} className="bar-label">
                     {r.task.name}
@@ -368,7 +393,7 @@ export function Gantt(props: Props) {
               );
             }
             if (g.milestone) {
-              const s = 7;
+              const s = 6;
               return (
                 <g
                   key={r.task.id}
@@ -398,10 +423,9 @@ export function Gantt(props: Props) {
                 }}
                 {...hoverProps}
               >
-                <rect x={g.x1} y={top} width={w} height={BAR_H} rx={4} className="bar" />
-                {r.task.percent > 0 && <rect x={g.x1} y={top} width={(w * r.task.percent) / 100} height={BAR_H} rx={4} className="progress" />}
-                {r.issues.length > 0 && <rect x={g.x1} y={top} width={w} height={BAR_H} rx={4} className="issue-outline" />}
-                {r.sched.critical && <rect x={g.x1} y={top} width={w} height={BAR_H} rx={4} className="crit-pattern" fill="url(#crit-hatch)" />}
+                <rect x={g.x1} y={top} width={w} height={BAR_H} rx={3} className="bar" />
+                {r.task.percent > 0 && <rect x={g.x1} y={top} width={(w * r.task.percent) / 100} height={BAR_H} rx={3} className="progress" />}
+                {r.issues.length > 0 && <rect x={g.x1} y={top} width={w} height={BAR_H} rx={3} className="issue-outline" />}
                 <rect
                   x={g.x1 + w - 4}
                   y={top}
@@ -422,7 +446,7 @@ export function Gantt(props: Props) {
                       {r.task.name}
                       {r.resText && (
                         <tspan dx={8} className={`res-label ${r.overallocated ? "over" : ""}`}>
-                          {r.overallocated ? "⚠ " : ""}
+                          {r.overallocated ? "! " : ""}
                           {r.resText}
                         </tspan>
                       )}

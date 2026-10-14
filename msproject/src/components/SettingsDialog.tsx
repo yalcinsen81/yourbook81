@@ -3,6 +3,7 @@ import { DATE_STYLES, formatDateLocal, getDateStyle, getLang, t, type Lang } fro
 import { useLocale } from "../i18n/react";
 import { listBackups, saveLocale } from "../settings";
 import { CurrencyPicker } from "./CalendarSettings";
+import type { Density } from "./layout";
 
 interface Props {
   currency: string;
@@ -10,6 +11,8 @@ interface Props {
   /** Dosya indirme (App'teki yardımcı) */
   download: (content: string, fileName: string) => void;
   onClose: () => void;
+  density: Density;
+  onDensity: (d: Density) => void;
 }
 
 const LANGS: [Lang, string][] = [
@@ -17,8 +20,8 @@ const LANGS: [Lang, string][] = [
   ["en", "English"],
 ];
 
-/** Ayarlar: dil ve tarih biçimi (bu bilgisayar), para birimi (bu proje), yükseltme öncesi yedekler */
-export function SettingsDialog({ currency, onCurrency, download, onClose }: Props) {
+/** Ayarlar: dil, tarih biçimi ve satır yoğunluğu (bu bilgisayar), para birimi (bu proje), yükseltme öncesi yedekler */
+export function SettingsDialog({ currency, onCurrency, download, onClose, density, onDensity }: Props) {
   useLocale();
   const lang = getLang();
   const dateStyle = getDateStyle();
@@ -60,6 +63,17 @@ export function SettingsDialog({ currency, onCurrency, download, onClose }: Prop
               </label>
             ))}
             <small className="modal-note">{t("settings.appNote")}</small>
+          </fieldset>
+          <fieldset className="setting">
+            <legend>{t("settings.density")}</legend>
+            <div className="segmented" role="radiogroup">
+              {(["compact", "comfortable"] as const).map((d) => (
+                <button key={d} role="radio" aria-checked={density === d} className={density === d ? "on" : ""} onClick={() => onDensity(d)}>
+                  {t(d === "compact" ? "settings.compact" : "settings.comfortable")}
+                </button>
+              ))}
+            </div>
+            <small className="modal-note">{t("settings.densityHint")}</small>
           </fieldset>
           <CurrencyPicker value={currency} onChange={onCurrency} />
           <fieldset className="setting">

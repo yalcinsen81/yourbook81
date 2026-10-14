@@ -354,7 +354,10 @@ export function formatCell(v: Cell, kind: CellKind): string {
 
 /** Rapor tablosu: sayılar sağa yaslı, toplam satırı altta */
 export function ReportTableView({ table }: { table: ReportTable }) {
-  const numeric = (k: CellKind) => k !== "text" && k !== "date";
+  // Sayı, para ve tarih sütunları sağa yaslı
+  const numeric = (k: CellKind) => k !== "text";
+  // Plan kalitesi: Geçti / Kaldı hücresi renkli
+  const resultClass = (v: unknown) => (v === t("quality.pass") ? "res-pass" : v === t("quality.fail") ? "res-fail" : "");
   return (
     <div className="report-table-wrap">
       <table className="report-table">
@@ -371,7 +374,7 @@ export function ReportTableView({ table }: { table: ReportTable }) {
           {table.rows.map((row, i) => (
             <tr key={i} className={row.status === t("report.status.late") || row.result === t("quality.fail") ? "late" : ""}>
               {table.columns.map((c) => (
-                <td key={c.key} className={numeric(c.kind) ? "num" : ""}>
+                <td key={c.key} className={`${numeric(c.kind) ? "num" : ""} ${c.key === "result" ? resultClass(row[c.key]) : ""}`}>
                   {formatCell(row[c.key], c.kind)}
                 </td>
               ))}

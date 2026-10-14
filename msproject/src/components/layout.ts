@@ -1,5 +1,11 @@
 // Tablo ve Gantt satırlarının hizalı kalması için ortak ölçüler
-export const ROW_H = 30;
+/** Satır yüksekliği: Kompakt 30, Rahat 36 (yoğunluk ayarı bu bilgisayarda saklanır) */
+export let ROW_H = 30;
+export type Density = "compact" | "comfortable";
+export function setDensity(d: Density) {
+  ROW_H = d === "comfortable" ? 36 : 30;
+  if (typeof document !== "undefined") document.documentElement.dataset.density = d;
+}
 export const HEADER_H = 48;
 
 export type Zoom = "day" | "week" | "month";

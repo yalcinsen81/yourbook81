@@ -3,10 +3,11 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./styles.css";
 import { getLang, subscribe } from "./i18n";
-import { applySavedLocale } from "./settings";
+import { applySavedDensity, applySavedLocale } from "./settings";
 
 // Dil ayarı proje yüklenmeden önce uygulanır (varsayılan adlar seçili dilde üretilsin)
 applySavedLocale();
+applySavedDensity();
 document.documentElement.lang = getLang();
 subscribe(() => {
   document.documentElement.lang = getLang();

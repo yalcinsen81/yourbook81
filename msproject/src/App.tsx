@@ -9,8 +9,8 @@ import { needsUpgradeBackup, newId, normalizeCurrency, sanitizeProject } from ".
 import type { Project, Task } from "./model/types";
 import { CalendarDialog } from "./components/CalendarDialog";
 import { Gantt } from "./components/Gantt";
-import { TaskGrid, GRID_WIDTH, type GridRow } from "./components/TaskGrid";
-import { ROW_H } from "./components/layout";
+import { TaskGrid, type GridRow } from "./components/TaskGrid";
+import { ROW_H, type Density } from "./components/layout";
 import { todayIso, useProject } from "./useProject";
 import { fileLinkSupported, useFileLink } from "./useFileLink";
 import { Icon, type IconName } from "./components/icons";
@@ -32,13 +32,14 @@ import { useLocale } from "./i18n/react";
 import { holidayLabel } from "./model/holidays";
 import { parseDuration } from "./model/duration";
 import { anchoredScroll, clampPpd, fitPpd, MAX_PPD, scaleFor, ZOOM_STEP } from "./model/timescale";
-import { addBackup, addTemplate, loadSettings, loadView, saveHiddenColumns, saveView, takeSnapshot, viewKey } from "./settings";
+import { addBackup, addTemplate, loadSettings, loadSplitRatio, loadView, saveDensity, saveHiddenColumns, saveSplitRatio, saveView, takeSnapshot, viewKey } from "./settings";
 import { downloadBlob, fileNameFor } from "./download";
 import { addRecent, loadRecents, removeRecent, type RecentFile } from "./handleStore";
 import { HelpDialog, type HelpTopic } from "./components/HelpDialog";
 import { RecoveryDialog } from "./components/RecoveryDialog";
 import { PromptDialog } from "./components/PromptDialog";
 import { FilterBar } from "./components/FilterBar";
+import { useOverflow } from "./components/useOverflow";
 import { Menu, MenuItem } from "./components/Menu";
 import { DEFAULT_HIDDEN, gridWidthFor } from "./components/TaskGrid";
 import { applyTemplate, projectToTemplate } from "./model/templates";
@@ -68,9 +69,13 @@ export default function App() {
   const [ganttWidth, setGanttWidth] = useState(900);
   /** Proje bütünüyle değişti (dosya açıldı, yeni proje): kayıtlı Gantt görünümü geri yüklenir */
   const [loadToken, setLoadToken] = useState(0);
-  const [gridWidth, setGridWidth] = useState(() => Math.min(GRID_WIDTH, Math.max(700, Math.round(window.innerWidth * 0.56))));
+  // Tablo / Gantt ayırıcısı: çalışma alanına oran olarak hatırlanır (varsayılan %50, çift tıkla sıfırlanır)
+  const [splitRatio, setSplitRatio] = useState(loadSplitRatio);
+  const [splitDragging, setSplitDragging] = useState(false);
+  const workspaceRef = useRef<HTMLElement>(null);
   // Bildirim metni işlev olarak saklanır; dil değişince yeni dilde yeniden üretilir
   const [message, setMessage] = useState<Msg | null>(null);
+  const [messageKind, setMessageKind] = useState<"info" | "error">("info");
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [setupOpen, setSetupOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -89,6 +94,10 @@ export default function App() {
   );
   const [saveTplOpen, setSaveTplOpen] = useState(false);
   const [fileMenu, setFileMenu] = useState(false);
+  const [moreMenu, setMoreMenu] = useState(false);
+  // Satır yoğunluğu değişince tablo ve Gantt yeni ROW_H ile yeniden çizilir
+  const [density, setDensityState] = useState<Density>(() => (ROW_H === 36 ? "comfortable" : "compact"));
+  const toolbarRef = useRef<HTMLElement>(null);
   const [recents, setRecents] = useState<RecentFile[]>([]);
   const [setupTemplate, setSetupTemplate] = useState("");
   const [viewOpts, setViewOpts] = useState<Omit<ViewOptions, "today">>(DEFAULT_VIEW);
@@ -106,12 +115,15 @@ export default function App() {
   const today = todayIso();
 
   const flashTimer = useRef<number | undefined>(undefined);
-  const flash = useCallback((text: Msg) => {
+  const flash = useCallback((text: Msg, kind: "info" | "error" = "info") => {
     // İşlev, React'te güncelleyici sayılmasın diye sarılır
     setMessage(() => text);
+    setMessageKind(kind);
     window.clearTimeout(flashTimer.current);
-    flashTimer.current = window.setTimeout(() => setMessage(null), 4000);
+    flashTimer.current = window.setTimeout(() => setMessage(null), kind === "error" ? 6000 : 4000);
   }, []);
+  /** Geçersiz giriş ve başarısız işlem: sol kenarı kiremit çizgili bildirim */
+  const flashError = useCallback((text: Msg) => flash(text, "error"), [flash]);
 
   // Proje bütünüyle değişmeden önce mevcut hali kurtarma noktası olur (yanlışlıkla başka dosya açılsa da geri dönülür)
   const projectRef = useRef(project);
@@ -451,7 +463,7 @@ export default function App() {
         const to = beforeId === null ? p.tasks.length : p.tasks.findIndex((x) => x.id === beforeId);
         const tasks = moveBlockTo(p.tasks, from, to);
         if (tasks === p.tasks) {
-          flash(() => t("msg.cannotMoveInto"));
+          flashError(() => t("msg.cannotMoveInto"));
           return p;
         }
         return { ...p, tasks };
@@ -461,7 +473,7 @@ export default function App() {
 
   const linkSelected = useCallback(() => {
     if (selectedIndexes.length < 2) {
-      flash(() => t("msg.linkNeedTwo"));
+      flashError(() => t("msg.linkNeedTwo"));
       return;
     }
     let skipped = 0;
@@ -509,7 +521,7 @@ export default function App() {
     const parsed = parseDuration(text, workdays.length);
     if (!parsed) {
       const negative = /^\s*[-−]/.test(text);
-      flash(() => (negative ? t("valid.negativeDuration") : t("err.duration")));
+      flashError(() => (negative ? t("valid.negativeDuration") : t("err.duration")));
       return false;
     }
     const hours = parsed.hours;
@@ -525,12 +537,12 @@ export default function App() {
     }
     const iso = parseDateLocal(text);
     if (!iso) {
-      flash(invalidDateMessage);
+      flashError(invalidDateMessage);
       return false;
     }
     // Proje başlangıcından önceki tarih kısıt olamaz (görev zaten proje başında başlar)
     if (iso < project.start) {
-      flash(() => t("valid.startBeforeProject", { date: formatShort(iso), start: formatShort(project.start) }));
+      flashError(() => t("valid.startBeforeProject", { date: formatShort(iso), start: formatShort(project.start) }));
       return false;
     }
     patchTask(id, { constraint: { type: "SNET", date: iso } });
@@ -540,7 +552,7 @@ export default function App() {
   const onPredecessors = (id: string, text: string) => {
     const { predecessors, errors } = parsePredecessors(text, project.tasks, id);
     if (errors.length) {
-      flash(() => t("err.predecessor", { parts: errors.join(", ") }));
+      flashError(() => t("err.predecessor", { parts: errors.join(", ") }));
       return false;
     }
     const base: Project = {
@@ -549,7 +561,7 @@ export default function App() {
     };
     for (const pr of predecessors) {
       if (cycleError(base, id, pr.taskId)) {
-        flash(() => cycleError(base, id, pr.taskId) ?? "");
+        flashError(() => cycleError(base, id, pr.taskId) ?? "");
         return false;
       }
     }
@@ -561,7 +573,7 @@ export default function App() {
     // "45", "%45", "45%"; gerçekleşen başlangıç/bitiş MS Project'teki gibi güncellenir
     const parsed = parsePercentCell(text);
     if (!parsed) {
-      flash(() => t("valid.percent"));
+      flashError(() => t("valid.percent"));
       return false;
     }
     const task = project.tasks.find((x) => x.id === id);
@@ -575,7 +587,7 @@ export default function App() {
   const onEstimate = (id: string, text: string) => {
     const e = parseEstimate(text);
     if (e === undefined) {
-      flash(() => t("err.estimate"));
+      flashError(() => t("err.estimate"));
       return false;
     }
     update((p) => ({
@@ -594,7 +606,7 @@ export default function App() {
   const onResources = (id: string, text: string) => {
     const result = assignFromText(project, id, text);
     if (result.errors.length) {
-      flash(() => t("err.resource", { parts: result.errors.join(", ") }));
+      flashError(() => t("err.resource", { parts: result.errors.join(", ") }));
       return false;
     }
     update(() => result.project);
@@ -638,7 +650,7 @@ export default function App() {
       if (!parsed) throw new Error(t("recovery.notProject"));
       loadOpened(parsed, fileName, warnings);
     } catch (e) {
-      if (isXml) flash(() => t("msg.xmlFailed", { detail: e instanceof Error && e.message ? `: ${e.message}` : "." }));
+      if (isXml) flashError(() => t("msg.xmlFailed", { detail: e instanceof Error && e.message ? `: ${e.message}` : "." }));
       else setRecovery({ problem: { name: fileName, detail: e instanceof Error ? e.message : String(e) } });
     }
   };
@@ -654,7 +666,7 @@ export default function App() {
       if (r.handle) flash(() => t("file.recentCopy", { name: r.name }));
     } else {
       setRecents(await removeRecent(index));
-      flash(() => t("file.recentMissing", { name: r.name }));
+      flashError(() => t("file.recentMissing", { name: r.name }));
     }
   };
 
@@ -812,7 +824,7 @@ export default function App() {
       if (e.key === "F1" || (e.key === "?" && !editing)) {
         e.preventDefault();
         setHelp("keys");
-      } else if (mod && e.key.toLowerCase() === "f" && view === "gantt") {
+      } else if (mod && (e.key.toLowerCase() === "f" || e.key.toLowerCase() === "k") && view === "gantt") {
         e.preventDefault();
         searchRef.current?.focus();
         searchRef.current?.select();
@@ -879,18 +891,28 @@ export default function App() {
   // --- Bölücü sürükleme ---
   // Tablo genişliği görünen sütunlardan fazla olamaz (sütun gizlenince Gantt genişler)
   const maxGridWidth = gridWidthFor(hiddenCols, !!baseline) + 2;
-  const shownGridWidth = Math.min(gridWidth, maxGridWidth);
   const startResize = (e: MouseEvent) => {
-    const startX = e.clientX;
-    const startW = shownGridWidth;
-    const onMove = (ev: globalThis.MouseEvent) =>
-      setGridWidth(Math.max(200, Math.min(maxGridWidth, startW + ev.clientX - startX, window.innerWidth - 120)));
+    const box = workspaceRef.current?.getBoundingClientRect();
+    if (!box) return;
+    e.preventDefault();
+    setSplitDragging(true);
+    let last = splitRatio;
+    const onMove = (ev: globalThis.MouseEvent) => {
+      last = Math.max(0.15, Math.min(0.85, (ev.clientX - box.left) / box.width));
+      setSplitRatio(last);
+    };
     const onUp = () => {
+      setSplitDragging(false);
+      saveSplitRatio(last);
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
+  };
+  const resetSplit = () => {
+    setSplitRatio(0.5);
+    saveSplitRatio(undefined);
   };
 
   const leafCount = schedule.rows.filter((r) => !r.isSummary).length;
@@ -900,11 +922,42 @@ export default function App() {
   const criticalCount = schedule.rows.filter((r) => !r.isSummary && r.critical).length;
   const hasSel = selection.size > 0;
 
+  // Araç çubuğu tek satır: sığmayanlar (düzey ≤ ovLevel) ve her zaman menüde duranlar (lv 0) "Diğer" menüsünde
+  const ovLevel = useOverflow(toolbarRef, 6);
+  type MoreItem = { lv: number; label: string; hint?: string; disabled?: boolean; run: () => void; sep?: false } | { lv: number; sep: true };
+  const moreItems: MoreItem[] = [
+    { lv: 6, label: t("tb.milestone"), run: () => insertTask(true) },
+    { lv: 4, label: t("tb.copyShort"), hint: "Ctrl+C", disabled: !hasSel, run: copySelected },
+    { lv: 4, label: t("tb.pasteShort"), hint: "Ctrl+V", disabled: !clipboard.current.length, run: () => pasteRows(clipboard.current) },
+    { lv: 0, label: t("tb.duplicateShort"), hint: "Ctrl+D", disabled: !hasSel, run: duplicateSelected },
+    { lv: 2, label: t("tb.outdentShort"), hint: "Alt+Shift+←", disabled: !hasSel, run: () => shiftOutline(-1) },
+    { lv: 2, label: t("tb.indentShort"), hint: "Alt+Shift+→", disabled: !hasSel, run: () => shiftOutline(1) },
+    { lv: 2, label: t("tb.up"), disabled: primary < 0, run: () => moveSelected(-1) },
+    { lv: 2, label: t("tb.down"), disabled: primary < 0, run: () => moveSelected(1) },
+    { lv: 5, label: t("tb.undoShort"), hint: "Ctrl+Z", disabled: !canUndo, run: undo },
+    { lv: 5, label: t("tb.redoShort"), hint: "Ctrl+Y", disabled: !canRedo, run: redo },
+    { lv: 0, sep: true },
+    { lv: 1, label: t("tb.link"), hint: "Ctrl+F2", disabled: selection.size < 2, run: linkSelected },
+    { lv: 0, label: t("tb.unlinkShort"), disabled: !hasSel, run: unlinkSelected },
+    { lv: 0, label: t("tb.infoShort"), hint: "Shift+F2", disabled: primary < 0, run: () => primary >= 0 && setInfoId(project.tasks[primary].id) },
+    { lv: 1, label: t("tb.baseline"), run: () => setBaselineOpen(true) },
+    { lv: 1, label: t("tb.level"), run: () => setLevelOpen(true) },
+    { lv: 0, sep: true },
+    ...(view === "gantt"
+      ? [
+          { lv: 3, label: t("zoom.fitShort"), hint: "Ctrl+0", run: fitProject },
+          { lv: 3, label: t("tb.today"), run: () => scrollToDate(today, (ganttRef.current?.clientWidth ?? 600) / 2) },
+          { lv: 0, label: t("zoom.selected"), disabled: primary < 0, run: goToSelected },
+        ]
+      : []),
+    { lv: 6, label: t("tb.calendar"), run: () => setCalendarOpen(true) },
+  ];
+
   return (
     <div className="app">
       <header className="topbar">
         <div className="brand" aria-hidden>
-          <Icon name="milestone" size={16} />
+          <Icon name="brand" size={14} />
         </div>
         <div className="title-block">
           <input
@@ -928,272 +981,288 @@ export default function App() {
             />
           </label>
         </div>
-        <div className="stats">
-          <div className="stat">
-            <span className="stat-label">{t("stat.finish")}</span>
-            <span className="stat-value">{formatShort(schedule.finishDate)}</span>
-          </div>
-          <div className="stat">
-            <span className="stat-label">{t("stat.duration")}</span>
-            <span className="stat-value">{t("unit.workdays", { n: schedule.finish })}</span>
-          </div>
-          <div className="stat" title={t("stat.progressTitle", { weight: t(`weight.${curves.weight}`) })}>
-            <span className="stat-label">{t("stat.progress")}</span>
-            <span className="stat-value">
-              <span className="meter" aria-hidden>
-                <span style={{ width: `${progress}%` }} />
-              </span>
-              {pct(progress)}
-            </span>
-          </div>
-          {totalCost > 0 && (
-            <div className="stat">
-              <span className="stat-label">{t("stat.cost")}</span>
-              <span className="stat-value">{formatMoney(totalCost)}</span>
-            </div>
-          )}
-          <div className="stat crit">
-            <span className="stat-label">{t("stat.critical")}</span>
-            <span className="stat-value">{t("unit.tasks", { n: criticalCount })}</span>
-          </div>
-          {warnings.length > 0 && (
-            <div className="stat info" title={warnings.join("\n")} role="note">
-              <span className="stat-label">{t("stat.info")}</span>
-              <span className="stat-value">
-                <Icon name="info" size={14} />
-                {curves.weightFallback ? t("stat.weightFallbackShort") : t("stat.noCostShort", { n: curves.zeroCostRows.length })}
-              </span>
-            </div>
-          )}
+        <div className="tabs" role="tablist" aria-label={t("view.label")}>
+          {(
+            [
+              ["gantt", "view.gantt"],
+              ["resources", "view.resources"],
+              ["charts", "view.charts"],
+              ["risks", "view.risks"],
+              ["reports", "view.reports"],
+            ] as [View, MessageKey][]
+          ).map(([v, label]) => (
+            <button key={v} role="tab" aria-selected={view === v} className={view === v ? "on" : ""} onClick={() => setView(v)}>
+              {t(label)}
+              {v === "resources" && usage.some((u) => u.overDays.length) && <i className="dot-alert" aria-label={t("view.overAlert")} />}
+            </button>
+          ))}
         </div>
-        {install.available && (
-          <button className="chip install" onClick={install.prompt} title={t("install.title")}>
-            <Icon name="download" size={16} />
-            {t("install.button")}
-          </button>
-        )}
-        {fileLink.pendingName && !fileLink.fileName && (
-          <button className="chip reconnect" onClick={() => void fileLink.reconnect()} title={t("link.reconnectTitle")}>
-            <Icon name="plug" size={16} />
-            {t("link.reconnect", { name: fileLink.pendingName })}
-          </button>
-        )}
-        <button
-          className={`chip ${fileLink.fileName ? "linked" : ""}`}
-          onClick={() => setLinkMenu((v) => !v)}
-          disabled={!fileLinkSupported}
-          title={
-            fileLinkSupported ? t("link.title") : t("link.unsupported")
-          }
-          aria-expanded={linkMenu}
-        >
-          <Icon name="plug" size={16} />
-          {fileLink.fileName ?? t("link.button")}
-        </button>
-        {linkMenu && (
-          <div className="menu" role="menu" onMouseLeave={() => setLinkMenu(false)}>
-            <button role="menuitem" onClick={() => { setLinkMenu(false); void fileLink.linkExisting(); }}>
-              {t("link.openExisting")}
+        <div className="top-end">
+          {install.available && (
+            <button className="chip install" onClick={install.prompt} title={t("install.title")}>
+              <Icon name="download" size={16} />
+              {t("install.button")}
             </button>
-            <button role="menuitem" onClick={() => { setLinkMenu(false); void fileLink.linkNew(); }}>
-              {t("link.saveNew")}
+          )}
+          {fileLink.pendingName && !fileLink.fileName && (
+            <button className="chip reconnect" onClick={() => void fileLink.reconnect()} title={t("link.reconnectTitle")}>
+              <Icon name="plug" size={16} />
+              {t("link.reconnect", { name: fileLink.pendingName })}
             </button>
-            {fileLink.fileName && (
-              <button role="menuitem" onClick={() => { setLinkMenu(false); fileLink.unlink(); }}>
-                {t("link.unlink")}
-              </button>
+          )}
+          <div className="menu-anchor">
+            <button
+              className={`chip file-badge ${fileLink.fileName ? "linked" : ""}`}
+              onClick={() => setLinkMenu((v) => !v)}
+              disabled={!fileLinkSupported}
+              title={fileLinkSupported ? t("link.badgeTitle", { name: fileLink.fileName ?? t("link.notLinked") }) : t("link.unsupported")}
+              aria-haspopup="true"
+              aria-expanded={linkMenu}
+            >
+              <i className="file-dot" aria-hidden />
+              <span>{fileLink.fileName ?? t("link.button")}</span>
+            </button>
+            {linkMenu && (
+              <Menu label={t("link.title")} onClose={() => setLinkMenu(false)} className="link-menu">
+                <MenuItem onClick={() => { setLinkMenu(false); void fileLink.linkExisting(); }}>{t("link.openExisting")}</MenuItem>
+                <MenuItem onClick={() => { setLinkMenu(false); void fileLink.linkNew(); }}>{t("link.saveNew")}</MenuItem>
+                {fileLink.fileName && <MenuItem onClick={() => { setLinkMenu(false); fileLink.unlink(); }}>{t("link.unlink")}</MenuItem>}
+              </Menu>
             )}
           </div>
-        )}
-        <button className="icon-btn" onClick={() => setHelp("keys")} title={t("help.button")} aria-label={t("help.title")}>
-          <Icon name="help" />
-        </button>
-        <button className="icon-btn" onClick={() => setSettingsOpen(true)} title={t("settings.button")} aria-label={t("settings.title")}>
-          <Icon name="gear" />
-        </button>
-        <button
-          className="icon-btn"
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          title={theme === "dark" ? t("theme.light") : t("theme.dark")}
-          aria-label={theme === "dark" ? t("theme.toLight") : t("theme.toDark")}
-        >
-          <Icon name={theme === "dark" ? "sun" : "moon"} />
-        </button>
-      </header>
-
-      <nav className="toolbar" aria-label={t("toolbar.aria")}>
-        <div className="tgroup">
-          <ToolButton icon="plus" label={t("tb.task")} primary onClick={() => insertTask()} title={t("tb.taskTitle")} />
-          <ToolButton icon="milestone" label={t("tb.milestone")} onClick={() => insertTask(true)} title={t("tb.milestoneTitle")} />
-          <ToolButton icon="trash" onClick={deleteSelected} disabled={!hasSel} title={t("tb.delete")} />
-          <ToolButton icon="copy" onClick={copySelected} disabled={!hasSel} title={t("tb.copy")} />
-          <ToolButton icon="paste" onClick={() => pasteRows(clipboard.current)} disabled={!clipboard.current.length} title={t("tb.paste")} />
-          <ToolButton icon="duplicate" onClick={duplicateSelected} disabled={!hasSel} title={t("tb.duplicate")} />
-        </div>
-        <div className="tgroup">
-          <ToolButton icon="outdent" onClick={() => shiftOutline(-1)} disabled={!hasSel} title={t("tb.outdent")} />
-          <ToolButton icon="indent" onClick={() => shiftOutline(1)} disabled={!hasSel} title={t("tb.indent")} />
-          <ToolButton icon="up" onClick={() => moveSelected(-1)} disabled={primary < 0} title={t("tb.up")} />
-          <ToolButton icon="down" onClick={() => moveSelected(1)} disabled={primary < 0} title={t("tb.down")} />
-        </div>
-        <div className="tgroup">
-          <ToolButton icon="link" label={t("tb.link")} onClick={linkSelected} disabled={selection.size < 2} title={t("tb.linkTitle")} />
-          <ToolButton icon="unlink" onClick={unlinkSelected} disabled={!hasSel} title={t("tb.unlink")} />
-          <ToolButton icon="info" onClick={() => primary >= 0 && setInfoId(project.tasks[primary].id)} disabled={primary < 0} title={t("tb.info")} />
-        </div>
-        <div className="tgroup">
-          <ToolButton icon="flag" label={t("tb.baseline")} onClick={() => setBaselineOpen(true)} title={t("tb.baselineTitle")} />
-          <ToolButton
-            icon="level"
-            label={t("tb.level")}
-            onClick={() => setLevelOpen(true)}
-            title={overCount ? t("tb.levelTitleOver", { n: overCount }) : t("tb.levelTitle")}
-          />
-        </div>
-        <div className="tgroup">
-          <ToolButton icon="undo" onClick={undo} disabled={!canUndo} title={t("tb.undo")} />
-          <ToolButton icon="redo" onClick={redo} disabled={!canRedo} title={t("tb.redo")} />
-        </div>
-        <div className="tgroup file-group">
-          <button className="tbtn" aria-haspopup="true" aria-expanded={fileMenu} onClick={() => setFileMenu((v) => !v)} title={t("file.menuTitle")}>
-            <Icon name="menu" size={17} />
-            <span>{t("file.menu")}</span>
-          </button>
-          {fileMenu && (
-            <Menu label={t("file.menu")} onClose={() => setFileMenu(false)} className="file-menu">
-              <MenuItem onClick={() => newProject(false)}>{t("file.new")}</MenuItem>
-              <MenuItem onClick={() => newProject(false, "b:konut")}>{t("file.fromTemplate")}</MenuItem>
-              <MenuItem
-                onClick={() => {
-                  setFileMenu(false);
-                  fileRef.current?.click();
-                }}
-              >
-                {t("file.open")}
-              </MenuItem>
-              {fileLinkSupported && (
+          <div className="menu-anchor">
+            <button className="tbtn ghost" aria-haspopup="true" aria-expanded={fileMenu} onClick={() => setFileMenu((v) => !v)} title={t("file.menuTitle")}>
+              <Icon name="file" size={16} />
+              <span>{t("file.menu")}</span>
+            </button>
+            {fileMenu && (
+              <Menu label={t("file.menu")} onClose={() => setFileMenu(false)} className="file-menu">
+                <MenuItem onClick={() => newProject(false)}>{t("file.new")}</MenuItem>
+                <MenuItem onClick={() => newProject(false, "b:konut")}>{t("file.fromTemplate")}</MenuItem>
                 <MenuItem
                   onClick={() => {
                     setFileMenu(false);
-                    void fileLink.linkExisting();
+                    fileRef.current?.click();
                   }}
                 >
-                  {t("link.openExisting")}
+                  {t("file.open")}
                 </MenuItem>
-              )}
-              <MenuItem onClick={saveAs}>{fileLinkSupported ? t("file.saveAs") : t("file.saveAsDownload")}</MenuItem>
-              <MenuItem
-                onClick={() => {
-                  setFileMenu(false);
-                  setSaveTplOpen(true);
-                }}
-              >
-                {t("file.saveTemplate")}
-              </MenuItem>
-              <div className="menu-sep" role="separator" />
-              <div className="menu-label">{t("file.recent")}</div>
-              {recents.length ? (
-                recents.map((r, i) => (
-                  <MenuItem key={`${r.name}-${r.at}`} onClick={() => void openRecent(r, i)} title={`${r.projectName} · ${new Date(r.at).toLocaleString()}`}>
-                    {r.name} <small>{r.projectName}</small>
+                {fileLinkSupported && (
+                  <MenuItem
+                    onClick={() => {
+                      setFileMenu(false);
+                      void fileLink.linkExisting();
+                    }}
+                  >
+                    {t("link.openExisting")}
                   </MenuItem>
-                ))
-              ) : (
-                <div className="menu-empty">{t("file.noRecent")}</div>
-              )}
-              <div className="menu-sep" role="separator" />
-              <MenuItem
-                onClick={() => {
-                  setFileMenu(false);
-                  setImportOpen(true);
-                }}
-              >
-                {t("file.import")}
-              </MenuItem>
-              <MenuItem
-                onClick={() => {
-                  setFileMenu(false);
-                  exportMsp();
-                }}
-              >
-                {t("tb.mspTitle")}
-              </MenuItem>
-              <MenuItem
-                onClick={() => {
-                  setFileMenu(false);
-                  exportJson();
-                }}
-              >
-                {t("tb.json")}
-              </MenuItem>
-              <MenuItem
-                onClick={() => {
-                  setFileMenu(false);
-                  setView("gantt");
-                  setGexportOpen(true);
-                }}
-                hint="Ctrl+P"
-              >
-                {t("file.ganttExport")}
-              </MenuItem>
-              <div className="menu-sep" role="separator" />
-              <MenuItem
-                onClick={() => {
-                  setFileMenu(false);
-                  setRecovery({});
-                }}
-              >
-                {t("file.recovery")}
-              </MenuItem>
-              <MenuItem onClick={() => newProject(true)}>{t("tb.sample")}</MenuItem>
+                )}
+                <MenuItem onClick={saveAs}>{fileLinkSupported ? t("file.saveAs") : t("file.saveAsDownload")}</MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    setFileMenu(false);
+                    setSaveTplOpen(true);
+                  }}
+                >
+                  {t("file.saveTemplate")}
+                </MenuItem>
+                <div className="menu-sep" role="separator" />
+                <div className="menu-label">{t("file.recent")}</div>
+                {recents.length ? (
+                  recents.map((r, i) => (
+                    <MenuItem key={`${r.name}-${r.at}`} onClick={() => void openRecent(r, i)} title={`${r.projectName} · ${new Date(r.at).toLocaleString()}`}>
+                      {r.name} <small>{r.projectName}</small>
+                    </MenuItem>
+                  ))
+                ) : (
+                  <div className="menu-empty">{t("file.noRecent")}</div>
+                )}
+                <div className="menu-sep" role="separator" />
+                <MenuItem
+                  onClick={() => {
+                    setFileMenu(false);
+                    setImportOpen(true);
+                  }}
+                >
+                  {t("file.import")}
+                </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    setFileMenu(false);
+                    exportMsp();
+                  }}
+                >
+                  {t("tb.mspTitle")}
+                </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    setFileMenu(false);
+                    exportJson();
+                  }}
+                >
+                  {t("tb.json")}
+                </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    setFileMenu(false);
+                    setView("gantt");
+                    setGexportOpen(true);
+                  }}
+                  hint="Ctrl+P"
+                >
+                  {t("file.ganttExport")}
+                </MenuItem>
+                <div className="menu-sep" role="separator" />
+                <MenuItem
+                  onClick={() => {
+                    setFileMenu(false);
+                    setRecovery({});
+                  }}
+                >
+                  {t("file.recovery")}
+                </MenuItem>
+                <MenuItem onClick={() => newProject(true)}>{t("tb.sample")}</MenuItem>
+              </Menu>
+            )}
+            <input
+              ref={fileRef}
+              type="file"
+              accept="application/json,.json,application/xml,text/xml,.xml,.bak"
+              hidden
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) void openFile(f);
+                e.target.value = "";
+              }}
+            />
+          </div>
+          <button className="icon-btn" onClick={() => setHelp("keys")} title={t("help.button")} aria-label={t("help.title")}>
+            <Icon name="help" size={16} />
+          </button>
+          <button className="icon-btn" onClick={() => setSettingsOpen(true)} title={t("settings.button")} aria-label={t("settings.title")}>
+            <Icon name="gear" size={16} />
+          </button>
+          <button
+            className="icon-btn"
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            title={theme === "dark" ? t("theme.light") : t("theme.dark")}
+            aria-label={theme === "dark" ? t("theme.toLight") : t("theme.toDark")}
+          >
+            <Icon name={theme === "dark" ? "sun" : "moon"} size={16} />
+          </button>
+        </div>
+      </header>
+
+      <div className="summary" role="group" aria-label={t("summary.aria")}>
+        <span className="stat">
+          <span className="stat-label">{t("stat.finish")}</span> <b className="stat-value">{formatShort(schedule.finishDate)}</b>
+        </span>
+        <span className="stat">
+          <span className="stat-label">{t("stat.duration")}</span> <b className="stat-value">{t("unit.workdays", { n: schedule.finish })}</b>
+        </span>
+        <span className="stat" title={t("stat.progressTitle", { weight: t(`weight.${curves.weight}`) })}>
+          <span className="stat-label">{t("stat.progress")}</span>
+          <span className="meter" aria-hidden>
+            <span style={{ width: `${progress}%` }} />
+          </span>
+          <b className="stat-value">{pct(progress)}</b>
+        </span>
+        {totalCost > 0 && (
+          <span className="stat">
+            <span className="stat-label">{t("stat.cost")}</span> <b className="stat-value">{formatMoney(totalCost)}</b>
+          </span>
+        )}
+        <span className="stat crit">
+          <span className="stat-label">{t("stat.critical")}</span> <b className="stat-value">{t("unit.tasks", { n: criticalCount })}</b>
+        </span>
+        {warnings.length > 0 && (
+          <span className="stat info" title={warnings.join("\n")} role="note">
+            <Icon name="info" size={14} />
+            {curves.weightFallback ? t("stat.weightFallbackShort") : t("stat.noCostShort", { n: curves.zeroCostRows.length })}
+          </span>
+        )}
+      </div>
+
+      <nav className="toolbar" aria-label={t("toolbar.aria")} ref={toolbarRef}>
+        <ToolButton icon="plus" label={t("tb.task")} primary onClick={() => insertTask()} title={t("tb.taskTitle")} />
+        <ToolButton icon="milestone" label={t("tb.milestone")} outline onClick={() => insertTask(true)} title={t("tb.milestoneTitle")} ov={6} />
+        <span className="tsep" />
+        <ToolButton icon="trash" onClick={deleteSelected} disabled={!hasSel} title={t("tb.delete")} />
+        <ToolButton icon="copy" onClick={copySelected} disabled={!hasSel} title={t("tb.copy")} ov={4} />
+        <ToolButton icon="paste" onClick={() => pasteRows(clipboard.current)} disabled={!clipboard.current.length} title={t("tb.paste")} ov={4} />
+        <ToolButton icon="outdent" onClick={() => shiftOutline(-1)} disabled={!hasSel} title={t("tb.outdent")} ov={2} />
+        <ToolButton icon="indent" onClick={() => shiftOutline(1)} disabled={!hasSel} title={t("tb.indent")} ov={2} />
+        <ToolButton icon="up" onClick={() => moveSelected(-1)} disabled={primary < 0} title={t("tb.up")} ov={2} />
+        <ToolButton icon="down" onClick={() => moveSelected(1)} disabled={primary < 0} title={t("tb.down")} ov={2} />
+        <ToolButton icon="undo" onClick={undo} disabled={!canUndo} title={t("tb.undo")} ov={5} />
+        <ToolButton icon="redo" onClick={redo} disabled={!canRedo} title={t("tb.redo")} ov={5} />
+        <span className="tsep" data-ov={1} />
+        <ToolButton icon="link" label={t("tb.link")} ghost onClick={linkSelected} disabled={selection.size < 2} title={t("tb.linkTitle")} ov={1} />
+        <ToolButton icon="flag" label={t("tb.baseline")} ghost onClick={() => setBaselineOpen(true)} title={t("tb.baselineTitle")} ov={1} />
+        <ToolButton
+          icon="level"
+          label={t("tb.level")}
+          ghost
+          onClick={() => setLevelOpen(true)}
+          title={overCount ? t("tb.levelTitleOver", { n: overCount }) : t("tb.levelTitle")}
+          ov={1}
+        />
+        <div className="menu-anchor">
+          <ToolButton icon="more" label={t("tb.more")} ghost onClick={() => setMoreMenu((v) => !v)} title={t("tb.moreTitle")} popup={moreMenu} />
+          {moreMenu && (
+            <Menu label={t("tb.moreTitle")} onClose={() => setMoreMenu(false)} className="more-menu">
+              {moreItems
+                .filter((m) => m.lv === 0 || m.lv <= ovLevel)
+                .map((m, i) =>
+                  m.sep ? (
+                    <div key={`s${i}`} className="menu-sep" role="separator" />
+                  ) : (
+                    <MenuItem
+                      key={m.label}
+                      hint={m.hint}
+                      disabled={m.disabled}
+                      onClick={() => {
+                        setMoreMenu(false);
+                        m.run();
+                      }}
+                    >
+                      {m.label}
+                    </MenuItem>
+                  ),
+                )}
             </Menu>
           )}
-          <ToolButton icon="open" label={t("tb.open")} onClick={() => fileRef.current?.click()} title={t("tb.openTitle")} />
-          <ToolButton icon="image" onClick={() => setGexportOpen(true)} title={t("file.ganttExport")} />
-          <input
-            ref={fileRef}
-            type="file"
-            accept="application/json,.json,application/xml,text/xml,.xml,.bak"
-            hidden
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) void openFile(f);
-              e.target.value = "";
-            }}
-          />
         </div>
-        <div className="toolbar-end">
-          <div className="segmented views" role="tablist" aria-label={t("view.label")}>
-            {(
-              [
-                ["gantt", "gantt", "view.gantt"],
-                ["resources", "users", "view.resources"],
-                ["charts", "chart", "view.charts"],
-                ["risks", "risk", "view.risks"],
-                ["reports", "report", "view.reports"],
-              ] as [View, IconName, MessageKey][]
-            ).map(([v, icon, label]) => (
-              <button key={v} role="tab" aria-selected={view === v} className={view === v ? "on" : ""} onClick={() => setView(v)}>
-                <Icon name={icon} size={15} />
-                {t(label)}
-                {v === "resources" && usage.some((u) => u.overDays.length) && <i className="dot-alert" aria-label={t("view.overAlert")} />}
-              </button>
-            ))}
-          </div>
-          {view === "gantt" && (
-            <div className="tgroup zoombar" role="toolbar" aria-label={t("zoom.label")}>
+        <span className="spacer" />
+        {view === "gantt" && (
+          <>
+            <FilterBar
+              project={project}
+              opts={viewOpts}
+              onChange={setViewOpts}
+              shown={rows.filter((r) => !r.sched.isSummary).length}
+              total={leafCount}
+              lateCount={lateCount}
+              hidden={hiddenCols}
+              onHidden={(h) => {
+                setHiddenCols(h);
+                saveHiddenColumns([...h]);
+              }}
+              searchRef={searchRef}
+            />
+            <span className="tsep" />
+            <div className="zoombar" role="group" aria-label={t("zoom.label")}>
               <ToolButton icon="zoomOut" onClick={() => zoomTo(ppd / ZOOM_STEP)} disabled={ppd <= minPpd + 1e-6} title={t("zoom.out")} />
-              <span className="zoom-level" title={t("zoom.hint")}>
+              <span className="zoom-level" title={t("zoom.hint")} data-ov={3}>
                 {t("zoom.level", { scale: t(`zoom.scale.${scaleFor(ppd)}`), px: formatNumber(ppd, ppd < 10 ? 1 : 0) })}
               </span>
               <ToolButton icon="zoomIn" onClick={() => zoomTo(ppd * ZOOM_STEP)} disabled={ppd >= MAX_PPD - 1e-6} title={t("zoom.in")} />
-              <ToolButton icon="fit" label={t("zoom.fitShort")} onClick={fitProject} title={t("zoom.fit")} />
-              <ToolButton icon="target" label={t("tb.today")} onClick={() => scrollToDate(today, (ganttRef.current?.clientWidth ?? 600) / 2)} title={t("tb.todayTitle")} />
-              <ToolButton icon="crosshair" onClick={goToSelected} disabled={primary < 0} title={t("zoom.selected")} />
+              <ToolButton icon="fit" label={t("zoom.fitShort")} ghost onClick={fitProject} title={t("zoom.fit")} ov={3} />
+              <ToolButton icon="target" label={t("tb.today")} ghost onClick={() => scrollToDate(today, (ganttRef.current?.clientWidth ?? 600) / 2)} title={t("tb.todayTitle")} ov={3} />
             </div>
-          )}
-          <ToolButton icon="calendar" label={t("tb.calendar")} onClick={() => setCalendarOpen(true)} title={t("calendar.buttonTitle")} />
-        </div>
+          </>
+        )}
+        <ToolButton icon="calendar" label={t("tb.calendar")} ghost onClick={() => setCalendarOpen(true)} title={t("calendar.buttonTitle")} ov={6} />
       </nav>
 
       {view === "resources" && (
@@ -1241,24 +1310,8 @@ export default function App() {
         />
         </Suspense>
       )}
-      {view === "gantt" && (
-        <FilterBar
-          project={project}
-          opts={viewOpts}
-          onChange={setViewOpts}
-          shown={rows.filter((r) => !r.sched.isSummary).length}
-          total={leafCount}
-          lateCount={lateCount}
-          hidden={hiddenCols}
-          onHidden={(h) => {
-            setHiddenCols(h);
-            saveHiddenColumns([...h]);
-          }}
-          searchRef={searchRef}
-        />
-      )}
-      <main className="workspace" hidden={view !== "gantt"}>
-        <div style={{ width: shownGridWidth, flex: "none", display: "flex" }}>
+      <main className="workspace" hidden={view !== "gantt"} ref={workspaceRef}>
+        <div style={{ width: `min(${(splitRatio * 100).toFixed(2)}%, ${maxGridWidth}px)`, flex: "none", display: "flex", minWidth: 0 }}>
           <TaskGrid
             rows={rows}
             selection={selection}
@@ -1291,7 +1344,15 @@ export default function App() {
             onExtend={onExtend}
           />
         </div>
-        <div className="splitter" onMouseDown={startResize} role="separator" aria-orientation="vertical" aria-label={t("app.splitter")} />
+        <div
+          className={`splitter ${splitDragging ? "dragging" : ""}`}
+          onMouseDown={startResize}
+          onDoubleClick={resetSplit}
+          role="separator"
+          aria-orientation="vertical"
+          aria-label={t("app.splitter")}
+          title={t("app.splitterTitle")}
+        />
         <Gantt
           rows={rows}
           timelineStart={timeline.start}
@@ -1310,6 +1371,26 @@ export default function App() {
           baselineName={baseline?.name}
           onInfo={setInfoId}
         />
+        {project.tasks.length === 0 && (
+          <div className="empty-state">
+            <h2>{t("empty.title")}</h2>
+            <p>{t("empty.body")}</p>
+            <div className="empty-actions">
+              <button className="tbtn primary" onClick={() => insertTask()}>
+                <Icon name="plus" size={16} />
+                <span>{t("empty.first")}</span>
+              </button>
+              <button className="tbtn outline" onClick={() => newProject(false, "b:konut")}>
+                <Icon name="template" size={16} />
+                <span>{t("empty.template")}</span>
+              </button>
+              <button className="tbtn outline" onClick={() => fileRef.current?.click()}>
+                <Icon name="open" size={16} />
+                <span>{t("empty.open")}</span>
+              </button>
+            </div>
+          </div>
+        )}
       </main>
 
       {calendarOpen && (
@@ -1406,6 +1487,11 @@ export default function App() {
           onCurrency={(code) => update((p) => ({ ...p, currency: code.trim() ? normalizeCurrency(code) : code }))}
           download={(content, fileName) => downloadAs(content, "application/json", fileName)}
           onClose={() => setSettingsOpen(false)}
+          density={density}
+          onDensity={(d) => {
+            saveDensity(d);
+            setDensityState(d);
+          }}
         />
       )}
 
@@ -1470,11 +1556,13 @@ export default function App() {
         </span>
         {schedule.cycle.length > 0 && (
           <span className="warn" title={schedule.cyclePath.map((id) => project.tasks.findIndex((x) => x.id === id) + 1).join(" → ")}>
+            <Icon name="risk" size={14} />
             {t("warn.cycleStatus")}
           </span>
         )}
         {schedule.issues.length > 0 && (
           <span className="warn" title={schedule.issues.map((x) => issueText(project, schedule, x)).join("\n")}>
+            <Icon name="risk" size={14} />
             {t("status.issues", { n: schedule.issues.length })}
           </span>
         )}
@@ -1487,6 +1575,7 @@ export default function App() {
             }}
             title={t("status.lateTitle")}
           >
+            <Icon name="clock" size={14} />
             {t("status.late", { n: lateCount })}
           </button>
         )}
@@ -1496,7 +1585,7 @@ export default function App() {
         </span>
       </footer>
       {message && (
-        <div className="toast" role="status">
+        <div className={`toast ${messageKind === "error" ? "error" : ""}`} role={messageKind === "error" ? "alert" : "status"}>
           {msgText(message)}
         </div>
       )}
@@ -1516,16 +1605,28 @@ function ToolButton(props: {
   onClick: () => void;
   disabled?: boolean;
   primary?: boolean;
+  /** Çerçeveli ikincil düğme */
+  outline?: boolean;
+  /** Çerçevesiz düğme */
+  ghost?: boolean;
+  /** Sığmazsa "Diğer" menüsüne taşınma sırası (küçük önce) */
+  ov?: number;
+  /** Açılır menü düğmesi: açık mı */
+  popup?: boolean;
 }) {
+  const kind = props.primary ? "primary" : props.outline ? "outline" : props.ghost ? "ghost" : "";
   return (
     <button
-      className={`tbtn ${props.primary ? "primary" : ""} ${props.label ? "" : "icon-only"}`}
+      className={`tbtn ${kind} ${props.label ? "" : "icon-only"}`}
       onClick={props.onClick}
       disabled={props.disabled}
       title={props.title}
       aria-label={props.label ? undefined : props.title}
+      data-ov={props.ov}
+      aria-haspopup={props.popup === undefined ? undefined : "true"}
+      aria-expanded={props.popup}
     >
-      <Icon name={props.icon} size={17} />
+      <Icon name={props.icon} size={16} />
       {props.label && <span>{props.label}</span>}
     </button>
   );

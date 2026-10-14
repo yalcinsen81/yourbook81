@@ -1,3 +1,4 @@
+import { setDensity, type Density } from "./components/layout";
 import { detectLang, setLocale, type DateStyle, type Lang } from "./i18n";
 import type { UserTemplate } from "./model/templates";
 
@@ -31,6 +32,10 @@ export interface AppSettings {
   templates?: UserTemplate[];
   /** Görev tablosunda gizlenen sütunlar */
   hiddenColumns?: string[];
+  /** Satır yoğunluğu: Kompakt (30 px) / Rahat (36 px) */
+  density?: "compact" | "comfortable";
+  /** Tablo / Gantt ayırıcısının konumu (çalışma alanı genişliğine oran, 0–1) */
+  splitRatio?: number;
 }
 
 const MAX_BACKUPS = 3;
@@ -68,6 +73,27 @@ export function applySavedLocale(): void {
 export function saveLocale(lang: Lang, dateStyle: DateStyle): void {
   setLocale({ lang, dateStyle });
   updateSettings((s) => ({ ...s, lang, dateStyle }));
+}
+
+/** Açılışta kayıtlı satır yoğunluğunu uygular */
+export function applySavedDensity(): Density {
+  const d: Density = loadSettings().density === "comfortable" ? "comfortable" : "compact";
+  setDensity(d);
+  return d;
+}
+
+export function saveDensity(d: Density): void {
+  setDensity(d);
+  updateSettings((s) => ({ ...s, density: d }));
+}
+
+export function loadSplitRatio(): number {
+  const r = loadSettings().splitRatio;
+  return typeof r === "number" && r > 0.15 && r < 0.85 ? r : 0.5;
+}
+
+export function saveSplitRatio(r: number | undefined): void {
+  updateSettings((s) => ({ ...s, splitRatio: r }));
 }
 
 /** Projeyi ayırt eden anahtar (ad + başlangıç) */
